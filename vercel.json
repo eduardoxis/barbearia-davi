@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "crons": [
+    {
+      "path":     "/api/cron/lembretes",
+      "schedule": "*/10 * * * *"
+    }
+  ],
+  "functions": {
+    "api/cron/lembretes.js": {
+      "maxDuration": 60
+    }
+  }
+}

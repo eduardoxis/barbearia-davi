@@ -1,0 +1,202 @@
+/* ══════════════════════════════════════════
+   AGENDAMENTO.CSS — Seção de agendamento
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+/* ── Section wrapper ── */
+#agendar{background:var(--black);position:relative}
+#agendar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--red),transparent)}
+.booking-wrap{max-width:800px;margin:0 auto}
+
+/* ── Steps bar ── */
+.steps-bar{display:flex;gap:0;margin-bottom:2.5rem;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.step-tab{flex:1;padding:0.8rem;text-align:center;font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray2);background:var(--card);border-right:1px solid var(--border);transition:all 0.2s}
+.step-tab:last-child{border-right:none}
+.step-tab.active{background:var(--red);color:var(--white)}
+.step-tab.done{background:rgba(224,32,32,0.1);color:var(--red)}
+.step-tab .tab-num{display:block;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;line-height:1;margin-bottom:0.1rem}
+.steps-bar.pos-barbeiro .step-tab[data-step="0"]{display:none}
+
+/* ── Indicador barbeiro ── */
+.barb-indicador{display:none;align-items:center;gap:0.5rem;padding:0 0.9rem;background:rgba(224,32,32,0.08);border-right:1px solid var(--border-red);flex-shrink:0;min-width:fit-content}
+.steps-bar.pos-barbeiro .barb-indicador{display:flex}
+.barb-ind-foto{width:26px;height:26px;border-radius:50%;background:var(--card2);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;font-size:0.9rem;overflow:hidden;flex-shrink:0}
+.barb-ind-foto img{width:100%;height:100%;object-fit:cover}
+.barb-ind-info{display:flex;flex-direction:column;line-height:1}
+.barb-ind-label{font-size:0.52rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red)}
+.barb-ind-nome{font-size:0.72rem;font-weight:700;color:var(--white);letter-spacing:0.03em;white-space:nowrap}
+.barb-ind-trocar{background:none;border:none;color:var(--gray);cursor:pointer;font-size:0.65rem;padding:0;font-family:'Inter',sans-serif;transition:color 0.2s;text-decoration:underline;text-underline-offset:2px;margin-top:0.1rem}
+.barb-ind-trocar:hover{color:var(--red)}
+
+/* ── Step panels ── */
+.step-panel{display:none;animation:fadeUp 0.3s ease}
+.step-panel.active{display:block}
+
+/* ── User info ── */
+.user-info-section{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.5rem;margin-bottom:1.5rem}
+.user-info-section h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--white);margin-bottom:1rem;letter-spacing:0.05em;text-transform:uppercase}
+
+/* ── Calendar + Slots ── */
+.cal-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.slots-panel{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1rem}
+.slots-panel h3{font-family:'Oswald',sans-serif;font-size:0.9rem;font-weight:600;color:var(--white);margin-bottom:0.8rem;letter-spacing:0.08em;text-transform:uppercase}
+.slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem}
+.slot{border:1px solid var(--border);border-radius:2px;padding:0.5rem;text-align:center;cursor:pointer;font-size:0.8rem;color:var(--light);transition:all 0.15s}
+.slot:hover:not(.taken){border-color:var(--red);color:var(--red);background:rgba(224,32,32,0.05)}
+.slot.selected{background:var(--red);color:var(--white);border-color:var(--red);font-weight:700}
+.slot.taken{opacity:0.2;cursor:not-allowed;text-decoration:line-through}
+.slots-empty{color:var(--gray);font-size:0.8rem;grid-column:1/-1;padding:0.8rem 0;text-align:center}
+
+/* ── Order summary ── */
+.order-summary{background:var(--card);border:1px solid var(--border-red);border-radius:3px;padding:1.5rem;margin-bottom:1.5rem}
+.order-summary h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem;padding-bottom:0.8rem;border-bottom:1px solid var(--border);letter-spacing:0.08em;text-transform:uppercase}
+.sum-row{display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.82rem;gap:1rem}
+.sum-row:last-child{border-bottom:none}
+.sum-label{color:var(--gray);flex-shrink:0;font-weight:500}
+.sum-val{color:var(--light);text-align:right;font-weight:600}
+.sum-total .sum-label{color:var(--white);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.sum-total .sum-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--red)}
+.services-list{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.4rem}
+
+/* ── Termo ── */
+.termo-wrap{background:rgba(224,32,32,0.04);border:1px solid var(--border-red);border-radius:3px;padding:1rem 1.1rem;margin-bottom:1.2rem}
+.termo-texto{font-size:0.78rem;color:var(--light);line-height:1.7;margin-bottom:0.9rem}
+.termo-texto strong{color:var(--white)}
+.termo-label{display:flex;align-items:flex-start;gap:0.7rem;cursor:pointer;font-size:0.78rem;color:var(--gray);line-height:1.6}
+.termo-label input[type=checkbox]{accent-color:var(--red);width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer}
+.termo-label.aceito{color:var(--light)}
+.termo-aviso{font-size:0.68rem;color:var(--red);margin-top:0.5rem;display:none}
+.termo-aviso.visivel{display:block}
+
+/* ── Payment (Cakto) ── */
+.pix-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start}
+.pix-box{background:var(--card);border:1px solid var(--border-red);border-radius:3px;padding:1.5rem;text-align:center}
+.pix-steps h4{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:var(--white);margin-bottom:0.8rem;letter-spacing:0.05em;text-transform:uppercase}
+.px-step{display:flex;gap:0.8rem;margin-bottom:0.8rem;align-items:flex-start}
+.px-n{width:1.6rem;height:1.6rem;min-width:1.6rem;border-radius:50%;background:rgba(224,32,32,0.15);color:var(--red);font-size:0.7rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.px-t{font-size:0.82rem;color:var(--gray);line-height:1.6;padding-top:0.15rem}
+.px-t strong{color:var(--red)}
+.pix-confirmed-overlay{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;animation:fadeInO 0.3s ease}
+.pix-confirmed-icon{width:90px;height:90px;border-radius:50%;background:rgba(39,174,96,0.15);border:3px solid #27AE60;display:flex;align-items:center;justify-content:center;font-size:2.5rem;animation:popC 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+
+/* ── Confirmed ── */
+.confirmed-wrap{text-align:center;padding:2rem 1rem;max-width:520px;margin:0 auto}
+.conf-icon{width:72px;height:72px;border-radius:50%;background:rgba(224,32,32,0.12);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:1.8rem;animation:pop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+.conf-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,5vw,3rem);color:var(--white);margin-bottom:0.5rem}
+.conf-title span{color:var(--red)}
+.conf-desc{font-size:0.85rem;color:var(--gray);line-height:1.7;margin-bottom:1.5rem}
+.conf-card{background:var(--card);border:1px solid var(--border-red);border-radius:3px;padding:1.2rem;text-align:left;margin-bottom:1.5rem}
+.conf-row{display:flex;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;gap:1rem}
+.conf-row:last-child{border-bottom:none}
+.conf-row span:first-child{color:var(--gray)}
+.conf-row span:last-child{color:var(--light);font-weight:600;text-align:right}
+.conf-paid{color:#6FCF97!important;font-weight:700!important}
+.conf-btns{display:flex;flex-direction:column;gap:0.8rem}
+.btn-pdf{background:var(--red);color:var(--white);border:none;padding:0.9rem;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%}
+.btn-pdf:hover{background:var(--red-dark);transform:translateY(-1px)}
+.btn-share{background:var(--card2);color:var(--light);border:1px solid var(--border);padding:0.9rem;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%}
+.btn-share:hover{border-color:var(--red);color:var(--red)}
+
+/* ── Step nav ── */
+.step-nav{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border);gap:1rem}
+.btn-back{background:none;border:1px solid rgba(255,255,255,0.12);color:var(--gray);padding:0.7rem 1.5rem;font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s}
+.btn-back:hover{border-color:var(--white);color:var(--white)}
+.btn-next{background:var(--red);border:none;color:var(--white);padding:0.7rem 1.8rem;font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;white-space:nowrap}
+.btn-next:hover:not(:disabled){background:var(--red-dark);transform:translateY(-1px)}
+.btn-next:disabled{opacity:0.3;cursor:not-allowed;transform:none}
+
+/* ── Pós agendamento (remarcar/reembolso) ── */
+.conf-acoes-pos{display:flex;flex-direction:column;gap:0.6rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.conf-acoes-titulo{font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray);margin-bottom:0.2rem}
+.btn-remarcar{background:none;border:1px solid var(--red);color:var(--red);padding:0.75rem;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;width:100%;display:flex;align-items:center;justify-content:center;gap:0.5rem}
+.btn-remarcar:hover{background:var(--red);color:var(--white)}
+
+/* ── Barbeiro grid (step 0) ── */
+.barbeiro-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.barbeiro-card{background:var(--card);border:2px solid var(--border);border-radius:6px;padding:1.5rem 1rem 1.2rem;text-align:center;cursor:pointer;transition:all 0.22s;position:relative;overflow:hidden}
+.barbeiro-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(224,32,32,0) 60%,rgba(224,32,32,0.04));opacity:0;transition:opacity 0.22s}
+.barbeiro-card:hover::before{opacity:1}
+.barbeiro-card:hover{border-color:rgba(224,32,32,0.45);transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.barbeiro-card.selecionado{border-color:var(--red);background:rgba(224,32,32,0.05);box-shadow:0 0 0 1px var(--red)}
+.barbeiro-card.inativo{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.barbeiro-foto{width:84px;height:84px;border-radius:50%;background:var(--card2);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.4rem;margin:0 auto 0.9rem;overflow:hidden;transition:border-color 0.22s,transform 0.22s}
+.barbeiro-card:hover .barbeiro-foto{transform:scale(1.05)}
+.barbeiro-card.selecionado .barbeiro-foto{border-color:var(--red)}
+.barbeiro-foto img{width:100%;height:100%;object-fit:cover}
+.barbeiro-nome{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:0.04em;margin-bottom:0.25rem}
+.barbeiro-esp{font-size:0.72rem;color:var(--gray);margin-bottom:0.6rem;line-height:1.4}
+.barbeiro-horario{font-size:0.63rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);background:rgba(224,32,32,0.1);padding:0.22rem 0.65rem;border-radius:1px;display:inline-block;margin-bottom:0.3rem}
+.barbeiro-badge-sel{position:absolute;top:0.55rem;right:0.55rem;background:var(--red);color:var(--white);font-size:0.58rem;font-weight:800;padding:0.22rem 0.5rem;border-radius:2px;letter-spacing:0.08em;text-transform:uppercase}
+.barbeiro-check-circle{width:28px;height:28px;border-radius:50%;background:var(--red);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:0.9rem;margin:0.6rem auto 0;font-weight:700}
+.barbeiro-status-badge{display:inline-block;font-size:0.58rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:1px;margin-top:0.3rem}
+.barbeiro-status-badge.ativo{background:rgba(39,174,96,0.12);color:#6FCF97}
+.barbeiro-status-badge.inativo{background:rgba(224,32,32,0.12);color:var(--red)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .cal-wrap{grid-template-columns:1fr}
+  .pix-grid{grid-template-columns:1fr}
+  .steps-bar{font-size:0.5rem;gap:0.1rem}
+  .step-tab{padding:0.5rem 0.2rem}
+  .tab-num{font-size:0.6rem}
+  .form-row{grid-template-columns:1fr}
+  .step-nav{flex-direction:column-reverse;gap:0.6rem}
+  .step-nav .btn-next,.step-nav .btn-back{width:100%;text-align:center;justify-content:center}
+  .step-nav>div:empty{display:none}
+  .slots-grid{grid-template-columns:repeat(3,1fr)}
+  .barbeiro-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .steps-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0.2rem}
+  .barb-indicador{grid-column:1/-1;border-right:none;border-bottom:1px solid var(--border-red);justify-content:center;padding:0.4rem 0.9rem}
+  .step-tab{flex-direction:column;gap:0.15rem;padding:0.4rem 0.1rem}
+  .tab-num{display:none}
+  .slots-grid{grid-template-columns:repeat(2,1fr)}
+  .pix-box{min-height:auto;padding:1.2rem}
+}
+@media(max-width:420px){
+  .barbeiro-grid{grid-template-columns:1fr 1fr}
+  .barbeiro-card{padding:1rem 0.6rem}
+  .barbeiro-foto{width:60px;height:60px;font-size:1.6rem}
+  .barbeiro-nome{font-size:0.95rem}
+}
+@media(max-width:340px){.barbeiro-grid{grid-template-columns:1fr}}
+
+/* ══ CUPOM NO CHECKOUT ══════════════════════════════════════════ */
+.cupom-checkout-wrap{margin:0.4rem 0 0.2rem;display:flex;flex-direction:column;gap:0.35rem}
+.cupom-checkout-row{display:flex;gap:0.4rem;align-items:center}
+.cupom-checkout-row input{
+  flex:1;background:var(--dark2);border:1px solid var(--border-red);border-radius:4px;
+  padding:0.55rem 0.75rem;color:var(--white);font-size:0.82rem;letter-spacing:0.04em;
+  outline:none;transition:border-color .2s
+}
+.cupom-checkout-row input:focus{border-color:var(--red)}
+.cupom-apply-btn{
+  background:var(--red);color:#fff;border:none;border-radius:4px;
+  padding:0.55rem 1rem;font-size:0.8rem;font-weight:700;cursor:pointer;white-space:nowrap;
+  transition:opacity .2s
+}
+.cupom-apply-btn:hover{opacity:.85}
+.cupom-remove-btn{
+  background:transparent;border:1px solid #555;color:#aaa;border-radius:4px;
+  padding:0.55rem 0.6rem;font-size:0.8rem;cursor:pointer;line-height:1;
+  transition:all .2s
+}
+.cupom-remove-btn:hover{border-color:var(--red);color:var(--red)}
+.cupom-msg{font-size:0.75rem;min-height:1rem;transition:all .2s}
+.cupom-msg.sucesso{color:#4caf50;font-weight:600}
+.cupom-msg.erro{color:var(--red)}
+
+/* ══ CALENDÁRIO NA CONFIRMAÇÃO ══════════════════════════════════ */
+.conf-calendar-wrap{
+  display:flex;gap:0.6rem;flex-wrap:wrap;margin:0.6rem 0 0.2rem;
+  justify-content:center
+}
+.conf-cal-btn{
+  display:inline-flex;align-items:center;gap:0.45rem;
+  padding:0.6rem 1.1rem;border-radius:6px;font-size:0.8rem;font-weight:700;
+  cursor:pointer;text-decoration:none;border:none;transition:opacity .2s;white-space:nowrap
+}
+.conf-cal-btn:hover{opacity:.85}
+.conf-cal-btn.gcal{background:#fff;color:#1a1a1a}
+.conf-cal-btn.ical{background:var(--dark2);color:var(--white);border:1px solid var(--border-red)}

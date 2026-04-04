@@ -1,0 +1,139 @@
+/* ══════════════════════════════════════════
+   BOTTOM-NAV.CSS
+   Menu inferior nativo — Barbearia do Davi
+   Aplicado APENAS no mobile (max-width: 900px)
+══════════════════════════════════════════ */
+
+/* ── Container ── */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9990;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-around;
+  height: 62px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(15, 15, 15, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.8);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Cada item ── */
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  text-decoration: none;
+  color: #5a5a5a;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bn-item:active {
+  transform: scale(0.88);
+  transition: transform 0.08s ease;
+}
+
+/* ── Item ATIVO ── */
+.bn-item.active {
+  color: #e02020;
+}
+
+/* Pill indicador no topo */
+.bn-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  background: #e02020;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 10px rgba(224, 32, 32, 0.7);
+}
+
+/* ── Ícone ── */
+.bn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bn-icon svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+  transition: stroke 0.2s, filter 0.2s;
+}
+
+.bn-item.active .bn-icon {
+  transform: translateY(-2px) scale(1.1);
+}
+
+.bn-item.active .bn-icon svg {
+  stroke: #e02020;
+  filter: drop-shadow(0 0 6px rgba(224, 32, 32, 0.6));
+}
+
+/* ── Label ── */
+.bn-label {
+  font-family: -apple-system, 'SF Pro Text', 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1;
+  color: inherit;
+  display: block;
+  transition: color 0.2s;
+}
+
+.bn-item.active .bn-label {
+  font-weight: 600;
+  color: #e02020;
+}
+
+/* ══ Só aparece no mobile ══ */
+@media (max-width: 900px) {
+  .bottom-nav {
+    display: flex;
+    height: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .toast {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #fabCart {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

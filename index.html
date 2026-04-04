@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Barbearia do Davi — Degradê, corte e barba em Luziânia, GO. Agende online.">
+  <title>Barbearia do Davi</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/index.css">
+  <link rel="stylesheet" href="/css/agendamento.css">
+  <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="/css/historico.css">
+  <link rel="stylesheet" href="/css/perfil.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/bottom-nav.css">
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+      collection, getDocs, query, where, orderBy, addDoc, onSnapshot
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import {
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword,
+      signOut, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyPLACEHOLDER",
+      authDomain:        "barbearia-davi.firebaseapp.com",
+      projectId:         "barbearia-davi",
+      storageBucket:     "barbearia-davi.appspot.com",
+      messagingSenderId: "000000000000",
+      appId:             "1:000000000000:web:000000000000000000000000"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+
+    window._fb = {
+      db, auth,
+      doc, getDoc, setDoc, updateDoc, deleteDoc,
+      collection, getDocs, query, where, orderBy, addDoc, onSnapshot,
+      onAuthStateChanged,
+      signInWithEmailAndPassword:    (e,p) => signInWithEmailAndPassword(auth,e,p),
+      createUserWithEmailAndPassword:(e,p) => createUserWithEmailAndPassword(auth,e,p),
+      signOut:                       ()    => signOut(auth),
+      sendPasswordResetEmail:        (e)   => sendPasswordResetEmail(auth,e),
+      updatePassword:                (u,p) => updatePassword(u,p),
+      reauthenticateWithCredential,
+      EmailAuthProvider,
+    };
+  </script>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  HERO                                ║
+     ╚══════════════════════════════════════╝ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid-lines"></div>
+  <div class="hero-redline"></div>
+  <div class="hero-content">
+    <div id="heroStatusTag" class="hero-tag open">🔴 Aberto agora · Luziânia, GO</div>
+    <h1>Barbearia<br><span class="red">do Davi</span></h1>
+    <p class="hero-sub">Degradê · Barba · <span>Estilo</span></p>
+    <div class="hero-btns">
+      <a href="#agendar"  class="btn-red">✂ Agendar agora</a>
+      <a href="#servicos" class="btn-ghost">Ver serviços</a>
+    </div>
+    <div class="hero-stats">
+      <div><span class="stat-n">+500</span><span class="stat-l">Clientes atendidos</span></div>
+      <div><span class="stat-n">5★</span><span class="stat-l">Avaliação média</span></div>
+      <div><span class="stat-n">8+</span><span class="stat-l">Anos de experiência</span></div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span class="scroll-label">Scroll</span>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SERVIÇOS                            ║
+     ╚══════════════════════════════════════╝ -->
+<section id="servicos">
+  <div class="max-w">
+    <div class="gallery-intro">
+      <div>
+        <div class="sec-label">Cardápio</div>
+        <h2 class="sec-title">Nossos <span>Serviços</span></h2>
+        <p class="sec-sub">Escolha um ou mais serviços e agende no horário que preferir.</p>
+      </div>
+      <div class="cart-summary">
+        <button class="cart-badge" onclick="toggleCart()">
+          🛒 <span id="cartCount">0</span> selecionado(s)
+        </button>
+        <span class="cart-total">R$ <span id="cartTotalDisplay">0</span></span>
+      </div>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+</section>
+
+<!-- FAB Carrinho -->
+<button id="fabCart" onclick="toggleCart()" aria-label="Abrir carrinho">
+  <span class="fab-icon">🛒</span>
+  <span id="fabBadge">0</span>
+</button>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  CARRINHO (panel lateral)            ║
+     ╚══════════════════════════════════════╝ -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<aside class="cart-panel" id="cartPanel">
+  <div class="cart-header">
+    <span class="cart-title">🛒 Meu Carrinho</span>
+    <button class="cart-close-enhanced" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">Nenhum serviço adicionado.</div>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total-row">
+      <span class="cart-total-label">Total</span>
+      <span class="cart-total-val">R$ <span id="cartTotalPanel">0</span></span>
+    </div>
+    <a href="#agendar" class="btn-red"
+       style="width:100%;justify-content:center"
+       onclick="toggleCart()">
+      Agendar agora ↓
+    </a>
+  </div>
+</aside>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  AGENDAMENTO                         ║
+     ╚══════════════════════════════════════╝ -->
+<section id="agendar">
+  <div class="max-w booking-wrap">
+    <div class="sec-label">Online</div>
+    <h2 class="sec-title">Fazer <span>Agendamento</span></h2>
+    <p class="sec-sub">Escolha o barbeiro, serviços, data e horário. Rápido e sem complicação.</p>
+
+    <!-- Steps bar -->
+    <div class="steps-bar" id="stepsBar">
+      <div class="barb-indicador">
+        <div class="barb-ind-foto" id="barbIndFoto">💈</div>
+        <div class="barb-ind-info">
+          <span class="barb-ind-label">Barbeiro</span>
+          <span class="barb-ind-nome" id="barbIndNome">—</span>
+          <button class="barb-ind-trocar" onclick="goBookStep(0)">Trocar</button>
+        </div>
+      </div>
+      <div class="step-tab active" data-step="0"><span class="tab-num">1</span>Barbeiro</div>
+      <div class="step-tab"        data-step="1"><span class="tab-num">2</span>Dados</div>
+      <div class="step-tab"        data-step="2"><span class="tab-num">3</span>Data</div>
+      <div class="step-tab"        data-step="3"><span class="tab-num">4</span>Revisar</div>
+      <div class="step-tab"        data-step="4"><span class="tab-num">5</span>Pagar</div>
+      <div class="step-tab"        data-step="5"><span class="tab-num">6</span>Confirmado</div>
+    </div>
+
+    <!-- Step 0 — Barbeiro -->
+    <div class="step-panel active" id="bStep0">
+      <div class="barbeiro-grid" id="barbeiroGrid"></div>
+      <p id="step0Hint" style="font-size:0.8rem;color:var(--gray);text-align:center;margin-top:0.5rem"></p>
+    </div>
+
+    <!-- Step 1 — Dados -->
+    <div class="step-panel" id="bStep1">
+      <div class="user-info-section" id="guestFields">
+        <h3>Seus Dados</h3>
+        <div id="loggedUserInfo" style="display:none;margin-bottom:1rem">
+          <div id="loggedUserName"  style="font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--white);font-weight:600"></div>
+          <div id="loggedUserEmail" style="font-size:0.78rem;color:var(--gray)"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="clientName">Nome completo *</label>
+            <input class="form-input" id="clientName" type="text"
+                   placeholder="Seu nome" oninput="checkStep1()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="clientPhone">WhatsApp *</label>
+            <input class="form-input" id="clientPhone" type="tel"
+                   placeholder="(62) 9 0000-0000" oninput="checkStep1()">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label class="form-label" for="clientEmail">E-mail (opcional)</label>
+            <input class="form-input" id="clientEmail" type="email" placeholder="seu@email.com">
+          </div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goBookStep(0)">← Voltar</button>
+        <button class="btn-next" id="step1Next" onclick="goBookStep(2)" disabled>Próximo →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 — Data e horário -->
+    <div class="step-panel" id="bStep2">
+      <div class="cal-wrap">
+        <div class="calendar">
+          <div class="calendar-header">
+            <button class="cal-nav" onclick="prevMonth()">‹</button>
+            <span class="cal-month" id="calMonthLabel"></span>
+            <button class="cal-nav" onclick="nextMonth()">›</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="slots-panel">
+          <h3>Horários disponíveis</h3>
+          <div class="slots-grid" id="slotsGrid">
+            <div class="slots-empty">Selecione uma data</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goBookStep(1)">← Voltar</button>
+        <button class="btn-next" id="step2Next" onclick="goBookStep(3)" disabled>Próximo →</button>
+      </div>
+    </div>
+
+    <!-- Step 3 — Revisar -->
+    <div class="step-panel" id="bStep3">
+      <div class="order-summary">
+        <h3>Resumo do Agendamento</h3>
+        <div class="sum-row"><span class="sum-label">Barbeiro</span><span  class="sum-val" id="sumBarbeiro">—</span></div>
+        <div class="sum-row"><span class="sum-label">Serviços</span><div   class="sum-val" id="sumServices"></div></div>
+        <div class="sum-row"><span class="sum-label">Data</span><span      class="sum-val" id="sumData">—</span></div>
+        <div class="sum-row"><span class="sum-label">Horário</span><span   class="sum-val" id="sumHorario">—</span></div>
+        <div class="sum-row sum-total"><span class="sum-label">Total</span><span class="sum-val" id="sumTotal">R$ 0</span></div>
+      </div>
+      <div class="termo-wrap">
+        <div class="termo-texto">
+          <strong>Política de cancelamento:</strong> Cancelamentos ou remarcações devem ser solicitados com no mínimo 24 horas de antecedência. Em caso de não comparecimento sem aviso prévio, o valor poderá não ser reembolsado.
+        </div>
+        <label class="termo-label" id="termoLabel">
+          <input type="checkbox" id="termoCheckbox" onchange="verificarTermoAceito()">
+          Li e concordo com a política de cancelamento e os termos de uso.
+        </label>
+        <div class="termo-aviso" id="termoAviso">⚠ Você precisa aceitar os termos para continuar.</div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goBookStep(2)">← Voltar</button>
+        <button class="btn-next" id="btnIrPagamento" onclick="irParaPagamentoComTermo()">Ir para pagamento →</button>
+      </div>
+    </div>
+
+    <!-- Step 4 — Pagamento -->
+    <div class="step-panel" id="bStep4">
+      <div class="pix-grid">
+        <div id="pixLoading" style="display:none;text-align:center;padding:2rem">
+          <div class="pix-spinner"></div>
+          <p style="font-size:0.8rem;color:var(--gray);margin-top:1rem">Gerando pagamento...</p>
+        </div>
+        <div id="pixReady">
+          <div class="pix-steps">
+            <h4>Como pagar</h4>
+            <div class="px-step"><div class="px-n">1</div><div class="px-t">Clique em <strong>"Gerar PIX"</strong> para criar seu link de pagamento.</div></div>
+            <div class="px-step"><div class="px-n">2</div><div class="px-t">Escaneie o QR Code ou copie a chave PIX no seu banco.</div></div>
+            <div class="px-step"><div class="px-n">3</div><div class="px-t">Após o pagamento, seu agendamento é <strong>confirmado automaticamente</strong>.</div></div>
+          </div>
+          <div style="margin:1.2rem 0;padding:1rem;background:var(--card);border:1px solid var(--border);border-radius:3px">
+            <div class="sum-row"><span class="sum-label">Serviços</span><span class="sum-val" id="pixSumServices"></span></div>
+            <div id="confCupomRow" style="display:none">
+              <div class="sum-row" style="color:#4caf50"><span>Desconto</span><span id="confCupomDesc"></span></div>
+            </div>
+            <div class="sum-row sum-total"><span class="sum-label">Total</span><span class="sum-val">R$ <span id="pixSumTotal">0</span></span></div>
+          </div>
+          <!-- Cupom -->
+          <div class="cupom-checkout-wrap">
+            <div class="cupom-checkout-row">
+              <input type="text" id="cupomInput" placeholder="Código do cupom" style="text-transform:uppercase">
+              <button class="cupom-apply-btn" onclick="aplicarCupomCheckout()">Aplicar</button>
+              <button class="cupom-remove-btn" id="cupomRemBtn" onclick="removerCupom()" style="display:none">✕</button>
+            </div>
+            <div class="cupom-msg" id="cupomMsg"></div>
+          </div>
+          <button class="btn-red" id="caktoCheckoutBtn"
+                  style="width:100%;justify-content:center;margin-top:1rem"
+                  onclick="iniciarPagamentoCakto()">
+            💳 Gerar PIX / Cartão
+          </button>
+          <div id="pixError" style="display:none;margin-top:0.6rem">
+            <div class="sol-aviso erro" id="pixErrorMsg"></div>
+          </div>
+          <div id="pixTimer" style="display:none;font-size:0.72rem;color:var(--gray);text-align:center;margin-top:0.5rem"></div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" id="pixBackBtn" onclick="goBookStep(3)">← Voltar</button>
+      </div>
+    </div>
+
+    <!-- Step 5 — Confirmado -->
+    <div class="step-panel" id="bStep5">
+      <div class="confirmed-wrap">
+        <div class="conf-icon">✓</div>
+        <h2 class="conf-title">Agendamento <span>Confirmado!</span></h2>
+        <p class="conf-desc">Seu horário foi reservado. Você receberá uma confirmação por WhatsApp.</p>
+        <div class="conf-card">
+          <div class="conf-row"><span>Barbeiro</span> <span id="confBarbeiro">—</span></div>
+          <div class="conf-row"><span>Serviços</span> <span id="confServicos">—</span></div>
+          <div class="conf-row"><span>Data</span>     <span id="confData">—</span></div>
+          <div class="conf-row"><span>Horário</span>  <span id="confHorario">—</span></div>
+          <div class="conf-row"><span>Total</span>    <span id="confTotal" class="conf-paid">—</span></div>
+        </div>
+        <div class="conf-calendar-wrap" id="confCalendarBtns"></div>
+        <div class="conf-btns">
+          <button class="btn-pdf"   onclick="generatePDF()">📄 Baixar comprovante</button>
+          <button class="btn-share" onclick="shareWhatsApp()">💬 Compartilhar no WhatsApp</button>
+          <div class="conf-acoes-pos">
+            <div class="conf-acoes-titulo">Precisa alterar?</div>
+            <button class="btn-remarcar" id="btnRemarcarPos"
+              onclick="import('/js/historico.js').then(m=>m.abrirSolicitacaoRemarcar())">
+              📅 Solicitar remarcação
+            </button>
+          </div>
+          <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:0.5rem"
+            onclick="resetBooking()">
+            Fazer outro agendamento
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  LOCALIZAÇÃO                         ║
+     ╚══════════════════════════════════════╝ -->
+<section id="localizacao">
+  <div class="max-w mapa-wrap">
+    <div class="sec-label">Onde estamos</div>
+    <h2 class="sec-title">Localização</h2>
+    <div class="mapa-container">
+      <iframe
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d30712!2d-47.9!3d-16.25!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x935a2ef0e35cdf%3A0x0!2zTHV6acOibmlhLCBHTw!5e0!3m2!1spt!2sbr!4v1700000000000!5m2!1spt!2sbr"
+        allowfullscreen loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Localização Barbearia do Davi">
+      </iframe>
+    </div>
+    <div class="mapa-info">
+      <div class="mapa-address">
+        <strong>Barbearia do Davi</strong>
+        Luziânia, Goiás — Brasil<br>
+        Seg–Sex: 08h–19h · Sáb: 08h–17h
+      </div>
+      <a href="https://maps.google.com/?q=Luziania+GO"
+         target="_blank" rel="noopener" class="mapa-btn">
+        📍 Como chegar
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  INSTAGRAM                           ║
+     ╚══════════════════════════════════════╝ -->
+<div class="insta-section">
+  <a href="https://instagram.com/barbearia.davi"
+     target="_blank" rel="noopener" class="insta-link">
+    <div class="insta-icon">📷</div>
+    <div class="insta-handle">@barbearia<span>.davi</span></div>
+  </a>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  FOOTER                              ║
+     ╚══════════════════════════════════════╝ -->
+<footer>
+  <div class="footer-logo">Barbearia <span>do Davi</span></div>
+  <div class="footer-info">
+    Luziânia, Goiás · Brasil<br>
+    (62) 9 0000-0000 · @barbearia.davi
+  </div>
+  <div class="footer-bottom">
+    <span>© 2024 Barbearia do Davi. Todos os direitos reservados.</span>
+    <a href="#" class="footer-dev">Desenvolvido com ❤</a>
+  </div>
+</footer>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  TOAST                               ║
+     ╚══════════════════════════════════════╝ -->
+<div id="toast" class="toast"></div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL LOGIN / USUÁRIO               ║
+     ╚══════════════════════════════════════╝ -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <button class="modal-close"
+      onclick="import('/js/login.js').then(m=>m.closeUserModal())">✕</button>
+
+    <!-- Vista deslogado -->
+    <div id="modalLoginRegister">
+      <div class="modal-title">Minha Conta</div>
+      <div class="modal-sub">Entre ou crie sua conta para agendar e acompanhar seus serviços.</div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabLogin"
+          onclick="import('/js/login.js').then(m=>m.switchTab('login'))">Entrar</button>
+        <button class="modal-tab" id="tabRegister"
+          onclick="import('/js/login.js').then(m=>m.switchTab('register'))">Cadastrar</button>
+      </div>
+
+      <!-- Login -->
+      <div id="loginForm" class="modal-form">
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input class="form-input" id="loginEmail" type="email" placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="loginPass" type="password" placeholder="Sua senha">
+            <button class="pass-eye" onclick="togglePass('loginPass',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="loginErr"></div>
+        <div style="text-align:right;margin-bottom:0.4rem">
+          <button class="forgot-link"
+            onclick="import('/js/login.js').then(m=>m.switchTab('forgot'))">
+            Esqueci minha senha
+          </button>
+        </div>
+        <button class="btn-red" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.doLogin())">Entrar</button>
+      </div>
+
+      <!-- Cadastro -->
+      <div id="registerForm" class="modal-form" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome completo</label>
+            <input class="form-input" id="regName" type="text" placeholder="Seu nome">
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp</label>
+            <input class="form-input" id="regPhone" type="tel" placeholder="(62) 9 0000-0000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input class="form-input" id="regEmail" type="email" placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="regPass" type="password" placeholder="Mínimo 6 caracteres">
+            <button class="pass-eye" onclick="togglePass('regPass',this)">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+          <div class="strength-label" id="strengthLabel"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="regPass2" type="password" placeholder="Repita a senha">
+            <button class="pass-eye" onclick="togglePass('regPass2',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="regErr"></div>
+        <button class="btn-red" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.doRegister())">Criar conta</button>
+      </div>
+
+      <!-- Esqueci senha -->
+      <div id="forgotForm" class="modal-form" style="display:none">
+        <button class="back-link"
+          onclick="import('/js/login.js').then(m=>m.switchTab('login'))">← Voltar</button>
+        <div class="form-group" style="margin-top:0.8rem">
+          <label class="form-label">E-mail cadastrado</label>
+          <input class="form-input" id="forgotEmail" type="email" placeholder="seu@email.com">
+        </div>
+        <div style="display:flex;gap:0.6rem;margin-top:0.4rem">
+          <label style="flex:1;display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;color:var(--gray);cursor:pointer">
+            <input type="radio" name="chCanal" id="chEmail" value="email" checked style="accent-color:var(--red)"> E-mail
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;color:var(--gray);cursor:pointer">
+            <input type="radio" name="chCanal" id="chPhone" value="sms" style="accent-color:var(--red)"> SMS/WhatsApp
+          </label>
+        </div>
+        <div class="modal-err" id="forgotErr"></div>
+        <button class="btn-red" id="sendCodeBtn" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.enviarCodigo())">Enviar código</button>
+      </div>
+
+      <!-- Código verificação -->
+      <div id="forgotCodeForm" class="modal-form" style="display:none">
+        <button class="back-link"
+          onclick="import('/js/login.js').then(m=>m.switchTab('forgot'))">← Voltar</button>
+        <div id="codeDeliveryMsg" style="font-size:0.78rem;color:var(--gray);margin:0.6rem 0;line-height:1.6"></div>
+        <div class="reset-code-box">
+          <span class="reset-code" id="generatedCode">—</span>
+          <span class="reset-code-hint">Código de verificação</span>
+        </div>
+        <div class="code-boxes" id="codeBoxes">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric">
+        </div>
+        <div class="modal-err" id="codeErr"></div>
+        <div id="codeTimer" style="font-size:0.72rem;color:var(--gray);text-align:center"></div>
+        <button class="btn-red" id="verifyBtn" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.verificarCodigo())">Verificar código</button>
+      </div>
+
+      <!-- Nova senha -->
+      <div id="forgotNewPass" class="modal-form" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Nova senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="newPass1" type="password" placeholder="Nova senha">
+            <button class="pass-eye" onclick="togglePass('newPass1',this)">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="newStrengthFill"></div></div>
+          <div class="strength-label" id="newStrengthLabel"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar nova senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="newPass2" type="password" placeholder="Repita a nova senha">
+            <button class="pass-eye" onclick="togglePass('newPass2',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="newPassErr"></div>
+        <button class="btn-red" id="savePassBtn" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.salvarNovaSenha())">Salvar nova senha</button>
+      </div>
+    </div>
+
+    <!-- Vista logado -->
+    <div id="loggedInView" style="display:none">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div id="userAvatarModal" style="width:60px;height:60px;border-radius:50%;background:var(--red);color:var(--white);font-family:'Bebas Neue',sans-serif;font-size:1.6rem;display:flex;align-items:center;justify-content:center;margin:0 auto 0.8rem"></div>
+        <div id="loggedModalName"  style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:var(--white);font-weight:700"></div>
+        <div id="loggedModalEmail" style="font-size:0.75rem;color:var(--gray)"></div>
+      </div>
+
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-bottom:1rem">
+        <button id="histAbaHistorico"  class="modal-tab active"
+          onclick="import('/js/historico.js').then(m=>m.mudarAba('historico'))">Histórico</button>
+        <button id="histAbaProximos"   class="modal-tab"
+          onclick="import('/js/historico.js').then(m=>m.mudarAba('proximos'))">Próximos</button>
+        <button id="histAbaFidelidade" class="modal-tab"
+          onclick="import('/js/historico.js').then(m=>m.mudarAba('fidelidade'))">Fidelidade</button>
+      </div>
+
+      <div id="histFiltros" style="display:none;margin-bottom:0.8rem">
+        <select class="form-input" id="filtro"
+          onchange="import('/js/historico.js').then(m=>m.filtrarHistorico())">
+          <option value="todos">Todos</option>
+          <option value="confirmado">Confirmados</option>
+          <option value="pendente">Pendentes</option>
+          <option value="cancelado">Cancelados</option>
+        </select>
+      </div>
+
+      <div id="histResumo" style="display:none;margin-bottom:1rem;font-size:0.78rem;color:var(--gray)"></div>
+      <div id="userHistoryList"></div>
+
+      <div id="fidPanel" style="display:none">
+        <div id="fidContent"></div>
+        <div class="fid-prog-wrap" style="margin-top:0.6rem">
+          <div class="fid-prog-bar">
+            <div class="fid-prog-fill" id="fidProgFill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.2rem;display:flex;flex-direction:column;gap:0.6rem">
+        <button class="btn-red" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.closeUserModal())">Fechar</button>
+        <button class="btn-ghost" style="width:100%;justify-content:center"
+          onclick="import('/js/login.js').then(m=>m.doLogout())">Sair da conta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL REMARCAÇÃO                    ║
+     ╚══════════════════════════════════════╝ -->
+<div class="modal-overlay" id="modalSolicitacao">
+  <div class="modal-solicitacao">
+    <button class="modal-close"
+      onclick="document.getElementById('modalSolicitacao').classList.remove('show')">✕</button>
+    <div class="modal-title">Remarcação</div>
+    <div class="modal-sub">Escolha uma nova data e horário para seu agendamento.</div>
+    <div class="sol-aviso info" id="solAvisoRemarcacao"></div>
+    <div style="margin-bottom:1rem">
+      <div class="sum-row"><span class="sum-label">Serviços</span><span  class="sum-val" id="solInfoServicos">—</span></div>
+      <div class="sum-row"><span class="sum-label">Data atual</span><span class="sum-val" id="solInfoData">—</span></div>
+      <div class="sum-row"><span class="sum-label">Horário</span><span    class="sum-val" id="solInfoHorario">—</span></div>
+      <div class="sum-row"><span class="sum-label">Total</span><span      class="sum-val" id="solInfoTotal">—</span></div>
+    </div>
+    <div class="cal-wrap" style="grid-template-columns:1fr">
+      <div class="calendar">
+        <div class="calendar-header">
+          <button class="cal-nav"
+            onclick="import('/js/historico.js').then(m=>m.solPrevMonth())">‹</button>
+          <span class="cal-month" id="solCalLabel"></span>
+          <button class="cal-nav"
+            onclick="import('/js/historico.js').then(m=>m.solNextMonth())">›</button>
+        </div>
+        <div class="cal-grid" id="solCalGrid"></div>
+      </div>
+      <div class="slots-panel">
+        <h3>Novo horário</h3>
+        <div id="solNovaDataTexto" style="font-size:0.78rem;color:var(--gray);margin-bottom:0.6rem">Selecione uma data</div>
+        <div class="slots-grid" id="solHorariosGrid"></div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:1rem">
+      <label class="form-label">Motivo (opcional)</label>
+      <textarea class="form-input" id="solMotivoRemarcacao" rows="2"
+        placeholder="Ex: compromisso de última hora..."></textarea>
+    </div>
+    <div style="display:flex;gap:0.8rem;margin-top:1rem">
+      <button class="btn-back"
+        onclick="document.getElementById('modalSolicitacao').classList.remove('show')">Cancelar</button>
+      <button class="btn-next" id="btnConfirmarRemarcacao" disabled
+        onclick="import('/js/historico.js').then(m=>m.confirmarRemarcacaoModal())">
+        Confirmar remarcação
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  ADMIN PANEL                         ║
+     ╚══════════════════════════════════════╝ -->
+<div class="admin-panel" id="admin-panel">
+  <!-- Login admin -->
+  <div id="adminLogin"
+       style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:3px;padding:2rem;width:100%;max-width:360px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--white);margin-bottom:0.3rem">
+        Acesso Admin
+      </div>
+      <div style="font-size:0.78rem;color:var(--gray);margin-bottom:1.5rem">
+        Barbearia do Davi — Painel Administrativo
+      </div>
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">E-mail</label>
+        <input class="form-input" id="adminEmail" type="email" placeholder="admin@barbearia.com">
+      </div>
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Senha</label>
+        <input class="form-input" id="adminPass" type="password" placeholder="••••••">
+      </div>
+      <div class="modal-err" id="adminErr"></div>
+      <div style="display:flex;gap:0.8rem;margin-top:1rem">
+        <button class="btn-ghost"
+          onclick="import('/js/admin.js').then(m=>m.closeAdmin())">Cancelar</button>
+        <button class="btn-red" style="flex:1;justify-content:center"
+          onclick="import('/js/admin.js').then(m=>m.doAdminLogin())">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard admin -->
+  <div id="adminDash" style="display:none">
+    <div class="admin-header">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <button class="admin-back-btn"
+          onclick="import('/js/admin.js').then(m=>m.closeAdmin())">←</button>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--white)">
+          Painel Admin
+        </span>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" id="admTab-funcionamento"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('funcionamento'))">Funcionamento</button>
+        <button class="admin-tab" id="admTab-atendimentos"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('atendimentos'))">Atendimentos</button>
+        <button class="admin-tab" id="admTab-barbeiros"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('barbeiros'))">Barbeiros</button>
+        <button class="admin-tab" id="admTab-servicos"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('servicos'))">Serviços</button>
+        <button class="admin-tab" id="admTab-cupons"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('cupons'))">Cupons</button>
+        <button class="admin-tab" id="admTab-clientes"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('clientes'))">Clientes</button>
+        <button class="admin-tab" id="admTab-relatorios"
+          onclick="import('/js/admin.js').then(m=>m.switchAdminTab('relatorios'))">Relatórios</button>
+      </div>
+    </div>
+    <div class="admin-content" id="adminContent"></div>
+  </div>
+</div>
+
+<!-- Bottom Nav: carregado via /js/bottom-nav.js -->
+
+
+<!-- ╔══════════════════════════════════════╗
+     ║  BOOT                                ║
+     ╚══════════════════════════════════════╝ -->
+<script type="module">
+  import { initSite } from '/js/index.js';
+
+  /* Expõe openUserModal globalmente para o bottom-nav */
+  window.openUserModal = () => import('/js/login.js').then(m => m.openUserModal());
+
+  initSite();
+</script>
+
+<script src="/js/bottom-nav.js"></script>
+</body>
+</html>

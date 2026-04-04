@@ -1,0 +1,18 @@
+{
+  "name": "barbearia-do-davi-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20.x" },
+  "scripts": {
+    "dev":    "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "nodemailer":     "^6.9.0"
+  },
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  }
+}

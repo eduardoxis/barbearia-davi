@@ -1,0 +1,207 @@
+/* ══════════════════════════════════════════
+   GLOBAL.CSS — Estilos compartilhados
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+/* ── Reset & Base ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --black:#0A0A0A;--dark:#111111;--card:#1A1A1A;--card2:#222222;
+  --red:#E02020;--red-dark:#B01818;--red-glow:rgba(224,32,32,0.15);
+  --gray:#888;--gray2:#555;--gray3:#333;--light:#F0F0F0;--white:#FFFFFF;
+  --border:rgba(255,255,255,0.07);--border-red:rgba(224,32,32,0.3);
+  --nav-h:64px;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--black);color:var(--light);overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:0.5}
+
+/* ── Animações ── */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulseD{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.7)}}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes popC{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@keyframes fadeInO{from{opacity:0}to{opacity:1}}
+@keyframes fabPulse{0%{box-shadow:0 0 0 0 rgba(224,32,32,0.55)}70%{box-shadow:0 0 0 12px rgba(224,32,32,0)}100%{box-shadow:0 0 0 0 rgba(224,32,32,0)}}
+@keyframes fidSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Buttons globais ── */
+.btn-red{background:var(--red);color:var(--white);border:none;padding:0.9rem 2.2rem;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem}
+.btn-red:hover{background:var(--red-dark);transform:translateY(-2px);box-shadow:0 8px 24px var(--red-glow)}
+.btn-ghost{background:transparent;color:var(--white);border:1px solid rgba(255,255,255,0.2);padding:0.9rem 2.2rem;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;text-decoration:none;display:inline-block}
+.btn-ghost:hover{border-color:var(--red);color:var(--red)}
+
+/* ── Form elements ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem}
+.form-row.single{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:0.3rem}
+.form-label{font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray)}
+.form-input{background:var(--card2);border:1px solid var(--border);color:var(--white);padding:0.7rem 0.9rem;font-family:'Inter',sans-serif;font-size:0.85rem;border-radius:2px;outline:none;transition:border-color 0.2s;width:100%}
+.form-input:focus{border-color:var(--red)}
+.form-input::placeholder{color:var(--gray2)}
+textarea.form-input{resize:vertical;min-height:60px}
+
+/* ── Sections ── */
+section{padding:5rem 2rem}
+.sec-label{font-size:0.65rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--red);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.6rem}
+.sec-label::before{content:'';width:1.5rem;height:2px;background:var(--red)}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,5vw,4rem);color:var(--white);line-height:1;margin-bottom:0.3rem}
+.sec-title span{color:var(--red)}
+.sec-sub{font-size:0.88rem;color:var(--gray);margin-bottom:2.5rem;max-width:500px;line-height:1.75}
+.max-w{max-width:1100px;margin:0 auto}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 2rem;background:rgba(10,10,10,0.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-logo{display:flex;flex-direction:column;line-height:1;text-decoration:none}
+.nav-logo-main{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:var(--white)}
+.nav-logo-sub{font-size:0.58rem;font-weight:600;letter-spacing:0.25em;text-transform:uppercase;color:var(--red)}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.nav-links{display:flex;gap:1.8rem;list-style:none;align-items:center}
+.nav-links a{color:var(--gray);text-decoration:none;font-size:0.75rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;transition:color 0.2s}
+.nav-links a:hover{color:var(--white)}
+.nav-user-btn{background:none;border:1px solid var(--border);color:var(--gray);padding:0.4rem 1rem;font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:0.4rem}
+.nav-user-btn:hover{border-color:var(--red);color:var(--white)}
+.nav-user-btn.logged{background:var(--red);border-color:var(--red);color:var(--white)}
+.nav-admin-btn{background:none;border:1px solid var(--red);color:var(--red);padding:0.4rem 1rem;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.2s;font-family:"Inter",sans-serif;display:none;align-items:center;gap:0.4rem}
+.nav-admin-btn:hover{background:var(--red);color:var(--white)}
+
+/* ── Hamburger ── */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none;z-index:301}
+.hamburger span{display:block;width:22px;height:2px;background:var(--light);border-radius:2px;transition:transform 0.3s,opacity 0.25s;transform-origin:center}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* ── Drawer ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:290;opacity:0;pointer-events:none;transition:opacity 0.3s}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.mobile-drawer{position:fixed;top:0;right:0;bottom:0;width:280px;max-width:85vw;z-index:291;background:var(--card);border-left:1px solid var(--border);transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.23,1,0.32,1);display:flex;flex-direction:column;overflow:hidden}
+.mobile-drawer.open{transform:translateX(0)}
+.drawer-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-logo{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--white)}
+.drawer-logo span{color:var(--red)}
+.drawer-close{background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer;padding:0.2rem}
+.drawer-links{display:flex;flex-direction:column;gap:0;padding:0 1.5rem;flex-shrink:0}
+.drawer-links a{color:var(--light);text-decoration:none;font-size:1rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;padding:0.9rem 0;border-bottom:1px solid var(--border);transition:color 0.2s;font-family:'Oswald',sans-serif}
+.drawer-links a:hover{color:var(--red)}
+.drawer-cta{padding:1.5rem;border-top:1px solid var(--border);margin-top:auto;flex-shrink:0;display:flex;flex-direction:column;gap:0.6rem}
+.drawer-admin-btn{display:none;background:none;border:1px solid var(--red);color:var(--red);width:100%;padding:0.8rem;font-family:"Inter",sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;margin-bottom:0.8rem;text-align:center}
+.drawer-admin-btn.show{display:block}
+.drawer-user-name{font-family:"Oswald",sans-serif;font-size:0.95rem;color:var(--white);font-weight:600;margin-bottom:0.2rem}
+.drawer-user-email{font-size:0.72rem;color:var(--gray);margin-bottom:1rem;word-break:break-all}
+.drawer-logout-btn{background:none;border:1px solid var(--border);color:var(--gray);width:100%;padding:0.6rem;font-family:"Inter",sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-radius:2px;text-align:center;display:none}
+.drawer-logout-btn.show{display:block}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--red);color:var(--white);padding:0.8rem 1.5rem;border-radius:3px;font-size:0.82rem;z-index:9998;opacity:0;transition:all 0.3s;white-space:nowrap;box-shadow:0 8px 32px rgba(224,32,32,0.2)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── Modal base ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:450;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.3s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.5rem;width:100%;max-width:420px;position:relative;max-height:92vh;overflow-y:auto;scrollbar-width:none}
+.modal::-webkit-scrollbar{display:none}
+.modal-title{font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;color:var(--white);margin-bottom:0.3rem;letter-spacing:0.05em;text-transform:uppercase}
+.modal-sub{font-size:0.8rem;color:var(--gray);margin-bottom:1.5rem;line-height:1.6}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--gray);font-size:1.1rem;cursor:pointer;transition:color 0.2s}
+.modal-close:hover{color:var(--white)}
+.modal-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.modal-tab{flex:1;padding:0.6rem;text-align:center;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:var(--card2);color:var(--gray);transition:all 0.2s;border:none;font-family:'Inter',sans-serif}
+.modal-tab.active{background:var(--red);color:var(--white)}
+.modal-form{display:flex;flex-direction:column;gap:0.8rem}
+.modal-err{color:var(--red);font-size:0.75rem;margin-top:0.2rem;display:none}
+.modal-err.show{display:block}
+
+/* ── Helpers de password ── */
+.forgot-link{background:none;border:none;color:var(--gray);font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif;padding:0;transition:color 0.2s;text-decoration:underline;text-underline-offset:3px}
+.forgot-link:hover{color:var(--red)}
+.back-link{background:none;border:none;color:var(--gray);font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif;padding:0;transition:color 0.2s;display:flex;align-items:center;gap:0.3rem;text-decoration:none}
+.back-link:hover{color:var(--white)}
+.pass-wrap{position:relative}
+.pass-wrap .form-input{padding-right:2.8rem}
+.pass-eye{position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:var(--gray);padding:0}
+.strength-bar{height:3px;border-radius:2px;background:var(--border);margin-top:0.2rem}
+.strength-fill{height:100%;border-radius:2px;transition:all 0.3s;width:0%}
+.strength-label{font-size:0.62rem;color:var(--gray);text-align:right;margin-top:0.15rem;min-height:0.8rem}
+
+/* ── Code boxes (recuperação de senha) ── */
+.code-boxes{display:flex;gap:0.4rem;justify-content:center}
+.code-box{width:42px;height:52px;background:var(--card2);border:1px solid var(--border);border-radius:3px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--white);outline:none;transition:border-color 0.2s,transform 0.15s;caret-color:var(--red)}
+.code-box:focus{border-color:var(--red);transform:scale(1.05)}
+.code-box.filled{border-color:rgba(224,32,32,0.5);color:var(--red)}
+.code-box.error-box{border-color:var(--red);animation:shake 0.35s ease}
+.reset-code-box{background:var(--card2);border:1px solid var(--border-red);border-radius:2px;padding:0.8rem;text-align:center;margin:0.2rem 0}
+.reset-code{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--red);letter-spacing:0.25em;display:block}
+.reset-code-hint{font-size:0.62rem;color:var(--gray);display:block;margin-top:0.2rem}
+
+/* ── Footer ── */
+footer{background:var(--black);border-top:1px solid var(--border);padding:2.5rem 2rem;text-align:center}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--white);letter-spacing:0.08em;margin-bottom:0.5rem}
+.footer-logo span{color:var(--red)}
+.footer-info{font-size:0.75rem;color:var(--gray);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1.5rem;line-height:1.8}
+.footer-bottom{font-size:0.7rem;color:var(--gray2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.footer-dev{color:var(--gray2);text-decoration:none;transition:color 0.2s}
+.footer-dev:hover{color:var(--red)}
+
+/* ── Instagram section ── */
+.insta-section{background:var(--dark);padding:4rem 2rem;text-align:center;border-top:1px solid var(--border)}
+.insta-link{display:inline-flex;align-items:center;gap:1rem;text-decoration:none;transition:all 0.2s}
+.insta-link:hover{transform:translateY(-2px)}
+.insta-icon{width:48px;height:48px;border-radius:50%;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.insta-handle{font-family:'Oswald',sans-serif;font-size:1.8rem;font-weight:700;color:var(--white);letter-spacing:0.05em}
+.insta-handle span{color:var(--red)}
+
+/* ── FAB Carrinho ── */
+#fabCart{position:fixed;bottom:calc(1.5rem + env(safe-area-inset-bottom, 0px));right:1.4rem;width:56px;height:56px;border-radius:50%;background:#111827;border:1.5px solid rgba(255,255,255,0.1);box-shadow:0 4px 24px rgba(0,0,0,0.55),0 1px 4px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1200;transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s,opacity 0.25s;opacity:0;transform:scale(0.6) translateY(10px);pointer-events:none}
+#fabCart.fab-visible{opacity:1;transform:scale(1) translateY(0);pointer-events:all}
+#fabCart:hover{transform:scale(1.08) translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.65);background:#1c2333}
+#fabCart:active{transform:scale(0.95)}
+.fab-icon{font-size:1.35rem;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5))}
+#fabBadge{position:absolute;top:2px;right:2px;min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-family:'Inter',sans-serif;font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #111827;opacity:0;transform:scale(0);transition:opacity 0.2s,transform 0.25s cubic-bezier(0.34,1.56,0.64,1)}
+#fabBadge.fab-badge-show{opacity:1;transform:scale(1)}
+#fabCart.fab-pulse{animation:fabPulse 0.55s ease}
+
+/* ── Service tags ── */
+.service-tag{background:rgba(224,32,32,0.12);border:1px solid var(--border-red);color:var(--red);font-size:0.65rem;font-weight:700;padding:0.2rem 0.5rem;border-radius:1px;letter-spacing:0.08em}
+
+/* ── Spinner ── */
+.pix-spinner{width:48px;height:48px;border:3px solid rgba(224,32,32,0.2);border-top-color:var(--red);border-radius:50%;animation:spin 0.85s linear infinite;margin:0 auto}
+.polling-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;flex-shrink:0;animation:pulseD 1.5s ease-in-out infinite}
+
+/* ── Calendar base ── */
+.calendar{background:var(--card);border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.calendar-header{background:rgba(224,32,32,0.08);padding:0.8rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.cal-month{font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:600;color:var(--white);letter-spacing:0.08em;text-transform:uppercase}
+.cal-nav{background:none;border:none;color:var(--red);cursor:pointer;font-size:1.1rem;padding:0.2rem 0.5rem;border-radius:2px;transition:opacity 0.2s}
+.cal-nav:hover{opacity:0.7}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:0.7rem;gap:2px}
+.cal-day-label{text-align:center;font-size:0.55rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray2);padding:0.3rem 0}
+.cal-day{text-align:center;padding:0.4rem 0.1rem;border-radius:2px;font-size:0.8rem;cursor:pointer;transition:all 0.15s;color:var(--light);user-select:none}
+.cal-day:hover:not(.empty):not(.past){background:rgba(224,32,32,0.15);color:var(--red)}
+.cal-day.empty{cursor:default}
+.cal-day.past{color:rgba(136,136,136,0.3);cursor:not-allowed}
+.cal-day.today{color:var(--red);font-weight:700}
+.cal-day.selected{background:var(--red);color:var(--white);font-weight:700}
+.cal-day.unavailable{color:rgba(136,136,136,0.25);cursor:not-allowed;text-decoration:line-through}
+
+/* ── Responsive base ── */
+@media(max-width:1024px){section{padding:5rem 1.8rem}}
+@media(max-width:768px){
+  nav{padding:0 1rem}
+  .nav-links{display:none}
+  .nav-user-btn{display:none}
+  .nav-admin-btn{display:none !important}
+  .hamburger{display:none !important}
+  .drawer-overlay{display:none !important}
+  .mobile-drawer{display:none !important}
+  section{padding:3.5rem 1rem}
+}
+@media(max-width:480px){
+  nav{padding:0 0.8rem}
+  section{padding:3rem 0.8rem}
+}
