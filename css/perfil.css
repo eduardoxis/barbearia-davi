@@ -1,0 +1,69 @@
+/* ══════════════════════════════════════════
+   PERFIL.CSS — Gamificação / Fidelidade
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+/* ── Card do nível ── */
+.fid-panel{padding:0.2rem 0 0.5rem}
+.fid-nivel-card{position:relative;overflow:hidden;border-radius:4px;padding:1.2rem 1.3rem 1rem;margin-bottom:1.1rem;border:1px solid transparent}
+.fid-nivel-card.bronze{background:linear-gradient(135deg,#1a1209 0%,#2a1c0e 100%);border-color:rgba(205,127,50,0.35)}
+.fid-nivel-card.prata{background:linear-gradient(135deg,#111418 0%,#1c2028 100%);border-color:rgba(180,190,210,0.35)}
+.fid-nivel-card.ouro{background:linear-gradient(135deg,#16120a 0%,#261d08 100%);border-color:rgba(255,215,0,0.35)}
+.fid-nivel-card.diamante{background:linear-gradient(135deg,#0c1220 0%,#101a2e 100%);border-color:rgba(100,180,255,0.4)}
+.fid-nivel-card::before{content:'';position:absolute;top:-30px;right:-30px;width:110px;height:110px;border-radius:50%;opacity:0.08;filter:blur(20px);pointer-events:none}
+.fid-nivel-card.bronze::before{background:#CD7F32}
+.fid-nivel-card.prata::before{background:#C0C8D8}
+.fid-nivel-card.ouro::before{background:#FFD700}
+.fid-nivel-card.diamante::before{background:#64B4FF}
+.fid-nivel-row{display:flex;align-items:center;gap:0.8rem;margin-bottom:0.5rem}
+.fid-nivel-icon{font-size:2rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))}
+.fid-nivel-label{font-size:0.55rem;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;opacity:0.7;display:block;margin-bottom:0.1rem}
+.fid-nivel-name{font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;line-height:1}
+.fid-nivel-card.bronze .fid-nivel-name{color:#CD7F32}
+.fid-nivel-card.prata .fid-nivel-name{color:#C0C8D8}
+.fid-nivel-card.ouro .fid-nivel-name{color:#FFD700}
+.fid-nivel-card.diamante .fid-nivel-name{color:#64B4FF}
+.fid-nivel-phrase{font-size:0.72rem;color:rgba(255,255,255,0.55);line-height:1.5;margin-top:0.1rem}
+
+/* ── Barra de progresso ── */
+.fid-prog-wrap{margin-top:0.9rem}
+.fid-prog-labels{display:flex;justify-content:space-between;font-size:0.6rem;color:rgba(255,255,255,0.45);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.35rem}
+.fid-prog-bar{height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
+.fid-prog-fill{height:100%;border-radius:3px;transition:width 0.8s cubic-bezier(0.23,1,0.32,1)}
+.fid-nivel-card.bronze .fid-prog-fill{background:linear-gradient(90deg,#8B4513,#CD7F32)}
+.fid-nivel-card.prata .fid-prog-fill{background:linear-gradient(90deg,#8090A8,#C0C8D8)}
+.fid-nivel-card.ouro .fid-prog-fill{background:linear-gradient(90deg,#B8860B,#FFD700)}
+.fid-nivel-card.diamante .fid-prog-fill{background:linear-gradient(90deg,#4080C0,#64B4FF)}
+.fid-prog-next{font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:0.35rem;text-align:right}
+.fid-prog-next strong{color:rgba(255,255,255,0.8)}
+
+/* ── Stats grid ── */
+.fid-stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.55rem;margin-bottom:1rem}
+.fid-stat{background:var(--card2);border:1px solid var(--border);border-radius:3px;padding:0.75rem 0.9rem}
+.fid-stat-n{display:block;font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--white);line-height:1}
+.fid-stat-l{display:block;font-size:0.58rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);margin-top:0.15rem}
+.fid-stat-sub{display:block;font-size:0.62rem;color:var(--gray2);margin-top:0.1rem}
+
+/* ── Serviços favoritos ── */
+.fid-svcs-title{font-size:0.6rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem}
+.fid-svc-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem}
+.fid-svc-name{font-size:0.75rem;color:var(--light);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fid-svc-bar-wrap{width:80px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
+.fid-svc-bar-fill{height:100%;background:var(--red);border-radius:2px;transition:width 0.6s cubic-bezier(0.23,1,0.32,1)}
+.fid-svc-count{font-size:0.65rem;color:var(--gray);font-weight:700;width:20px;text-align:right;flex-shrink:0}
+
+/* ── Frequência ── */
+.fid-freq-wrap{background:var(--card2);border:1px solid var(--border);border-radius:3px;padding:0.75rem 0.9rem;margin-bottom:0.55rem}
+.fid-freq-row{display:flex;justify-content:space-between;align-items:baseline}
+.fid-freq-n{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--white);line-height:1}
+.fid-freq-l{font-size:0.58rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray)}
+.fid-freq-hint{font-size:0.65rem;color:var(--gray2);margin-top:0.2rem}
+
+/* ── Conquistas ── */
+.fid-conquistas{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.1rem}
+.fid-conquista{display:inline-flex;align-items:center;gap:0.3rem;font-size:0.62rem;font-weight:700;padding:0.22rem 0.55rem;border-radius:20px;letter-spacing:0.06em}
+.fid-conquista.earned{background:rgba(111,207,151,0.12);color:#6FCF97;border:1px solid rgba(111,207,151,0.25)}
+.fid-conquista.locked{background:rgba(255,255,255,0.04);color:var(--gray2);border:1px solid rgba(255,255,255,0.08)}
+
+/* ── Animação ── */
+.fid-animate{animation:fidSlideUp 0.4s ease both}

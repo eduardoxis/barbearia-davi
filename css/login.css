@@ -1,0 +1,39 @@
+/* ══════════════════════════════════════════
+   LOGIN.CSS — Modal de login e cadastro
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+/* ── Histórico do cliente (dentro do modal logado) ── */
+.hist-abas{display:flex;gap:0;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-bottom:1rem}
+.hist-aba{flex:1;padding:0.5rem;text-align:center;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:var(--card2);color:var(--gray);transition:all 0.2s;border:none;font-family:'Inter',sans-serif}
+.hist-aba.ativa{background:var(--red);color:var(--white)}
+.hist-filtros{display:flex;gap:0.4rem;margin-bottom:0.8rem;flex-wrap:wrap}
+.hist-filtro-btn{background:none;border:1px solid var(--border);color:var(--gray);padding:0.28rem 0.6rem;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-radius:2px;font-family:'Inter',sans-serif;transition:all 0.2s;white-space:nowrap}
+.hist-filtro-btn:hover,.hist-filtro-btn.ativo{border-color:var(--red);color:var(--red)}
+.hist-filtro-btn.ativo{background:rgba(224,32,32,0.08)}
+.hist-card{background:var(--card2);border:1px solid var(--border);border-radius:3px;padding:0.85rem 1rem;margin-bottom:0.5rem;transition:border-color 0.2s}
+.hist-card:hover{border-color:rgba(224,32,32,0.25)}
+.hist-card.realizado{border-left:3px solid #27AE60}
+.hist-card.cancelado{border-left:3px solid var(--red);opacity:0.65}
+.hist-card.remarcado{border-left:3px solid #6495ED}
+.hist-card.pendente{border-left:3px solid #FFA500}
+.hist-card-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.5rem}
+.hist-data{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--white);letter-spacing:0.05em;line-height:1}
+.hist-hora{font-size:0.65rem;color:var(--gray);margin-top:0.1rem}
+.hist-status-badge{font-size:0.58rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.18rem 0.45rem;border-radius:1px;flex-shrink:0}
+.hist-status-badge.realizado{background:rgba(39,174,96,0.12);color:#6FCF97}
+.hist-status-badge.cancelado{background:rgba(224,32,32,0.12);color:var(--red)}
+.hist-status-badge.remarcado{background:rgba(100,149,237,0.12);color:#6495ED}
+.hist-status-badge.pendente{background:rgba(255,165,0,0.12);color:#FFA500}
+.hist-servicos{font-size:0.75rem;color:var(--light);font-weight:500;margin-bottom:0.3rem;line-height:1.4}
+.hist-barbeiro{font-size:0.68rem;color:var(--gray);margin-bottom:0.5rem}
+.hist-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem}
+.hist-valor{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--red)}
+.hist-pagamento{font-size:0.6rem;color:var(--gray2);letter-spacing:0.06em;text-transform:uppercase}
+.hist-acoes{display:flex;gap:0.35rem;flex-wrap:wrap}
+.btn-hist-acao{background:none;border:1px solid var(--border);color:var(--gray);padding:0.25rem 0.55rem;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;font-family:'Inter',sans-serif;transition:all 0.2s}
+.btn-hist-acao:hover{border-color:var(--red);color:var(--red)}
+.btn-hist-reagendar{background:var(--red);border-color:var(--red);color:var(--white)}
+.btn-hist-reagendar:hover{background:var(--red-dark)}
+.hist-vazio{text-align:center;padding:1.5rem;color:var(--gray2);font-size:0.8rem;background:var(--card2);border-radius:2px}
+.hist-loading{text-align:center;padding:1.5rem;color:var(--gray);font-size:0.8rem}

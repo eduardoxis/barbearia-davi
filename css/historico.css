@@ -1,0 +1,26 @@
+/* ══════════════════════════════════════════
+   HISTORICO.CSS — Modal de remarcação
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+/* ── Modal de solicitação/remarcação ── */
+.modal-solicitacao{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.5rem;width:100%;max-width:480px;position:relative;max-height:92vh;overflow-y:auto;scrollbar-width:none}
+.modal-solicitacao::-webkit-scrollbar{display:none}
+.sol-aviso{padding:0.8rem 1rem;border-radius:2px;font-size:0.78rem;line-height:1.6;margin-bottom:1rem}
+.sol-aviso.info{background:rgba(39,174,96,0.08);border:1px solid rgba(39,174,96,0.2);color:#6FCF97}
+.sol-aviso.alerta{background:rgba(255,165,0,0.08);border:1px solid rgba(255,165,0,0.2);color:#FFA500}
+.sol-aviso.erro{background:rgba(224,32,32,0.08);border:1px solid rgba(224,32,32,0.2);color:var(--red)}
+.sol-detalhe-valor{display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border);font-size:0.82rem}
+.sol-detalhe-valor:last-child{border-bottom:none}
+.sol-detalhe-valor span:first-child{color:var(--gray)}
+.sol-detalhe-valor span:last-child{color:var(--white);font-weight:600}
+
+/* ── Item histórico (dentro de modal admin) ── */
+.item-historico{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:0.7rem 0.9rem;margin-bottom:0.4rem;font-size:0.78rem}
+.item-historico-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem}
+.item-historico-servico{font-weight:600;color:var(--white)}
+.item-historico-status{font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:1px}
+.item-historico-status.confirmado{background:rgba(39,174,96,0.12);color:#6FCF97}
+.item-historico-status.pendente{background:rgba(255,165,0,0.12);color:#FFA500}
+.item-historico-status.remarcado{background:rgba(100,149,237,0.12);color:#6495ED}
+.item-historico-detalhe{color:var(--gray);font-size:0.72rem}

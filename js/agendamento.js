@@ -1,0 +1,540 @@
+/* ══════════════════════════════════════════
+   AGENDAMENTO.JS — Fluxo completo de agendamento
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+import {
+  adminSettings, booking, cart,
+  showToast, MONTHS_PT, DAYS_SHORT_PT
+} from './global.js';
+import { gerarHorariosBarbeiro, buscarBarbeiros } from '../routes/barbeiros.js';
+import { criarCheckoutCakto, gerarPedidoId, iniciarTimerPix, verificarStatusPedido } from '../routes/pagamentos.js';
+import { criarAgendamento, verificarPrazo24h } from '../routes/agendamentos.js';
+import { compartilharWhatsApp } from '../routes/notificacoes.js';
+
+/* ── Estado do calendário ── */
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+let pedidoId  = null;
+let pollingInt = null;
+let timerInt   = null;
+
+/* ── Renderiza seleção de barbeiro (Step 0) ── */
+export function renderBarbeiroGrid() {
+  const grid = document.getElementById('barbeiroGrid');
+  if (!grid) return;
+  const ativos = buscarBarbeiros();
+  if (!ativos.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray);font-size:0.85rem;grid-column:1/-1">Nenhum barbeiro cadastrado.</div>';
+    return;
+  }
+  grid.innerHTML = ativos.map(b => {
+    const sel      = booking.barbeiro?.id === b.id;
+    const fotoHtml = b.foto
+      ? `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.innerHTML='${b.emoji||'💈'}'\">`
+      : (b.emoji || '💈');
+    const dias     = (b.diasAtendimento || []).map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ');
+    const slots    = gerarHorariosBarbeiro(b);
+    const temPort  = b.portfolio && b.portfolio.length > 0;
+    return `<div class="barbeiro-card${sel ? ' selecionado' : ''}" onclick="selecionarBarbeiro('${b.id}')">
+      ${sel ? '<div class="barbeiro-badge-sel">✓ Selecionado</div>' : ''}
+      <div class="barbeiro-foto">${fotoHtml}</div>
+      <div class="barbeiro-nome">${b.nome}</div>
+      <div class="barbeiro-esp">${b.especialidade || 'Barbeiro profissional'}</div>
+      <div class="barbeiro-horario">⏱ ${b.horarioInicio || '08:00'} – ${b.horarioFim || '18:00'}</div>
+      <div style="font-size:0.6rem;color:var(--gray2);margin-top:0.25rem">${slots.length} horários · ${dias}</div>
+      ${temPort ? `<button class="barbeiro-port-btn" onclick="event.stopPropagation();abrirPortfolioBarbeiro('${b.id}')">📸 Portfólio (${b.portfolio.length})</button>` : ''}
+      ${sel ? '<div class="barbeiro-check-circle">✓</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════
+   MODAL PORTFÓLIO DO BARBEIRO (cliente)
+══════════════════════════════════════════ */
+let _portBarbeiroId = null;
+
+export function abrirPortfolioBarbeiro(id) {
+  const b = buscarBarbeiros().find(x => x.id === id);
+  if (!b) return;
+  _portBarbeiroId = id;
+
+  const fotoHtml = b.foto
+    ? `<img src="${b.foto}" alt="${b.nome}" class="port-modal-avatar-img" onerror="this.style.display='none'">`
+    : `<span class="port-modal-avatar-emoji">${b.emoji || '💈'}</span>`;
+
+  const header = document.getElementById('portBarbHeader');
+  if (header) {
+    header.innerHTML = `
+      <div class="port-modal-avatar">${fotoHtml}</div>
+      <div class="port-modal-info">
+        <div class="port-modal-nome">${b.nome}</div>
+        <div class="port-modal-esp">${b.especialidade || 'Barbeiro profissional'}</div>
+        ${b.bio ? `<div class="port-modal-bio">${b.bio}</div>` : ''}
+      </div>`;
+  }
+
+  const portGrid = document.getElementById('portGrid');
+  if (portGrid) {
+    if (!b.portfolio || !b.portfolio.length) {
+      portGrid.innerHTML = '<div class="port-empty">Este barbeiro ainda não adicionou fotos ao portfólio.</div>';
+    } else {
+      portGrid.innerHTML = b.portfolio.map((p, i) =>
+        `<div class="port-thumb" onclick="abrirLightbox(this.querySelector('img').src)">
+           <img src="${p.url}" alt="Trabalho ${i + 1}" loading="lazy" onerror="this.parentElement.classList.add('port-thumb-broken')">
+           ${p.caption ? `<div class="port-thumb-caption">${p.caption}</div>` : ''}
+         </div>`
+      ).join('');
+    }
+  }
+
+  const selBtn = document.getElementById('portSelBtn');
+  if (selBtn) {
+    const jaSel = booking.barbeiro?.id === id;
+    selBtn.textContent   = jaSel ? '✓ Já selecionado' : `✓ Selecionar ${b.nome}`;
+    selBtn.disabled      = jaSel;
+    selBtn.style.opacity = jaSel ? '0.5' : '1';
+  }
+
+  document.getElementById('overlayPortfolio')?.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+export function fecharPortfolio() {
+  document.getElementById('overlayPortfolio')?.classList.remove('show');
+  document.body.style.overflow = '';
+  fecharLightbox();
+}
+
+export function selecionarBarbeiroDoPortfolio() {
+  if (_portBarbeiroId) {
+    selecionarBarbeiro(_portBarbeiroId);
+    fecharPortfolio();
+    showToast('💈 Barbeiro selecionado!');
+  }
+}
+
+export function abrirLightbox(url) {
+  const lb  = document.getElementById('portLightbox');
+  const img = document.getElementById('portLightboxImg');
+  if (!lb || !img) return;
+  img.src = url;
+  lb.classList.add('show');
+}
+
+export function fecharLightbox() {
+  document.getElementById('portLightbox')?.classList.remove('show');
+  const img = document.getElementById('portLightboxImg');
+  if (img) img.src = '';
+}
+
+
+export function selecionarBarbeiro(id) {
+  const b = buscarBarbeiros().find(x => x.id === id);
+  if (!b) return;
+  booking.barbeiro = b;
+  booking.date = ''; booking.time = '';
+  renderBarbeiroGrid();
+  const hint = document.getElementById('step0Hint');
+  if (hint) { hint.textContent = '✓ ' + b.nome + ' selecionado! Avançando...'; hint.style.color = '#6FCF97'; }
+  setTimeout(() => goBookStep(1), 600);
+}
+
+/* ── Navega entre steps ── */
+export function goBookStep(n) {
+  if (n > 0 && !booking.barbeiro) { showToast('⚠ Selecione um barbeiro primeiro!'); return; }
+  if (n > 1 && !cart.length)      { showToast('⚠ Adicione pelo menos um serviço!'); return; }
+
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-tab').forEach(t => {
+    const s = parseInt(t.dataset.step);
+    t.classList.remove('active', 'done');
+    if (s < n) t.classList.add('done');
+    if (s === n) t.classList.add('active');
+  });
+  booking.step = n;
+  document.getElementById('bStep' + n)?.classList.add('active');
+
+  // Indicador de barbeiro
+  const barra = document.querySelector('.steps-bar');
+  if (barra) barra.classList.toggle('pos-barbeiro', n > 0);
+  if (n > 0 && booking.barbeiro) {
+    const b = booking.barbeiro;
+    const fotoEl = document.getElementById('barbIndFoto');
+    const nomeEl = document.getElementById('barbIndNome');
+    if (nomeEl) nomeEl.textContent = b.nome;
+    if (fotoEl) {
+      if (b.foto) fotoEl.innerHTML = `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.textContent='${b.emoji||'💈'}'">`;
+      else fotoEl.textContent = b.emoji || '💈';
+    }
+  }
+
+  if (n === 0) renderBarbeiroGrid();
+  if (n === 2) renderCalendar();
+  if (n === 3) { fillReview(); resetTermoCheckbox(); }
+  if (n === 4) fillPayment();
+  document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ── Calendário ── */
+export function renderCalendar() {
+  const b = booking.barbeiro;
+  document.getElementById('calMonthLabel').textContent = MONTHS_PT[calMonth] + ' ' + calYear;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  DAYS_SHORT_PT.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-label'; el.textContent = d; grid.appendChild(el);
+  });
+  const firstDay    = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const diasTrabalho = b ? (b.diasAtendimento || []) : adminSettings.workDays;
+
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div'); el.className = 'cal-day empty'; grid.appendChild(el);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const dt = new Date(calYear, calMonth, d);
+    const passado   = dt < hoje;
+    const dow       = dt.getDay();
+    const isWork    = diasTrabalho.includes(dow);
+    const ds        = d.toString().padStart(2,'0') + '/' + (calMonth+1).toString().padStart(2,'0') + '/' + calYear;
+    const dsISO     = calYear + '-' + (calMonth+1).toString().padStart(2,'0') + '-' + d.toString().padStart(2,'0');
+    const isBlocked = adminSettings.blockedDates.some(bk => bk.date === ds);
+    const isBarbBlocked = b
+      ? (adminSettings.diasBloqueadosBarbeiro || []).some(bk => bk.barber_id === b.id && bk.date === dsISO)
+      : false;
+    const disponivel = !passado && isWork && !isBlocked && !isBarbBlocked;
+    el.className = 'cal-day' + (passado || !isWork || isBlocked || isBarbBlocked ? ' past' : '') + (dt.toDateString() === hoje.toDateString() ? ' today' : '');
+    el.textContent = d;
+    if ((isBlocked || isBarbBlocked) && !passado) {
+      el.style.textDecoration = 'line-through';
+      el.style.color = 'rgba(224,32,32,0.4)';
+      el.title = isBarbBlocked ? 'Barbeiro indisponível neste dia' : 'Fechado';
+    }
+    if (disponivel) el.onclick = () => selectDate(el, ds);
+    if (booking.date === ds) el.classList.add('selected');
+    grid.appendChild(el);
+  }
+}
+
+export function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+export function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+
+function selectDate(el, ds) {
+  document.querySelectorAll('#calGrid .cal-day').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  booking.date = ds; booking.time = '';
+  renderSlots(); checkStep2();
+}
+
+/* ── Slots ── */
+export function renderSlots() {
+  const b = booking.barbeiro;
+  const grid = document.getElementById('slotsGrid');
+  grid.innerHTML = '';
+  const slots   = b ? gerarHorariosBarbeiro(b) : adminSettings.slots;
+  const ocupados = b ? (b.takenSlots || []) : adminSettings.takenSlots;
+  if (!slots.length) {
+    const emp = document.createElement('p'); emp.className = 'slots-empty'; emp.textContent = 'Sem horários.'; grid.appendChild(emp); return;
+  }
+  slots.forEach(slot => {
+    const el = document.createElement('div');
+    const taken = ocupados.includes(slot);
+    el.className = 'slot' + (taken ? ' taken' : '');
+    el.textContent = slot;
+    if (!taken) el.onclick = () => selectSlot(el, slot);
+    if (booking.time === slot) el.classList.add('selected');
+    grid.appendChild(el);
+  });
+}
+
+function selectSlot(el, slot) {
+  document.querySelectorAll('#slotsGrid .slot').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  booking.time = slot; checkStep2();
+}
+
+function checkStep2() {
+  const btn = document.getElementById('step2Next');
+  if (btn) btn.disabled = !(booking.date && booking.time);
+}
+
+/* ── Review (step 3) ── */
+function fillReview() {
+  const b = booking.barbeiro;
+  const name  = window.fbUser?.name  || document.getElementById('clientName')?.value.trim();
+  const phone = window.fbUser?.phone || document.getElementById('clientPhone')?.value.trim();
+  booking.client = name; booking.phone = phone;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('sumClient', name);
+  set('sumPhone',  phone);
+  set('sumDate',   booking.date);
+  set('sumTime',   booking.time);
+  set('sumTotal',  'R$ ' + cart.reduce((s, c) => s + c.price, 0));
+
+  // Linha do barbeiro (cria se não existir)
+  let sumBarb = document.getElementById('sumBarbeiro');
+  if (!sumBarb) {
+    const rows = document.querySelectorAll('#bStep3 .sum-row');
+    if (rows.length > 0) {
+      const row = document.createElement('div');
+      row.className = 'sum-row'; row.id = 'sumBarb-row';
+      row.innerHTML = '<span class="sum-label">Barbeiro</span><span class="sum-val" id="sumBarbeiro">—</span>';
+      rows[0].before(row);
+      sumBarb = document.getElementById('sumBarbeiro');
+    }
+  }
+  if (sumBarb) sumBarb.textContent = b ? (b.emoji || '') + ' ' + b.nome : '—';
+
+  const svcsEl = document.getElementById('sumServices');
+  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${c.icon} ${c.name}</span>`).join('');
+}
+
+/* ── Termo de aceite ── */
+export function verificarTermoAceito() {
+  const cb  = document.getElementById('termoCheckbox');
+  const btn = document.getElementById('btnIrPagamento');
+  if (btn) btn.disabled = !cb?.checked;
+  const aviso = document.getElementById('termoAviso');
+  if (aviso && cb?.checked) aviso.classList.remove('visivel');
+  document.getElementById('termoLabel')?.classList.toggle('aceito', !!cb?.checked);
+}
+
+function resetTermoCheckbox() {
+  const cb  = document.getElementById('termoCheckbox');
+  const btn = document.getElementById('btnIrPagamento');
+  const av  = document.getElementById('termoAviso');
+  const lb  = document.getElementById('termoLabel');
+  if (cb)  cb.checked = false;
+  if (btn) btn.disabled = true;
+  if (av)  av.classList.remove('visivel');
+  if (lb)  lb.classList.remove('aceito');
+}
+
+export function irParaPagamentoComTermo() {
+  const cb = document.getElementById('termoCheckbox');
+  if (!cb?.checked) {
+    document.getElementById('termoAviso')?.classList.add('visivel');
+    showToast('⚠ Você precisa aceitar os termos para continuar!');
+    return;
+  }
+  booking.termoAceito   = true;
+  booking.termoAceitoEm = new Date().toISOString();
+  booking.remarcacoes   = 0;
+  goBookStep(4);
+}
+
+/* ── Pagamento (step 4) ── */
+function fillPayment() { iniciarPagamentoCakto(); }
+
+async function iniciarPagamentoCakto(renovar = false) {
+  clearInterval(pollingInt); clearInterval(timerInt);
+  showPixState('loading');
+  if (!pedidoId || renovar) pedidoId = gerarPedidoId();
+  const total   = cart.reduce((s, c) => s + c.price, 0);
+  const cliente = window.fbUser?.name  || document.getElementById('clientName')?.value.trim();
+  const whats   = window.fbUser?.phone || document.getElementById('clientPhone')?.value.trim();
+
+  // Preenche resumo Pix
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('pixSumTotal', total); set('pixSumDate', booking.date);
+  set('pixSumTime', booking.time); set('pixSumClient', cliente);
+  const svcsEl = document.getElementById('pixSumServices');
+  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${c.icon} ${c.name}</span>`).join('');
+
+  try {
+    const d = await criarCheckoutCakto({
+      cliente, whatsapp: whats,
+      servicos: cart.map(c => c.name).join(', '),
+      total, data: booking.date, horario: booking.time, pedidoId,
+    });
+    const btn = document.getElementById('caktoCheckoutBtn');
+    if (btn) btn.href = d.checkoutUrl;
+    timerInt = iniciarTimerPix(15*60,
+      (label, urgent) => {
+        const el = document.getElementById('pixTimer');
+        if (el) { el.textContent = label; el.style.color = urgent ? '#ff4444' : 'var(--red)'; }
+      },
+      () => { clearInterval(pollingInt); showToast('⏰ Link expirado. Gere um novo.'); }
+    );
+    showPixState('ready');
+    pollingInt = setInterval(verificarConfirmacao, 4000);
+  } catch (err) {
+    const msgEl = document.getElementById('pixErrorMsg');
+    if (msgEl) msgEl.textContent = err.message;
+    showPixState('error');
+  }
+}
+
+async function verificarConfirmacao() {
+  if (!pedidoId) return;
+  try {
+    const d = await verificarStatusPedido(pedidoId);
+    if (d.status === 'aprovado') {
+      clearInterval(pollingInt); clearInterval(timerInt);
+
+      // Overlay de confirmação
+      const ov = document.createElement('div');
+      ov.className = 'pix-confirmed-overlay';
+      ov.innerHTML = `<div class="pix-confirmed-icon">✓</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:#fff;text-align:center">PAGAMENTO<br>CONFIRMADO!</div>
+        <div style="color:#6FCF97;font-weight:600">Agendamento garantido ✓</div>`;
+      document.body.appendChild(ov);
+
+      // Salva no Firestore
+      try {
+        await criarAgendamento({
+          cliente:      booking.client,
+          telefone:     booking.phone,
+          email:        window.fbUser?.email || document.getElementById('clientEmail')?.value || '',
+          servicos:     cart.map(c => c.icon + ' ' + c.name).join(', '),
+          total:        cart.reduce((s, c) => s + c.price, 0),
+          data:         booking.date,
+          horario:      booking.time,
+          barbeiro:     booking.barbeiro?.nome || '',
+          barbeiroId:   booking.barbeiro?.id || '',
+          pedidoId,
+          termoAceito:  booking.termoAceito,
+          termoAceitoEm: booking.termoAceitoEm,
+        });
+      } catch (e) { console.warn('Erro ao salvar agendamento:', e); }
+
+      setTimeout(() => {
+        ov.remove();
+        fillConfirm();
+        document.querySelectorAll('.step-tab').forEach(t => { t.classList.remove('active'); t.classList.add('done'); });
+        booking.step = 5;
+        document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('bStep5')?.classList.add('active');
+        document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth' });
+        showToast('🎉 Pagamento confirmado!');
+      }, 2400);
+    }
+  } catch (e) { /* aguarda próximo polling */ }
+}
+
+function showPixState(state) {
+  document.getElementById('pixLoading').style.display = state === 'loading' ? 'block' : 'none';
+  document.getElementById('pixReady').style.display   = state === 'ready'   ? 'block' : 'none';
+  document.getElementById('pixError').style.display   = state === 'error'   ? 'block' : 'none';
+  document.getElementById('pixBackBtn').style.display = state === 'loading' ? 'none' : 'flex';
+}
+
+/* ── Tela de confirmação (step 5) ── */
+function fillConfirm() {
+  const total = cart.reduce((s, c) => s + c.price, 0);
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('confClient',   booking.client);
+  set('confServices', cart.map(c => c.icon + ' ' + c.name).join(', '));
+  set('confDate',     booking.date);
+  set('confTime',     booking.time);
+  set('confTotal',    'R$ ' + total);
+}
+
+/* ── PDF ── */
+export function generatePDF() {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const total = cart.reduce((s, c) => s + c.price, 0);
+    const W = 210, pad = 20;
+    const rn = 'DAV-' + Date.now().toString().slice(-6);
+    doc.setFillColor(10,10,10); doc.rect(0,0,W,297,'F');
+    doc.setFillColor(224,32,32); doc.rect(0,0,W,40,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(22);
+    doc.text('BARBEARIA DO DAVI', pad, 18);
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(255,200,200);
+    doc.text('Vila Guará · Luziânia – GO  |  @davi_barber10', pad, 26);
+    doc.setFontSize(11); doc.setTextColor(255,255,255);
+    doc.text('COMPROVANTE DE AGENDAMENTO', pad, 35);
+    doc.setFontSize(8); doc.setTextColor(200,200,200);
+    doc.text('Nº ' + rn, W-pad, 35, { align: 'right' });
+    let y = 55;
+    const rows = [
+      ['Cliente', booking.client],
+      ['Data', booking.date + ' às ' + booking.time],
+      ['Barbeiro', booking.barbeiro?.nome || '—'],
+    ];
+    rows.forEach(([label, val]) => {
+      doc.setFillColor(26,26,26); doc.roundedRect(pad, y, W-pad*2, 14, 1, 1, 'F');
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(224,32,32);
+      doc.text(label.toUpperCase(), pad+5, y+6);
+      doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(240,240,240);
+      doc.text(String(val), pad+55, y+9);
+      y += 16;
+    });
+    y += 4;
+    cart.forEach(svc => {
+      doc.setFillColor(26,26,26); doc.roundedRect(pad, y, W-pad*2, 14, 1, 1, 'F');
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(240,240,240); doc.text(svc.name, pad+6, y+8);
+      doc.setFont('helvetica','bold'); doc.setTextColor(224,32,32); doc.setFontSize(11);
+      doc.text('R$ ' + svc.price, W-pad-6, y+9, { align: 'right' });
+      y += 16;
+    });
+    y += 4;
+    doc.setFillColor(224,32,32); doc.roundedRect(pad, y, W-pad*2, 18, 2, 2, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('TOTAL', pad+6, y+11);
+    doc.setFontSize(16); doc.text('R$ ' + total, W-pad-6, y+12, { align: 'right' });
+    doc.save('comprovante-' + rn + '.pdf');
+    showToast('📄 Comprovante baixado!');
+  } catch (e) { showToast('Erro ao gerar PDF.'); console.error(e); }
+}
+
+/* ── WhatsApp ── */
+export function shareWhatsApp() {
+  compartilharWhatsApp({
+    cliente:  booking.client,
+    servicos: cart.map(c => c.name).join(', '),
+    data:     booking.date,
+    horario:  booking.time,
+    total:    cart.reduce((s, c) => s + c.price, 0),
+  });
+}
+
+/* ── Resetar booking ── */
+export function resetBooking() {
+  const { setCart } = window._globalState || {};
+  clearInterval(timerInt);
+  window._cart = [];
+  Object.assign(booking, { client:'', phone:'', email:'', date:'', time:'', step:0, barbeiro:null, remarcacoes:0, termoAceito:false });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('bStep0')?.classList.add('active');
+  document.querySelectorAll('.step-tab').forEach((t, i) => { t.classList.remove('active','done'); if (i === 0) t.classList.add('active'); });
+  ['clientName','clientPhone','clientEmail'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const btn1 = document.getElementById('step1Next');
+  if (btn1) btn1.disabled = !window.fbUser;
+  import('./index.js').then(m => { m.updateCartUI(); m.renderGallery(); });
+  renderBarbeiroGrid();
+  document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ── Step 1: verifica campos ── */
+export function checkStep1() {
+  const name  = document.getElementById('clientName')?.value.trim();
+  const phone = document.getElementById('clientPhone')?.value.trim();
+  const btn = document.getElementById('step1Next');
+  if (btn) btn.disabled = !(name && phone) && !window.fbUser;
+}
+
+/* ── Expõe globais ── */
+window.abrirPortfolioBarbeiro      = abrirPortfolioBarbeiro;
+window.fecharPortfolio             = fecharPortfolio;
+window.selecionarBarbeiroDoPortfolio = selecionarBarbeiroDoPortfolio;
+window.abrirLightbox               = abrirLightbox;
+window.fecharLightbox              = fecharLightbox;
+window.selecionarBarbeiro     = selecionarBarbeiro;
+window.goBookStep             = goBookStep;
+window.prevMonth              = prevMonth;
+window.nextMonth              = nextMonth;
+window.checkStep1             = checkStep1;
+window.verificarTermoAceito   = verificarTermoAceito;
+window.irParaPagamentoComTermo = irParaPagamentoComTermo;
+window.generatePDF            = generatePDF;
+window.shareWhatsApp          = shareWhatsApp;
+window.resetBooking           = resetBooking;
+window.iniciarPagamentoCakto  = iniciarPagamentoCakto;
