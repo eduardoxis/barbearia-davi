@@ -349,7 +349,7 @@ function renderAdminServices() {
   adminSettings.services.forEach(svc => {
     const row = document.createElement('div');
     row.className = 'svc-editor-card' + (svc.hidden ? ' hidden-svc' : '');
-    const iconHtml = svc.icon && svc.icon.startsWith('http')
+    const iconHtml = svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))
       ? `<img src="${svc.icon}" class="svc-ed-icon-img" alt="${svc.name}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
         + `<div class="svc-ed-icon" style="display:none">✂️</div>`
       : `<div class="svc-ed-icon">${svc.icon || '✂️'}</div>`;
@@ -502,7 +502,7 @@ export function openEditSvcModal(id) {
   document.getElementById('svcErr').classList.remove('show');
   _svcResetFoto();
   // Se o serviço já tem foto, exibir preview
-  if (svc.icon && svc.icon.startsWith('http')) {
+  if (svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))) {
     _svcFotoUrl = svc.icon;
     _svcMostrarPreview(svc.icon);
   }
