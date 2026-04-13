@@ -523,12 +523,15 @@ export async function confirmSaveService() {
   // ── Upload de foto se houver arquivo novo ──
   let icon = _svcFotoUrl || document.getElementById('svcIcon').value || '✂️';
   if (_svcFotoFile) {
-    const loading = document.getElementById('svcFotoLoading');
-    const btn     = document.getElementById('svcSalvarBtn');
+    const loading   = document.getElementById('svcFotoLoading');
+    const btn       = document.getElementById('svcSalvarBtn');
+    const uploadErr = document.getElementById('svcFotoUploadErr');
+    if (uploadErr) { uploadErr.textContent = ''; uploadErr.classList.remove('show'); }
     if (loading) loading.style.display = 'flex';
     if (btn)     btn.disabled = true;
     try {
-      const fb      = window._fb;
+      const fb = window._fb;
+      if (!fb || !fb.storage) throw new Error('Firebase Storage não disponível. Verifique a configuração.');
       const svcId   = editingSvcId || ('svc_' + Date.now());
       // Redimensionar antes do upload
       const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '1200') || 0;
@@ -537,9 +540,9 @@ export async function confirmSaveService() {
       const path    = `servicos/${svcId}.${ext}`;
       const ref     = fb.storageRef(fb.storage, path);
       // Timeout de 30s para não ficar infinito caso haja falha de rede
-      const uploadPromise = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
+      const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Upload timeout: verifique sua conexão')), 30000)
+        setTimeout(() => reject(new Error('Tempo esgotado (30s). Verifique sua conexão e tente novamente.')), 30000)
       );
       await Promise.race([uploadPromise, timeoutPromise]);
       icon = await fb.getDownloadURL(ref);
@@ -547,9 +550,12 @@ export async function confirmSaveService() {
       _svcFotoFile = null;
     } catch(err) {
       console.error('Erro no upload da foto:', err);
-      const msg = err.message?.includes('timeout')
-        ? '⚠ Tempo esgotado ao enviar foto. Verifique a conexão.'
-        : '⚠ Erro ao enviar foto. Serviço salvo sem imagem.';
+      const msg = err?.code === 'storage/unauthorized'
+        ? '⚠ Sem permissão no Storage. Acesse Firebase Console → Storage → Rules e libere o acesso.'
+        : err?.code === 'storage/canceled'
+        ? '⚠ Upload cancelado.'
+        : `⚠ ${err.message || 'Erro ao enviar foto.'}`;
+      if (uploadErr) { uploadErr.textContent = msg; uploadErr.classList.add('show'); }
       showToast(msg);
       icon = document.getElementById('svcIcon').value || '✂️';
     } finally {
