@@ -847,68 +847,77 @@
 <!-- ═══ MODAL BARBEIRO ═══ -->
 <div class="adm-modal-overlay" id="overlayModalBarbeiro">
   <div class="modal-barb">
-    <div class="adm-modal-title" id="tituloModalBarbeiro">+ Novo Barbeiro</div>
-    <input type="hidden" id="barbIdEditando">
-    <div class="form-group" style="margin-bottom:0.8rem">
-      <label class="form-label">Foto (URL) ou Emoji</label>
-      <div class="foto-preview-wrap">
-        <div class="foto-preview" id="barb-foto-preview">💈</div>
-        <div style="flex:1"><input class="form-input" id="barbFotoUrl" type="text" placeholder="https://... ou deixe vazio" oninput="atualizarPreviewFoto(this.value)"></div>
-      </div>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
-        <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
-        <button onclick="selecionarEmoji(this,'✂️')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">✂️</button>
-        <button onclick="selecionarEmoji(this,'🪒')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🪒</button>
-        <button onclick="selecionarEmoji(this,'👨')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👨</button>
-        <button onclick="selecionarEmoji(this,'🧔')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🧔</button>
-        <button onclick="selecionarEmoji(this,'👦')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👦</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
-      <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="barbNome" type="text" placeholder="Ex: Davi"></div>
-      <div class="form-group"><label class="form-label">Especialidade</label><input class="form-input" id="barbEsp" type="text" placeholder="Ex: Degradê &amp; Barba"></div>
-    </div>
-    <!-- Bio logo após nome/especialidade -->
-    <div class="form-group" style="margin-bottom:0.8rem">
-      <label class="form-label">Bio / Apresentação</label>
-      <textarea class="form-input" id="barbBio" rows="2" placeholder="Ex: 5 anos de experiência, especialista em degradê..." style="resize:vertical;min-height:52px"></textarea>
-    </div>
-    <div class="form-group" style="margin-bottom:0.8rem">
-      <label class="form-label">Dias de Atendimento</label>
-      <div class="barb-dias-grid" id="barbDiasGrid">
-        <button class="barb-dia-btn on" data-dia="0" onclick="toggleDiaBarb(this)">Dom</button>
-        <button class="barb-dia-btn on" data-dia="1" onclick="toggleDiaBarb(this)">Seg</button>
-        <button class="barb-dia-btn on" data-dia="2" onclick="toggleDiaBarb(this)">Ter</button>
-        <button class="barb-dia-btn on" data-dia="3" onclick="toggleDiaBarb(this)">Qua</button>
-        <button class="barb-dia-btn on" data-dia="4" onclick="toggleDiaBarb(this)">Qui</button>
-        <button class="barb-dia-btn on" data-dia="5" onclick="toggleDiaBarb(this)">Sex</button>
-        <button class="barb-dia-btn on" data-dia="6" onclick="toggleDiaBarb(this)">Sáb</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
-      <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="barbHorarioInicio" type="time" value="08:00"></div>
-      <div class="form-group"><label class="form-label">Fim</label><input class="form-input" id="barbHorarioFim" type="time" value="18:00"></div>
-      <div class="form-group"><label class="form-label">Intervalo</label><select class="form-input" id="barbIntervalo" style="background:var(--card2)"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></div>
-    </div>
-    <div class="form-group" style="margin-bottom:1rem">
-      <label class="form-label">Situação</label>
-      <select class="form-input" id="barbAtivo" style="background:var(--card2)"><option value="true">✅ Ativo</option><option value="false">❌ Inativo</option></select>
+    <!-- Título fixo no topo -->
+    <div class="modal-barb-title-wrap">
+      <div class="adm-modal-title" id="tituloModalBarbeiro">+ Novo Barbeiro</div>
     </div>
 
-    <!-- Portfólio -->
-    <div id="portAdminWrap" style="display:none">
-      <div class="port-adm-titulo">📸 Portfólio</div>
-      <div class="port-adm-grid" id="portAdminGrid"></div>
-      <div class="port-adm-add">
-        <input class="form-input" id="portNovaUrl" type="url" placeholder="URL da imagem (https://...)">
-        <input class="form-input" id="portNovaCaption" type="text" placeholder="Legenda (opcional)" style="margin-top:0.4rem">
-        <div class="admin-err-msg" id="portAdmErr">Insira a URL da imagem.</div>
-        <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar Foto</button>
+    <!-- Área scrollável -->
+    <div class="modal-barb-body">
+      <input type="hidden" id="barbIdEditando">
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Foto (URL) ou Emoji</label>
+        <div class="foto-preview-wrap">
+          <div class="foto-preview" id="barb-foto-preview">💈</div>
+          <div style="flex:1"><input class="form-input" id="barbFotoUrl" type="text" placeholder="https://... ou deixe vazio" oninput="atualizarPreviewFoto(this.value)"></div>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
+          <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
+          <button onclick="selecionarEmoji(this,'✂️')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">✂️</button>
+          <button onclick="selecionarEmoji(this,'🪒')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🪒</button>
+          <button onclick="selecionarEmoji(this,'👨')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👨</button>
+          <button onclick="selecionarEmoji(this,'🧔')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🧔</button>
+          <button onclick="selecionarEmoji(this,'👦')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👦</button>
+        </div>
       </div>
-    </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
+        <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="barbNome" type="text" placeholder="Ex: Davi"></div>
+        <div class="form-group"><label class="form-label">Especialidade</label><input class="form-input" id="barbEsp" type="text" placeholder="Ex: Degradê &amp; Barba"></div>
+      </div>
+      <!-- Bio logo após nome/especialidade -->
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Bio / Apresentação</label>
+        <textarea class="form-input" id="barbBio" rows="2" placeholder="Ex: 5 anos de experiência, especialista em degradê..." style="resize:vertical;min-height:52px"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Dias de Atendimento</label>
+        <div class="barb-dias-grid" id="barbDiasGrid">
+          <button class="barb-dia-btn on" data-dia="0" onclick="toggleDiaBarb(this)">Dom</button>
+          <button class="barb-dia-btn on" data-dia="1" onclick="toggleDiaBarb(this)">Seg</button>
+          <button class="barb-dia-btn on" data-dia="2" onclick="toggleDiaBarb(this)">Ter</button>
+          <button class="barb-dia-btn on" data-dia="3" onclick="toggleDiaBarb(this)">Qua</button>
+          <button class="barb-dia-btn on" data-dia="4" onclick="toggleDiaBarb(this)">Qui</button>
+          <button class="barb-dia-btn on" data-dia="5" onclick="toggleDiaBarb(this)">Sex</button>
+          <button class="barb-dia-btn on" data-dia="6" onclick="toggleDiaBarb(this)">Sáb</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
+        <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="barbHorarioInicio" type="time" value="08:00"></div>
+        <div class="form-group"><label class="form-label">Fim</label><input class="form-input" id="barbHorarioFim" type="time" value="18:00"></div>
+        <div class="form-group"><label class="form-label">Intervalo</label><select class="form-input" id="barbIntervalo" style="background:var(--card2)"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></div>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Situação</label>
+        <select class="form-input" id="barbAtivo" style="background:var(--card2)"><option value="true">✅ Ativo</option><option value="false">❌ Inativo</option></select>
+      </div>
 
-    <div class="admin-err-msg" id="erroBarbeiro">Preencha o nome do barbeiro.</div>
-    <div style="display:flex;gap:0.6rem;margin-top:0.2rem">
+      <!-- Portfólio -->
+      <div id="portAdminWrap" style="display:none">
+        <div class="port-adm-titulo">📸 Portfólio</div>
+        <div class="port-adm-grid" id="portAdminGrid"></div>
+        <div class="port-adm-add">
+          <input class="form-input" id="portNovaUrl" type="url" placeholder="URL da imagem (https://...)">
+          <input class="form-input" id="portNovaCaption" type="text" placeholder="Legenda (opcional)" style="margin-top:0.4rem">
+          <div class="admin-err-msg" id="portAdmErr">Insira a URL da imagem.</div>
+          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar Foto</button>
+        </div>
+      </div>
+
+      <div class="admin-err-msg" id="erroBarbeiro">Preencha o nome do barbeiro.</div>
+    </div><!-- /modal-barb-body -->
+
+    <!-- Rodapé fixo — Cancelar / Salvar sempre visíveis -->
+    <div class="modal-barb-footer">
       <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharModalBarbeiro()">Cancelar</button>
       <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarSalvarBarbeiro()">Salvar</button>
     </div>
@@ -1012,15 +1021,28 @@
       <div class="svc-foto-upload" id="svcFotoUploadArea" onclick="document.getElementById('svcFotoInput').click()">
         <div class="svc-foto-placeholder" id="svcFotoPlaceholder">
           <span class="svc-foto-icon">📷</span>
-          <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · qualidade original</small></span>
+          <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
         </div>
         <img id="svcFotoPreview" class="svc-foto-img" style="display:none" alt="Preview do serviço">
-        <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">⏳ Enviando foto...</div>
+        <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">
+          <div class="svc-foto-loading-spinner"></div>
+          Enviando foto...
+        </div>
       </div>
       <input type="file" id="svcFotoInput" accept="image/jpeg,image/png" style="display:none" onchange="svcFotoSelecionada(this)">
       <div class="svc-foto-acoes" id="svcFotoAcoes" style="display:none">
         <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('svcFotoInput').click()">🔄 Trocar foto</button>
         <button type="button" class="svc-foto-btn-remove" onclick="removerFotoSvc()">✕ Remover</button>
+      </div>
+      <!-- Seletor de redimensionamento — aparece junto com as ações -->
+      <div id="svcFotoResizeWrap" style="display:none;margin-top:0.5rem;display:none;align-items:center;gap:0.5rem">
+        <span style="font-size:0.68rem;color:var(--gray);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Tamanho:</span>
+        <select id="svcFotoResizeOpt" class="form-input" style="flex:1;background:var(--card2);font-size:0.72rem;padding:0.3rem 0.5rem">
+          <option value="800">Pequeno (800px) — ideal para web</option>
+          <option value="1200" selected>Médio (1200px) — recomendado</option>
+          <option value="1920">Grande (1920px) — alta qualidade</option>
+          <option value="0">Original — sem redimensionar</option>
+        </select>
       </div>
       <div class="admin-err-msg" id="svcFotoErr">Formato inválido. Use apenas JPG ou PNG.</div>
     </div>
