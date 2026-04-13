@@ -530,34 +530,46 @@ export async function confirmSaveService() {
     if (loading) loading.style.display = 'flex';
     if (btn)     btn.disabled = true;
     try {
-      const fb = window._fb;
-      if (!fb || !fb.storage) throw new Error('Firebase Storage não disponível. Verifique a configuração.');
-      const svcId   = editingSvcId || ('svc_' + Date.now());
-      // Redimensionar antes do upload
-      const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '1200') || 0;
+      // Redimensionar antes do upload (800px para garantir tamanho menor)
+      const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '800') || 800;
       const arquivo = await resizeImage(_svcFotoFile, maxPx);
-      const ext     = arquivo.type === 'image/png' ? 'png' : 'jpg';
-      const path    = `servicos/${svcId}.${ext}`;
-      const ref     = fb.storageRef(fb.storage, path);
-      // Timeout de 30s para não ficar infinito caso haja falha de rede
-      const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tempo esgotado (30s). Verifique sua conexão e tente novamente.')), 30000)
-      );
-      await Promise.race([uploadPromise, timeoutPromise]);
-      icon = await fb.getDownloadURL(ref);
+
+      // Tentar Firebase Storage primeiro
+      let uploadOk = false;
+      const fb = window._fb;
+      if (fb?.storage) {
+        try {
+          const svcId  = editingSvcId || ('svc_' + Date.now());
+          const ext    = arquivo.type === 'image/png' ? 'png' : 'jpg';
+          const path   = `servicos/${svcId}.${ext}`;
+          const ref    = fb.storageRef(fb.storage, path);
+          const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          );
+          await Promise.race([uploadPromise, timeoutPromise]);
+          icon      = await fb.getDownloadURL(ref);
+          uploadOk  = true;
+        } catch(storageErr) {
+          console.warn('Firebase Storage falhou, usando base64:', storageErr.code || storageErr.message);
+        }
+      }
+
+      // Fallback: salvar como base64 direto no Firestore
+      if (!uploadOk) {
+        icon = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = e => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+          reader.readAsDataURL(arquivo);
+        });
+      }
+
       _svcFotoUrl  = icon;
       _svcFotoFile = null;
     } catch(err) {
-      console.error('Erro no upload da foto:', err);
-      const msg = err?.code === 'storage/unauthorized'
-        ? '⚠ Sem permissão no Storage. Acesse Firebase Console → Storage → Rules e libere o acesso.'
-        : err?.code === 'storage/canceled'
-        ? '⚠ Upload cancelado.'
-        : `⚠ ${err.message || 'Erro ao enviar foto.'}`;
-      if (uploadErr) { uploadErr.textContent = msg; uploadErr.classList.add('show'); }
-      showToast(msg);
-      icon = document.getElementById('svcIcon').value || '✂️';
+      console.error('Erro ao processar foto:', err);
+      if (uploadErr) { uploadErr.textContent = '⚠ ' + (err.message || 'Erro ao processar foto.'); uploadErr.classList.add('show'); }
     } finally {
       if (loading) loading.style.display = 'none';
       if (btn)     btn.disabled = false;
@@ -567,12 +579,11 @@ export async function confirmSaveService() {
   if (editingSvcId) {
     const svc = adminSettings.services.find(s => s.id === editingSvcId);
     if (svc) Object.assign(svc, { icon, name, desc, price, time });
-    showToast('✓ Atualizado!');
   } else {
     adminSettings.services.push({ id:'svc_'+Date.now(), name, desc, price, time, icon, bg:'gi-corte', hidden:false });
-    showToast('✓ Adicionado!');
   }
   closeAddSvcModal(); renderAdminServices(); import('./index.js').then(m => m.renderGallery());
+  await saveAdminSettings();
 }
 
 /* ── Barbeiros Admin ── */
@@ -642,7 +653,7 @@ export function selecionarEmoji(btn, emoji) {
   }
 }
 export function toggleDiaBarb(btn) { btn.classList.toggle('on'); }
-export function confirmarSalvarBarbeiro() {
+export async function confirmarSalvarBarbeiro() {
   const nome = document.getElementById('barbNome')?.value.trim();
   if (!nome) { document.getElementById('erroBarbeiro').classList.add('show'); return; }
   document.getElementById('erroBarbeiro').classList.remove('show');
@@ -667,7 +678,7 @@ export function confirmarSalvarBarbeiro() {
   if (idx >= 0) adminSettings.barbeiros[idx] = barbeiro; else adminSettings.barbeiros.push(barbeiro);
   fecharModalBarbeiro(); renderBarbeirosAdmin();
   import('./agendamento.js').then(m => m.renderBarbeiroGrid());
-  showToast(idx >= 0 ? '✓ Barbeiro atualizado!' : '✓ Barbeiro adicionado!');
+  await saveAdminSettings();
 }
 export function toggleAtivoBarbeiro(id) {
   const b = (adminSettings.barbeiros||[]).find(x=>x.id===id); if (!b) return;
