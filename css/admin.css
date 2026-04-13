@@ -401,6 +401,16 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 /* ══════════════════════════════════════════
    UPLOAD DE FOTO — SERVIÇOS
 ══════════════════════════════════════════ */
+/* Modal serviço — sticky footer (mesmo padrão do modal barbeiro) */
+.svc-modal-flex{display:flex!important;flex-direction:column;max-height:92vh;overflow:hidden;padding:0!important}
+.svc-modal-body{flex:1;overflow-y:auto;padding:0 1.8rem 0.5rem;scrollbar-width:none}
+.svc-modal-body::-webkit-scrollbar{display:none}
+.svc-modal-footer{padding:1rem 1.8rem 1.4rem;border-top:1px solid var(--border);background:var(--card);display:flex;gap:0.6rem;flex-shrink:0}
+@media(max-width:480px){
+  .svc-modal-body{padding:0 1rem 0.5rem}
+  .svc-modal-footer{padding:0.8rem 1rem 1rem}
+}
+
 .svc-foto-upload {
   width: 100%;
   min-height: 140px;
