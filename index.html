@@ -1010,54 +1010,64 @@
 
 <!-- ═══ MODAL SERVIÇO ═══ -->
 <div class="adm-modal-overlay" id="addSvcOverlay">
-  <div class="adm-modal" style="max-width:460px">
-    <div class="adm-modal-title" id="svcModalTitle">+ Novo Serviço</div>
+  <div class="adm-modal svc-modal-flex" style="max-width:460px">
+    <!-- Título fixo -->
+    <div class="adm-modal-title" id="svcModalTitle" style="padding:1.4rem 1.8rem 0;margin-bottom:0.6rem;flex-shrink:0">+ Novo Serviço</div>
     <input type="hidden" id="editSvcId">
     <input type="hidden" id="svcIcon">
 
-    <!-- ── Upload de Foto ── -->
-    <div class="form-group" style="margin-top:0.5rem">
-      <label class="form-label">Foto do Serviço</label>
-      <div class="svc-foto-upload" id="svcFotoUploadArea" onclick="document.getElementById('svcFotoInput').click()">
-        <div class="svc-foto-placeholder" id="svcFotoPlaceholder">
-          <span class="svc-foto-icon">📷</span>
-          <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
-        </div>
-        <img id="svcFotoPreview" class="svc-foto-img" style="display:none" alt="Preview do serviço">
-        <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">
-          <div class="svc-foto-loading-spinner"></div>
-          Enviando foto...
-        </div>
-      </div>
-      <input type="file" id="svcFotoInput" accept="image/jpeg,image/png" style="display:none" onchange="svcFotoSelecionada(this)">
-      <div class="svc-foto-acoes" id="svcFotoAcoes" style="display:none">
-        <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('svcFotoInput').click()">🔄 Trocar foto</button>
-        <button type="button" class="svc-foto-btn-remove" onclick="removerFotoSvc()">✕ Remover</button>
-      </div>
-      <!-- Seletor de redimensionamento — aparece junto com as ações -->
-      <div id="svcFotoResizeWrap" style="display:none;margin-top:0.5rem;display:none;align-items:center;gap:0.5rem">
-        <span style="font-size:0.68rem;color:var(--gray);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Tamanho:</span>
-        <select id="svcFotoResizeOpt" class="form-input" style="flex:1;background:var(--card2);font-size:0.72rem;padding:0.3rem 0.5rem">
-          <option value="800">Pequeno (800px) — ideal para web</option>
-          <option value="1200" selected>Médio (1200px) — recomendado</option>
-          <option value="1920">Grande (1920px) — alta qualidade</option>
-          <option value="0">Original — sem redimensionar</option>
-        </select>
-      </div>
-      <div class="admin-err-msg" id="svcFotoErr">Formato inválido. Use apenas JPG ou PNG.</div>
-    </div>
+    <!-- Área scrollável -->
+    <div class="svc-modal-body">
 
-    <div class="form-group" style="margin-top:0.6rem">
-      <label class="form-label">Nome *</label>
-      <input class="form-input" id="svcName" type="text" placeholder="Ex: Corte Clássico">
-    </div>
-    <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Descrição</label><textarea class="form-input" id="svcDesc" rows="2" placeholder="Descreva brevemente..."></textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.6rem">
-      <div class="form-group"><label class="form-label">Preço (R$) *</label><input class="form-input" id="svcPrice" type="number" min="0" step="1" placeholder="35"></div>
-      <div class="form-group"><label class="form-label">Duração</label><input class="form-input" id="svcTime" type="text" placeholder="45min"></div>
-    </div>
-    <div class="admin-err-msg" id="svcErr" style="margin-top:0.5rem">Preencha nome e preço.</div>
-    <div style="display:flex;gap:0.6rem;margin-top:1rem">
+      <!-- ── Upload de Foto ── -->
+      <div class="form-group" style="margin-top:0.5rem">
+        <label class="form-label">Foto do Serviço</label>
+        <div class="svc-foto-upload" id="svcFotoUploadArea" onclick="document.getElementById('svcFotoInput').click()">
+          <div class="svc-foto-placeholder" id="svcFotoPlaceholder">
+            <span class="svc-foto-icon">📷</span>
+            <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
+          </div>
+          <img id="svcFotoPreview" class="svc-foto-img" style="display:none" alt="Preview do serviço">
+          <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">
+            <div class="svc-foto-loading-spinner"></div>
+            Enviando foto...
+          </div>
+        </div>
+        <input type="file" id="svcFotoInput" accept="image/jpeg,image/png" style="display:none" onchange="svcFotoSelecionada(this)">
+        <div class="svc-foto-acoes" id="svcFotoAcoes" style="display:none">
+          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('svcFotoInput').click()">🔄 Trocar foto</button>
+          <button type="button" class="svc-foto-btn-remove" onclick="removerFotoSvc()">✕ Remover</button>
+        </div>
+        <!-- Seletor de redimensionamento -->
+        <div id="svcFotoResizeWrap" style="display:none;margin-top:0.5rem;align-items:center;gap:0.5rem">
+          <span style="font-size:0.68rem;color:var(--gray);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Tamanho:</span>
+          <select id="svcFotoResizeOpt" class="form-input" style="flex:1;background:var(--card2);font-size:0.72rem;padding:0.3rem 0.5rem">
+            <option value="800">Pequeno (800px) — ideal para web</option>
+            <option value="1200" selected>Médio (1200px) — recomendado</option>
+            <option value="1920">Grande (1920px) — alta qualidade</option>
+            <option value="0">Original — sem redimensionar</option>
+          </select>
+        </div>
+        <div class="admin-err-msg" id="svcFotoErr">Formato inválido. Use apenas JPG ou PNG.</div>
+        <!-- Erro de upload visível (não só toast) -->
+        <div class="admin-err-msg" id="svcFotoUploadErr" style="margin-top:0.4rem"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:0.6rem">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" id="svcName" type="text" placeholder="Ex: Corte Clássico">
+      </div>
+      <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Descrição</label><textarea class="form-input" id="svcDesc" rows="2" placeholder="Descreva brevemente..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.6rem">
+        <div class="form-group"><label class="form-label">Preço (R$) *</label><input class="form-input" id="svcPrice" type="number" min="0" step="1" placeholder="35"></div>
+        <div class="form-group"><label class="form-label">Duração</label><input class="form-input" id="svcTime" type="text" placeholder="45min"></div>
+      </div>
+      <div class="admin-err-msg" id="svcErr" style="margin-top:0.5rem">Preencha nome e preço.</div>
+
+    </div><!-- /svc-modal-body -->
+
+    <!-- Rodapé fixo — sempre visível -->
+    <div class="svc-modal-footer">
       <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddSvcModal()">Cancelar</button>
       <button class="btn-red"   style="flex:1;justify-content:center" id="svcSalvarBtn" onclick="confirmSaveService()">Salvar</button>
     </div>
