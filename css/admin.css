@@ -96,7 +96,7 @@
 .svc-ed-btn:hover{border-color:var(--red);color:var(--red)}
 
 /* ── Admin modals ── */
-.adm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:600;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.25s}
+.adm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10001;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.25s}
 .adm-modal-overlay.show{opacity:1;pointer-events:all}
 .adm-modal{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.8rem;width:100%;max-width:380px}
 .adm-modal-title{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:1rem}
