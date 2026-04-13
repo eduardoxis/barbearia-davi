@@ -390,6 +390,33 @@ let _svcFotoFile   = null;   // File selecionado (ainda não enviado)
 let _svcFotoObjUrl = null;   // URL.createObjectURL para preview
 let _svcFotoUrl    = null;   // URL final (Firebase Storage ou existente)
 
+/* ─── Redimensionamento de imagem via Canvas ─── */
+async function resizeImage(file, maxPx) {
+  return new Promise((resolve) => {
+    if (!maxPx || maxPx === 0) { resolve(file); return; }
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= maxPx && h <= maxPx) { resolve(file); return; }
+      const scale  = Math.min(maxPx / w, maxPx / h);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      canvas.toBlob(blob => {
+        const resized = new File([blob], file.name, { type: mimeType });
+        resolve(resized);
+      }, mimeType, 0.88);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
+    img.src = objUrl;
+  });
+}
+
 /* ─── Seleção de foto ─── */
 export function svcFotoSelecionada(input) {
   const file = input.files && input.files[0];
@@ -406,6 +433,9 @@ export function svcFotoSelecionada(input) {
   _svcFotoObjUrl = URL.createObjectURL(file);
   _svcFotoUrl    = null; // será definido após upload
   _svcMostrarPreview(_svcFotoObjUrl);
+  // Mostrar seletor de tamanho
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'flex';
 }
 
 export function removerFotoSvc() {
@@ -418,6 +448,8 @@ export function removerFotoSvc() {
   document.getElementById('svcFotoPreview').src            = '';
   document.getElementById('svcFotoPlaceholder').style.display = 'flex';
   document.getElementById('svcFotoAcoes').style.display    = 'none';
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'none';
 }
 
 function _svcMostrarPreview(src) {
@@ -441,6 +473,8 @@ function _svcResetFoto() {
   if (ph) ph.style.display = 'flex';
   const ac = document.getElementById('svcFotoAcoes');
   if (ac) ac.style.display = 'none';
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'none';
   const err = document.getElementById('svcFotoErr');
   if (err) err.classList.remove('show');
 }
@@ -494,18 +528,29 @@ export async function confirmSaveService() {
     if (loading) loading.style.display = 'flex';
     if (btn)     btn.disabled = true;
     try {
-      const fb     = window._fb;
-      const svcId  = editingSvcId || ('svc_' + Date.now());
-      const ext    = _svcFotoFile.type === 'image/png' ? 'png' : 'jpg';
-      const path   = `servicos/${svcId}.${ext}`;
-      const ref    = fb.storageRef(fb.storage, path);
-      await fb.uploadBytes(ref, _svcFotoFile, { contentType: _svcFotoFile.type });
+      const fb      = window._fb;
+      const svcId   = editingSvcId || ('svc_' + Date.now());
+      // Redimensionar antes do upload
+      const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '1200') || 0;
+      const arquivo = await resizeImage(_svcFotoFile, maxPx);
+      const ext     = arquivo.type === 'image/png' ? 'png' : 'jpg';
+      const path    = `servicos/${svcId}.${ext}`;
+      const ref     = fb.storageRef(fb.storage, path);
+      // Timeout de 30s para não ficar infinito caso haja falha de rede
+      const uploadPromise = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timeout: verifique sua conexão')), 30000)
+      );
+      await Promise.race([uploadPromise, timeoutPromise]);
       icon = await fb.getDownloadURL(ref);
       _svcFotoUrl  = icon;
       _svcFotoFile = null;
     } catch(err) {
       console.error('Erro no upload da foto:', err);
-      showToast('⚠ Erro ao enviar foto. Serviço salvo sem imagem.');
+      const msg = err.message?.includes('timeout')
+        ? '⚠ Tempo esgotado ao enviar foto. Verifique a conexão.'
+        : '⚠ Erro ao enviar foto. Serviço salvo sem imagem.';
+      showToast(msg);
       icon = document.getElementById('svcIcon').value || '✂️';
     } finally {
       if (loading) loading.style.display = 'none';
