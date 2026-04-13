@@ -20,7 +20,7 @@ export function renderGallery() {
     card.innerHTML = `
       ${inCart ? '<div class="in-cart-badge">✓ Adicionado</div>' : ''}
       <div class="gallery-img ${svc.bg}">
-        ${svc.icon && svc.icon.startsWith('http')
+        ${svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))
           ? `<img src="${svc.icon}" class="gallery-img-foto" alt="${svc.name}" loading="lazy">`
           : (svc.icon || '✂️')}
       </div>
