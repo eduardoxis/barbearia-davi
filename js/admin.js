@@ -4,6 +4,18 @@
 ══════════════════════════════════════════ */
 
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
+import {
+  renderPortfolioAdmin,
+  adicionarFotoPortfolio,
+  removerFotoPortfolio,
+  triggerUploadFoto,
+  onPortFileChange,
+  toggleDestaquePortfolio,
+  atualizarLimitePortfolio,
+  abrirEditarTagsFoto,
+  galeAdmDragStart, galeAdmDragOver, galeAdmDrop, galeAdmDragEnd,
+  incrementarContadorCortes,
+} from './galeria.js';
 import { buscarTodosAgendamentos, buscarAgendamentosDoDia } from '../routes/agendamentos.js';
 import { gerarHorariosBarbeiro } from '../routes/barbeiros.js';
 import { agruparPorCliente, diasDesde, intervaloMedio, rankServicos, salvarObservacao, carregarObservacoes, CRM_INATIVO_DIAS, CRM_VIP_VISITAS } from '../routes/clientes.js';
@@ -666,6 +678,9 @@ export async function confirmarSalvarBarbeiro() {
     especialidade:   document.getElementById('barbEsp')?.value.trim() || '',
     bio:             document.getElementById('barbBio')?.value.trim() || '',
     portfolio:       existente?.portfolio || [],
+    limitePortfolio: existente?.limitePortfolio || 20,
+    totalCortes:     existente?.totalCortes || 0,
+    avaliacoes:      existente?.avaliacoes || [],
     diasAtendimento: [...document.querySelectorAll('#barbDiasGrid .barb-dia-btn.on')].map(b => parseInt(b.dataset.dia)),
     horarioInicio:   document.getElementById('barbHorarioInicio')?.value || '08:00',
     horarioFim:      document.getElementById('barbHorarioFim')?.value || '18:00',
@@ -789,8 +804,12 @@ async function carregarAtendimentosDoDia(data) {
       card.innerHTML = base + '<span class="atend-badge bloqueado">🔴 Bloqueado</span></div><div class="atend-info"><div class="atend-livre-msg">Horário bloqueado</div></div>';
     } else if (reserva) {
       const svcs = (reserva.servicos||'').split(', ').map(s=>`<span class="service-tag">${s}</span>`).join('');
-      card.className = 'card-atendimento reservado';
-      card.innerHTML = base + '<span class="atend-badge reservado">🟠 Reservado</span></div><div class="atend-info"><div class="atend-cliente-nome">👤 '+(reserva.cliente||'—')+'</div><div class="atend-cliente-tel">📱 '+(reserva.telefone||reserva.whatsapp||'—')+'</div><div class="atend-servicos">'+svcs+'</div><div class="atend-total">R$ '+(reserva.total||'—')+'</div></div>';
+      const jaRealizado = reserva.realizado === true;
+      card.className = 'card-atendimento ' + (jaRealizado ? 'realizado' : 'reservado');
+      const btnReal = jaRealizado
+        ? '<button class="atend-btn-realizado done" disabled>✓ Realizado</button>'
+        : `<button class="atend-btn-realizado" onclick="marcarAtendimentoRealizado('${reserva.id || ''}','${atendBarbeiroId}',this)">✓ Concluir</button>`;
+      card.innerHTML = base + '<span class="atend-badge ' + (jaRealizado ? 'realizado' : 'reservado') + '">' + (jaRealizado ? '✅ Realizado' : '🟠 Reservado') + '</span></div><div class="atend-info"><div class="atend-cliente-nome">👤 '+(reserva.cliente||'—')+'</div><div class="atend-cliente-tel">📱 '+(reserva.telefone||reserva.whatsapp||'—')+'</div><div class="atend-servicos">'+svcs+'</div><div class="atend-total">R$ '+(reserva.total||'—')+'</div>' + btnReal + '</div>';
     } else {
       card.className = 'card-atendimento livre';
       card.innerHTML = base + '<span class="atend-badge livre">🟢 Livre</span></div><div class="atend-info"><div class="atend-livre-msg">Disponível</div></div>';
@@ -1395,58 +1414,10 @@ export async function salvarObsCRM() {
    PORTFÓLIO DO BARBEIRO — ADMIN
 ══════════════════════════════════════════ */
 
-export function renderPortfolioAdmin(barbId) {
-  const wrap = document.getElementById('portAdminWrap');
-  if (!wrap) return;
-  // Mostra a seção sempre — para barbeiro novo, o portfólio será salvo junto com o cadastro
-  wrap.style.display = 'block';
-
-  const barb  = (adminSettings.barbeiros||[]).find(b => b.id === barbId);
-  const fotos = barb?.portfolio || [];
-  const grid  = document.getElementById('portAdminGrid');
-  if (!grid) return;
-
-  if (!fotos.length) {
-    grid.innerHTML = '<div class="port-adm-empty">Nenhuma foto no portfólio ainda.</div>';
-    return;
-  }
-  grid.innerHTML = fotos.map((p, i) =>
-    `<div class="port-adm-thumb" data-idx="${i}">
-       <img src="${p.url}" loading="lazy" onerror="this.parentElement.classList.add('broken')">
-       <div class="port-adm-thumb-caption">${p.caption || ''}</div>
-       <button class="port-adm-del" onclick="removerFotoPortfolio('${barbId}',${i})" title="Remover foto">✕</button>
-     </div>`
-  ).join('');
-}
-
-export function adicionarFotoPortfolio() {
-  const barbId  = document.getElementById('barbIdEditando')?.value;
-  const urlEl   = document.getElementById('portNovaUrl');
-  const capEl   = document.getElementById('portNovaCaption');
-  const errEl   = document.getElementById('portAdmErr');
-  const url     = urlEl?.value.trim();
-  if (!url) {
-    if (errEl) { errEl.textContent = 'Insira a URL da imagem.'; errEl.classList.add('show'); }
-    return;
-  }
-  if (errEl) errEl.classList.remove('show');
-  const barb = (adminSettings.barbeiros||[]).find(b => b.id === barbId);
-  if (!barb) return;
-  if (!barb.portfolio) barb.portfolio = [];
-  barb.portfolio.push({ url, caption: capEl?.value.trim() || '' });
-  if (urlEl) urlEl.value = '';
-  if (capEl) capEl.value = '';
-  renderPortfolioAdmin(barbId);
-  showToast('📸 Foto adicionada ao portfólio!');
-}
-
-export function removerFotoPortfolio(barbId, idx) {
-  const barb = (adminSettings.barbeiros||[]).find(b => b.id === barbId);
-  if (!barb?.portfolio) return;
-  barb.portfolio.splice(idx, 1);
-  renderPortfolioAdmin(barbId);
-  showToast('🗑 Foto removida.');
-}
+// renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio
+// são importadas de galeria.js e re-expostas globalmente aqui
+// (stubs para compatibilidade com código que chame diretamente)
+export { renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio };
 
 /* ══════════════════════════════════════════
    HISTÓRICO DE ATENDIMENTO
@@ -1866,9 +1837,43 @@ window.fecharCrmModal      = fecharCrmModal;
 window.salvarObsCRM        = salvarObsCRM;
 window.trocarBarbeiroHistorico  = trocarBarbeiroHistorico;
 window.filtrarHistoricoAtend    = filtrarHistoricoAtend;
+
+/* ── Marcar atendimento como realizado + incrementa contador ── */
+export async function marcarAtendimentoRealizado(agendId, barbId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  try {
+    if (agendId && window._fb) {
+      await window._fb.setDoc(
+        window._fb.doc(window._fb.db, 'agendamentos', agendId),
+        { realizado: true },
+        { merge: true }
+      );
+    }
+    incrementarContadorCortes(barbId);
+    await saveAdminSettings();
+    showToast('✅ Atendimento concluído! Contador atualizado.');
+    if (btn) { btn.textContent = '✓ Realizado'; btn.classList.add('done'); }
+    import('./agendamento.js').then(m => m.renderBarbeiroGrid());
+  } catch(e) {
+    showToast('❌ Erro ao concluir: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Concluir'; }
+  }
+}
+
 window.renderPortfolioAdmin     = renderPortfolioAdmin;
 window.adicionarFotoPortfolio   = adicionarFotoPortfolio;
 window.removerFotoPortfolio     = removerFotoPortfolio;
+window.triggerUploadFoto        = triggerUploadFoto;
+window.onPortFileChange         = onPortFileChange;
+window.toggleDestaquePortfolio  = toggleDestaquePortfolio;
+window.atualizarLimitePortfolio = atualizarLimitePortfolio;
+window.abrirEditarTagsFoto      = abrirEditarTagsFoto;
+window.galeAdmDragStart         = galeAdmDragStart;
+window.galeAdmDragOver          = galeAdmDragOver;
+window.galeAdmDrop              = galeAdmDrop;
+window.galeAdmDragEnd           = galeAdmDragEnd;
+window.incrementarContadorCortes = incrementarContadorCortes;
+window.marcarAtendimentoRealizado = marcarAtendimentoRealizado;
 window.carregarBloqueiosBarb    = carregarBloqueiosBarb;
 window.renderBloqueiosBarb      = renderBloqueiosBarb;
 window.openModalBloqueioBarb    = openModalBloqueioBarb;
