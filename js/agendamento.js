@@ -11,6 +11,7 @@ import { gerarHorariosBarbeiro, buscarBarbeiros } from '../routes/barbeiros.js';
 import { criarCheckoutCakto, gerarPedidoId, iniciarTimerPix, verificarStatusPedido } from '../routes/pagamentos.js';
 import { criarAgendamento, verificarPrazo24h } from '../routes/agendamentos.js';
 import { compartilharWhatsApp } from '../routes/notificacoes.js';
+import { renderDestaquesThumbs, renderContadorCortes, abrirGaleriaBarbeiro } from './galeria.js';
 
 /* ── Estado do calendário ── */
 let calYear  = new Date().getFullYear();
@@ -30,21 +31,23 @@ export function renderBarbeiroGrid() {
     return;
   }
   grid.innerHTML = ativos.map(b => {
-    const sel      = booking.barbeiro?.id === b.id;
+    const sel     = booking.barbeiro?.id === b.id;
     const fotoHtml = b.foto
-      ? `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.innerHTML='${b.emoji||'💈'}'\">`
+      ? `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.innerHTML='${b.emoji||'💈'}'">`
       : (b.emoji || '💈');
-    const dias     = (b.diasAtendimento || []).map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ');
-    const slots    = gerarHorariosBarbeiro(b);
-    const temPort  = b.portfolio && b.portfolio.length > 0;
+    const dias  = (b.diasAtendimento || []).map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ');
+    const slots = gerarHorariosBarbeiro(b);
+    const temGal = b.portfolio && b.portfolio.length > 0;
     return `<div class="barbeiro-card${sel ? ' selecionado' : ''}" onclick="selecionarBarbeiro('${b.id}')">
       ${sel ? '<div class="barbeiro-badge-sel">✓ Selecionado</div>' : ''}
       <div class="barbeiro-foto">${fotoHtml}</div>
       <div class="barbeiro-nome">${b.nome}</div>
       <div class="barbeiro-esp">${b.especialidade || 'Barbeiro profissional'}</div>
+      ${renderDestaquesThumbs(b)}
+      ${renderContadorCortes(b)}
       <div class="barbeiro-horario">⏱ ${b.horarioInicio || '08:00'} – ${b.horarioFim || '18:00'}</div>
-      <div style="font-size:0.6rem;color:var(--gray2);margin-top:0.25rem">${slots.length} horários · ${dias}</div>
-      ${temPort ? `<button class="barbeiro-port-btn" onclick="event.stopPropagation();abrirPortfolioBarbeiro('${b.id}')">📸 Portfólio (${b.portfolio.length})</button>` : ''}
+      <div style="font-size:0.6rem;color:var(--gray2);margin-top:0.2rem">${slots.length} horários · ${dias}</div>
+      ${temGal ? `<button class="barb-galeria-btn" onclick="event.stopPropagation();abrirGaleriaBarbeiro('${b.id}')">📸 Ver galeria (${b.portfolio.length})</button>` : ''}
       ${sel ? '<div class="barbeiro-check-circle">✓</div>' : ''}
     </div>`;
   }).join('');
@@ -53,82 +56,15 @@ export function renderBarbeiroGrid() {
 /* ══════════════════════════════════════════
    MODAL PORTFÓLIO DO BARBEIRO (cliente)
 ══════════════════════════════════════════ */
+// Portfólio delegado para galeria.js (mantém compatibilidade)
 let _portBarbeiroId = null;
-
-export function abrirPortfolioBarbeiro(id) {
-  const b = buscarBarbeiros().find(x => x.id === id);
-  if (!b) return;
-  _portBarbeiroId = id;
-
-  const fotoHtml = b.foto
-    ? `<img src="${b.foto}" alt="${b.nome}" class="port-modal-avatar-img" onerror="this.style.display='none'">`
-    : `<span class="port-modal-avatar-emoji">${b.emoji || '💈'}</span>`;
-
-  const header = document.getElementById('portBarbHeader');
-  if (header) {
-    header.innerHTML = `
-      <div class="port-modal-avatar">${fotoHtml}</div>
-      <div class="port-modal-info">
-        <div class="port-modal-nome">${b.nome}</div>
-        <div class="port-modal-esp">${b.especialidade || 'Barbeiro profissional'}</div>
-        ${b.bio ? `<div class="port-modal-bio">${b.bio}</div>` : ''}
-      </div>`;
-  }
-
-  const portGrid = document.getElementById('portGrid');
-  if (portGrid) {
-    if (!b.portfolio || !b.portfolio.length) {
-      portGrid.innerHTML = '<div class="port-empty">Este barbeiro ainda não adicionou fotos ao portfólio.</div>';
-    } else {
-      portGrid.innerHTML = b.portfolio.map((p, i) =>
-        `<div class="port-thumb" onclick="abrirLightbox(this.querySelector('img').src)">
-           <img src="${p.url}" alt="Trabalho ${i + 1}" loading="lazy" onerror="this.parentElement.classList.add('port-thumb-broken')">
-           ${p.caption ? `<div class="port-thumb-caption">${p.caption}</div>` : ''}
-         </div>`
-      ).join('');
-    }
-  }
-
-  const selBtn = document.getElementById('portSelBtn');
-  if (selBtn) {
-    const jaSel = booking.barbeiro?.id === id;
-    selBtn.textContent   = jaSel ? '✓ Já selecionado' : `✓ Selecionar ${b.nome}`;
-    selBtn.disabled      = jaSel;
-    selBtn.style.opacity = jaSel ? '0.5' : '1';
-  }
-
-  document.getElementById('overlayPortfolio')?.classList.add('show');
-  document.body.style.overflow = 'hidden';
-}
-
-export function fecharPortfolio() {
-  document.getElementById('overlayPortfolio')?.classList.remove('show');
-  document.body.style.overflow = '';
-  fecharLightbox();
-}
-
+export function abrirPortfolioBarbeiro(id) { abrirGaleriaBarbeiro(id); }
+export function fecharPortfolio()  { if (typeof fecharGaleria  === 'function') fecharGaleria(); }
 export function selecionarBarbeiroDoPortfolio() {
-  if (_portBarbeiroId) {
-    selecionarBarbeiro(_portBarbeiroId);
-    fecharPortfolio();
-    showToast('💈 Barbeiro selecionado!');
-  }
+  if (_portBarbeiroId) { selecionarBarbeiro(_portBarbeiroId); fecharPortfolio(); showToast('💈 Barbeiro selecionado!'); }
 }
-
-export function abrirLightbox(url) {
-  const lb  = document.getElementById('portLightbox');
-  const img = document.getElementById('portLightboxImg');
-  if (!lb || !img) return;
-  img.src = url;
-  lb.classList.add('show');
-}
-
-export function fecharLightbox() {
-  document.getElementById('portLightbox')?.classList.remove('show');
-  const img = document.getElementById('portLightboxImg');
-  if (img) img.src = '';
-}
-
+export function abrirLightbox(url) { /* delegado para galeria.js */ }
+export function fecharLightbox()   { if (typeof fecharLightboxGaleria === 'function') fecharLightboxGaleria(); }
 
 export function selecionarBarbeiro(id) {
   const b = buscarBarbeiros().find(x => x.id === id);
@@ -523,6 +459,7 @@ export function checkStep1() {
 
 /* ── Expõe globais ── */
 window.abrirPortfolioBarbeiro      = abrirPortfolioBarbeiro;
+window.abrirGaleriaBarbeiro        = abrirGaleriaBarbeiro;
 window.fecharPortfolio             = fecharPortfolio;
 window.selecionarBarbeiroDoPortfolio = selecionarBarbeiroDoPortfolio;
 window.abrirLightbox               = abrirLightbox;
