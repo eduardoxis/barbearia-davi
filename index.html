@@ -42,12 +42,29 @@
 <link rel="stylesheet" href="css/global.css">
 <link rel="stylesheet" href="css/index.css">
 <link rel="stylesheet" href="css/agendamento.css">
+  <link rel="stylesheet" href="css/galeria.css">
 <link rel="stylesheet" href="css/login.css">
 <link rel="stylesheet" href="css/perfil.css">
 <link rel="stylesheet" href="css/historico.css">
 <link rel="stylesheet" href="css/admin.css">
 <!-- ★ BOTTOM NAV — NOVO ★ -->
 <link rel="stylesheet" href="css/bottom-nav.css">
+
+  <style>
+    /* ── Atendimento realizado ── */
+    .card-atendimento.realizado { border-left: 3px solid #27ae60 !important; }
+    .atend-badge.realizado { background: rgba(39,174,96,0.15); color: #27ae60; border-color: rgba(39,174,96,0.3); }
+    .atend-btn-realizado {
+      margin-top: 0.5rem; width: 100%; padding: 0.45rem;
+      background: transparent; border: 1.5px solid #27ae60;
+      color: #27ae60; border-radius: 5px;
+      font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.05em;
+      text-transform: uppercase; transition: all 0.18s;
+    }
+    .atend-btn-realizado:hover:not(:disabled) { background: #27ae60; color: #fff; }
+    .atend-btn-realizado.done { opacity: 0.5; cursor: default; }
+  </style>
 </head>
 <body>
 
@@ -903,13 +920,22 @@
 
       <!-- Portfólio -->
       <div id="portAdminWrap" style="display:none">
-        <div class="port-adm-titulo">📸 Portfólio</div>
+        <div class="port-adm-titulo">📸 Galeria de Cortes</div>
+        <div id="portAdmHeader" class="port-adm-header"></div>
+        <div style="font-size:0.65rem;color:var(--gray2);margin-bottom:0.5rem">⠿ Arraste para reordenar · ⭐ Até 3 destaques aparecem no card do barbeiro</div>
         <div class="port-adm-grid" id="portAdminGrid"></div>
         <div class="port-adm-add">
+          <!-- Upload câmera/galeria -->
+          <input type="file" id="portFileInput" accept="image/*" multiple style="display:none"
+                 onchange="onPortFileChange(this)">
+          <button id="portUploadBtn" class="port-upload-btn" onclick="triggerUploadFoto()">
+            📷 Câmera / Galeria
+          </button>
+          <div class="port-adm-divider">ou cole uma URL</div>
           <input class="form-input" id="portNovaUrl" type="url" placeholder="URL da imagem (https://...)">
           <input class="form-input" id="portNovaCaption" type="text" placeholder="Legenda (opcional)" style="margin-top:0.4rem">
           <div class="admin-err-msg" id="portAdmErr">Insira a URL da imagem.</div>
-          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar Foto</button>
+          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar por URL</button>
         </div>
       </div>
 
@@ -924,26 +950,72 @@
   </div>
 </div>
 
-<!-- ═══ MODAL PORTFÓLIO DO BARBEIRO ═══ -->
-<div class="adm-modal-overlay port-overlay" id="overlayPortfolio" onclick="if(event.target===this)fecharPortfolio()">
-  <div class="port-modal">
-    <!-- Header: avatar + nome + bio -->
-    <div class="port-modal-header" id="portBarbHeader"></div>
-    <!-- Fechar -->
-    <button class="port-modal-close" onclick="fecharPortfolio()">✕</button>
-    <!-- Grade de fotos -->
-    <div class="port-grid" id="portGrid"></div>
-    <!-- Ação: selecionar barbeiro -->
-    <div class="port-modal-footer">
-      <button class="btn-red" id="portSelBtn" style="width:100%;justify-content:center" onclick="selecionarBarbeiroDoPortfolio()">✓ Selecionar Barbeiro</button>
+<!-- ═══ MODAL GALERIA DO BARBEIRO (nova versão) ═══ -->
+<div class="gale-overlay" id="overlayGaleria" onclick="if(event.target===this)fecharGaleria()">
+  <div class="gale-modal">
+    <!-- Botão fechar -->
+    <div class="gale-close-btn"><button onclick="fecharGaleria()">✕</button></div>
+    <!-- Header: avatar + info + badges -->
+    <div class="gale-header" id="galeHeader"></div>
+    <!-- Filtro por tags -->
+    <div class="gale-tags-filtro" id="galeTagsFiltro"></div>
+    <!-- Grid de fotos -->
+    <div class="gale-grid" id="galeGrid"></div>
+    <!-- Avaliações -->
+    <div class="gale-avaliacoes-wrap">
+      <div class="gale-avaliacoes-titulo">⭐ Avaliações</div>
+      <div id="galeAvaliacoes"></div>
+      <div id="galeAvForm"></div>
+    </div>
+    <!-- Footer: botão agendar -->
+    <div class="gale-footer">
+      <button class="gale-agendar-btn" id="galeAgendarBtn">
+        ✂️ Agendar com este barbeiro
+      </button>
     </div>
   </div>
 </div>
 
-<!-- ═══ LIGHTBOX ═══ -->
-<div class="port-lightbox" id="portLightbox" onclick="fecharLightbox()">
-  <button class="port-lb-close" onclick="fecharLightbox()">✕</button>
-  <img id="portLightboxImg" src="" alt="Foto do portfólio">
+<!-- ═══ LIGHTBOX GALERIA (com swipe + navegação) ═══ -->
+<div class="gale-lb-overlay" id="galeOverlayLb"
+     ontouchstart="lbTouchStart(event)"
+     ontouchend="lbTouchEnd(event)">
+  <div class="gale-lb-top">
+    <span class="gale-lb-counter" id="galeLbCounter"></span>
+    <button class="gale-lb-close-btn" onclick="fecharLightboxGaleria()">✕</button>
+  </div>
+  <div class="gale-lb-img-wrap">
+    <button class="gale-lb-nav prev" id="galeLbPrev" onclick="navLightbox(-1)">‹</button>
+    <img id="galeLbImg" src="" alt="Foto do corte">
+    <button class="gale-lb-nav next" id="galeLbNext" onclick="navLightbox(1)">›</button>
+  </div>
+  <div class="gale-lb-bottom">
+    <div class="gale-lb-caption-text" id="galeLbCaption"></div>
+    <div class="gale-lb-tags-row" id="galeLbTags"></div>
+    <button class="gale-lb-quero-btn" onclick="queroEsseCorte()">
+      ✂️ Quero esse corte!
+    </button>
+  </div>
+</div>
+
+<!-- Compatibilidade: mantém IDs antigos ocultos para evitar erros de referência -->
+<div id="overlayPortfolio" style="display:none"></div>
+<div id="portLightbox"     style="display:none"></div>
+
+<!-- ═══ MODAL EDITAR TAGS DA FOTO ═══ -->
+<div class="tags-modal-overlay" id="overlayEditarTags">
+  <div class="tags-modal">
+    <div class="tags-modal-titulo">🏷 Tags da Foto</div>
+    <input type="hidden" id="tagsBarbId">
+    <input type="hidden" id="tagsFotoIdx">
+    <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.5rem">Toque nas sugestões ou adicione suas próprias:</div>
+    <div class="tags-sugeridas-grid" id="tagsChips"></div>
+    <input class="form-input" id="tagsAtuaisInput" placeholder="#degradê #barba #navalhado" style="margin:0.5rem 0;font-size:0.82rem" oninput="_sincronizarTagsInput && _sincronizarTagsInput()">
+    <div class="tags-modal-actions">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharEditarTags()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarEditarTags()">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MODAL BLOQUEAR DIA — BARBEIRO ═══ -->
@@ -1279,6 +1351,7 @@
   import './js/historico.js';
   import './js/admin.js';
   import './js/perfil.js';
+  import './js/galeria.js';
   initSite();
 </script>
 
