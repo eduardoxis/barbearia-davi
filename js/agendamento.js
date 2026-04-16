@@ -47,10 +47,19 @@ export function renderBarbeiroGrid() {
       ${renderContadorCortes(b)}
       <div class="barbeiro-horario">⏱ ${b.horarioInicio || '08:00'} – ${b.horarioFim || '18:00'}</div>
       <div style="font-size:0.6rem;color:var(--gray2);margin-top:0.2rem">${slots.length} horários · ${dias}</div>
-      ${temGal ? `<button class="barb-galeria-btn" onclick="event.stopPropagation();abrirGaleriaBarbeiro('${b.id}')">📸 Ver galeria (${b.portfolio.length})</button>` : ''}
+      ${temGal ? `<button class="barb-galeria-btn" data-barb-id="${b.id}">📸 Ver galeria (${b.portfolio.length})</button>` : ''}
       ${sel ? '<div class="barbeiro-check-circle">✓</div>' : ''}
     </div>`;
   }).join('');
+
+  // Delegação de eventos — usa a função importada diretamente (não depende de window.xxx)
+  grid.querySelectorAll('[data-barb-id]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.barbId;
+      if (id) abrirGaleriaBarbeiro(id);
+    });
+  });
 }
 
 /* ══════════════════════════════════════════
