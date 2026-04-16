@@ -1294,7 +1294,7 @@ export async function carregarDashboard() {
   set('kpiTicketVal',   'R$ ' + (pagos.length ? (totalFaturado/pagos.length).toFixed(0) : '0'));
   set('kpiAgendSub', 'nos últimos ' + dias + ' dias');
   set('kpiClientesSub', 'nos últimos ' + dias + ' dias');
-  if (!pagos.length) { ['graficoFaturamento','graficoDias','dashServicos','dashHorarios'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div class="dash-loading">📭 Sem dados no período.</div>'; }); return; }
+  if (!pagos.length) { ['graficoFaturamento','graficoDias','da{hServicos','dashHorarios'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div class="dash-loading">📭 Sem dados no período.</div>'; }); return; }
   // Gráfico de barras simples: dias da semana
   const conts = [0,0,0,0,0,0,0];
   const nomes = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
