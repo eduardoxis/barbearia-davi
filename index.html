@@ -1,1359 +1,1884 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Barbearia do Davi | Luziânia – Vila Guará</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂️</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-           signOut, onAuthStateChanged, updateProfile }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, doc, setDoc, getDoc, collection, addDoc,
-           getDocs, query, where, orderBy }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
-  const firebaseConfig = {
-    apiKey: "AIzaSyDK0bmVX9tTMCLw7fSDBrW-E8D3SK63DaY",
-    authDomain: "barbearia-davi.firebaseapp.com",
-    projectId: "barbearia-davi",
-    storageBucket: "barbearia-davi.firebasestorage.app",
-    messagingSenderId: "327274722401",
-    appId: "1:327274722401:web:f2ddac69ff5d4161716620"
+/* ══════════════════════════════════════════
+   ADMIN.JS — Painel administrativo completo
+   Barbearia do Davi
+══════════════════════════════════════════ */
+
+import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
+import {
+  renderPortfolioAdmin,
+  adicionarFotoPortfolio,
+  removerFotoPortfolio,
+  triggerUploadFoto,
+  onPortFileChange,
+  toggleDestaquePortfolio,
+  atualizarLimitePortfolio,
+  abrirEditarTagsFoto,
+  galeAdmDragStart, galeAdmDragOver, galeAdmDrop, galeAdmDragEnd,
+  incrementarContadorCortes,
+} from './galeria.js';
+import { buscarTodosAgendamentos, buscarAgendamentosDoDia } from '../routes/agendamentos.js';
+import { gerarHorariosBarbeiro } from '../routes/barbeiros.js';
+import { agruparPorCliente, diasDesde, intervaloMedio, rankServicos, salvarObservacao, carregarObservacoes, CRM_INATIVO_DIAS, CRM_VIP_VISITAS } from '../routes/clientes.js';
+
+/* ── Estado calendário de atendimentos ── */
+let atendAno = new Date().getFullYear();
+let atendMes = new Date().getMonth();
+let atendData = '';
+let atendBarbeiroId   = null;
+let atendBarbeiroNome = '';
+
+/* ── Abre/fecha admin ── */
+export function openAdmin(skipLogin = false) {
+  document.getElementById('admin-panel').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  if (skipLogin) {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminDash').style.display = 'block';
+    loadAdminSettings();
+  }
+}
+
+export function closeAdmin() {
+  document.getElementById('admin-panel').classList.remove('show');
+  document.body.style.overflow = '';
+  document.getElementById('adminLogin').style.display = 'block';
+  document.getElementById('adminDash').style.display = 'none';
+  document.getElementById('adminEmail').value = '';
+  document.getElementById('adminPass').value = '';
+  document.getElementById('adminErr').classList.remove('show');
+}
+
+export async function doAdminLogin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass  = document.getElementById('adminPass').value;
+  if (email === 'davibarber@gmail.com' && pass === 'davi4452') {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminDash').style.display  = 'block';
+    await loadAdminSettings();
+  } else {
+    document.getElementById('adminErr').classList.add('show');
+    document.getElementById('adminPass').value = '';
+  }
+}
+
+export function adminLogout() {
+  closeAdmin();
+}
+
+/* ── Carrega configurações ── */
+export async function loadAdminSettings() {
+  let tentativas = 0;
+  while (!window._fb && tentativas < 30) { await new Promise(r => setTimeout(r, 100)); tentativas++; }
+  if (!window._fb) { renderAdminDash(); return; }
+  try {
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
+    if (snap.exists()) {
+      const d = snap.data();
+      const keys = ['shopOpen','workDays','workHours','takenSlots','blockedDates','duracaoPadrao','politicaReembolso','barbeiros','services'];
+      keys.forEach(k => { if (d[k] !== undefined) adminSettings[k] = d[k]; });
+      if (d.slots !== undefined) {
+        const antigos45 = ['08:45','09:30','10:15','13:45'];
+        adminSettings.slots = d.slots.some(s => antigos45.includes(s))
+          ? ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00']
+          : d.slots;
+      }
+    }
+  } catch (e) { console.error('Erro ao carregar config:', e); }
+  if (!adminSettings.duracaoPadrao) adminSettings.duracaoPadrao = 60;
+  adminSettings.services = adminSettings.services.map(s => ({ ...s, time: '1h' }));
+  renderAdminDash();
+  carregarBloqueiosBarb();
+  import('./index.js').then(m => { m.renderGallery(); m.updateCartUI(); });
+  import('./global.js').then(m => m.updateHeroStatus());
+}
+
+/* ── Salva configurações ── */
+export async function saveAdminSettings() {
+  const btn = document.getElementById('globalSaveBtn');
+  try {
+    await window._fb.setDoc(window._fb.doc(window._fb.db, 'settings', 'admin'), {
+      shopOpen: adminSettings.shopOpen, workDays: adminSettings.workDays,
+      workHours: adminSettings.workHours, slots: adminSettings.slots,
+      takenSlots: adminSettings.takenSlots, blockedDates: adminSettings.blockedDates,
+      services: adminSettings.services, duracaoPadrao: adminSettings.duracaoPadrao,
+      politicaReembolso: adminSettings.politicaReembolso, barbeiros: adminSettings.barbeiros,
+    });
+    if (btn) { btn.textContent = '✓ Salvo!'; btn.classList.add('saved'); }
+    showToast('💾 Configurações salvas!');
+    // Backup automático
+    const dados = gerarDadosBackup();
+    salvarBackupFirestore(dados);
+  } catch (e) {
+    showToast('❌ Erro ao salvar: ' + e.message);
+  } finally {
+    setTimeout(() => { if (btn) { btn.textContent = '💾 Salvar tudo'; btn.classList.remove('saved'); } }, 2000);
+  }
+}
+
+function renderAdminDash() {
+  renderAdminDays();
+  renderAdminSlots();
+  renderAdminServices();
+  renderBarbeirosAdmin();
+  updateAdminStats();
+  updateShopStatusUI();
+  renderFuncionamento();
+  renderBlockedDates();
+  import('./global.js').then(m => m.updateHeroStatus());
+}
+
+/* ── Tabs ── */
+export function switchAdmTab(tab) {
+  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram'];
+  document.querySelectorAll('.adm-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
+  document.querySelectorAll('.adm-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('admTab-' + tab)?.classList.add('active');
+  if (tab === 'funcionamento') renderFuncionamento();
+  if (tab === 'dias')          renderBloqueiosBarb();
+  if (tab === 'atendimentos')  { trocarBarbeiro(); }
+  if (tab === 'historico')     trocarBarbeiroHistorico();
+  if (tab === 'backup')        carregarHistoricoBackup();
+  if (tab === 'solicitacoes')  { carregarSolicitacoes(); carregarPoliticaReembolsoForm(); }
+  if (tab === 'dashboard')     carregarDashboard();
+  if (tab === 'barbeiros')     renderBarbeirosAdmin();
+  if (tab === 'clientes')      carregarCRM();
+  if (tab === 'instagram')     renderInstagramTab();
+}
+
+/* ── Stats ── */
+function updateAdminStats() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('stTotalSvc', adminSettings.services.filter(s => !s.hidden).length);
+  set('stWorkDays', adminSettings.workDays.length);
+  set('stSlots',    adminSettings.slots.length);
+  set('stBlocked',  adminSettings.takenSlots.length);
+}
+
+/* ── Status ── */
+export function toggleShopStatus() {
+  adminSettings.shopOpen = document.getElementById('shopOpenToggle').checked;
+  updateShopStatusUI();
+  import('./global.js').then(m => m.updateHeroStatus());
+  showToast(adminSettings.shopOpen ? '🟢 ABERTA' : '⚫ FECHADA');
+}
+
+function updateShopStatusUI() {
+  const open = adminSettings.shopOpen;
+  const toggle = document.getElementById('shopOpenToggle');
+  if (toggle) toggle.checked = open;
+  const title = document.getElementById('statusToggleTitle');
+  const sub   = document.getElementById('statusToggleSub');
+  if (title) title.textContent = open ? '🟢 Aberto Agora' : '⚫ Fechado no Momento';
+  if (sub)   sub.textContent   = open ? 'A barbearia está recebendo clientes' : 'A barbearia está fechada';
+}
+
+/* ── Funcionamento ── */
+function renderFuncionamento() {
+  const grid = document.getElementById('funcionamentoGrid');
+  if (!grid) return;
+  grid.className = 'func-grid'; grid.innerHTML = '';
+  DAYS_FULL.forEach((name, i) => {
+    const isActive = adminSettings.workDays.includes(i);
+    const h = adminSettings.workHours[i] || { open:'08:00', close:'18:00' };
+    const row = document.createElement('div');
+    row.className = 'func-row' + (isActive ? ' active-day' : ' inactive-day');
+    row.innerHTML = `<div class="func-day-info">
+      <div class="func-day-name">${name}</div>
+      <div class="func-day-status ${isActive?'open':'closed'}">${isActive?'✓ Ativo':'✕ Fechado'}</div>
+    </div>
+    <div>${isActive ? `<div class="func-times">
+      <div class="func-time-group"><span class="func-time-label">Abre às</span>
+        <input class="func-time-input" type="time" value="${h.open}" onchange="updateWorkHour(${i},'open',this.value)"></div>
+      <span class="func-time-sep">→</span>
+      <div class="func-time-group"><span class="func-time-label">Fecha às</span>
+        <input class="func-time-input" type="time" value="${h.close}" onchange="updateWorkHour(${i},'close',this.value)"></div>
+    </div>` : `<span style="font-size:0.8rem;color:var(--gray2);font-style:italic">Ative na aba Dias</span>`}</div>`;
+    grid.appendChild(row);
+  });
+}
+
+export function updateWorkHour(dayIndex, field, value) {
+  if (!adminSettings.workHours[dayIndex]) adminSettings.workHours[dayIndex] = { open:'08:00', close:'18:00' };
+  adminSettings.workHours[dayIndex][field] = value;
+}
+
+/* ── Dias ── */
+function renderAdminDays() {
+  const grid = document.getElementById('adminDaysGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  DAYS_FULL.forEach((name, i) => {
+    const on = adminSettings.workDays.includes(i);
+    const card = document.createElement('div');
+    card.className = 'day-big-card' + (on ? ' on' : '');
+    card.innerHTML = `<span class="day-abbr">${DAYS_SHORT_PT[i]}</span><span class="day-name">${name}</span><div class="day-dot"></div>`;
+    card.onclick = () => {
+      if (adminSettings.workDays.includes(i)) adminSettings.workDays = adminSettings.workDays.filter(x => x !== i);
+      else adminSettings.workDays.push(i);
+      card.classList.toggle('on', adminSettings.workDays.includes(i));
+      updateAdminStats();
+      if (document.getElementById('admTab-funcionamento')?.classList.contains('active')) renderFuncionamento();
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ── Blocked Dates ── */
+function renderBlockedDates() {
+  const list  = document.getElementById('blockedDatesList');
+  const empty = document.getElementById('blockedDatesEmpty');
+  if (!list) return;
+  list.innerHTML = '';
+  const bd = adminSettings.blockedDates;
+  if (empty) empty.style.display = bd.length ? 'none' : 'block';
+  [...bd].sort((a, b) => {
+    const pa = a.date.split('/'), pb = b.date.split('/');
+    return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
+  }).forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'blocked-date-item';
+    const parts = item.date.split('/');
+    const dt = new Date(parts[2], parts[1]-1, parts[0]);
+    const dayNames   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const friendly = dayNames[dt.getDay()] + ', ' + parts[0] + ' ' + monthNames[dt.getMonth()] + ' ' + parts[2];
+    row.innerHTML = `<div class="blocked-date-info">
+      <span class="blocked-date-tag">🔒 ${friendly}</span>
+      <span class="blocked-date-reason">${item.reason ? '📝 '+item.reason : '<em style="color:var(--gray2)">Sem motivo</em>'}</span>
+    </div>
+    <button class="blocked-date-del" onclick="removeBlockedDate('${item.date}')">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+export function openAddBlockedDate() {
+  document.getElementById('blockedDateErr').classList.remove('show');
+  document.getElementById('blockedDateReason').value = '';
+  document.getElementById('blockedDateInput').min = new Date().toISOString().split('T')[0];
+  document.getElementById('blockedDateInput').value = '';
+  document.getElementById('addBlockedDateOverlay').classList.add('show');
+}
+export function closeAddBlockedDate() { document.getElementById('addBlockedDateOverlay').classList.remove('show'); }
+export function confirmAddBlockedDate() {
+  const raw    = document.getElementById('blockedDateInput').value;
+  const reason = document.getElementById('blockedDateReason').value.trim();
+  if (!raw) { document.getElementById('blockedDateErr').textContent='Escolha uma data.'; document.getElementById('blockedDateErr').classList.add('show'); return; }
+  const [y,m,d] = raw.split('-');
+  const ds = d+'/'+m+'/'+y;
+  if (adminSettings.blockedDates.find(b => b.date === ds)) {
+    document.getElementById('blockedDateErr').textContent='Esta data já está bloqueada.'; document.getElementById('blockedDateErr').classList.add('show'); return;
+  }
+  adminSettings.blockedDates.push({ date: ds, reason });
+  renderBlockedDates(); closeAddBlockedDate(); showToast('🔒 ' + ds + ' bloqueado!');
+}
+export function removeBlockedDate(ds) {
+  adminSettings.blockedDates = adminSettings.blockedDates.filter(b => b.date !== ds);
+  renderBlockedDates(); showToast('✓ Bloqueio de ' + ds + ' removido.');
+}
+
+/* ── Slots ── */
+function renderAdminSlots() {
+  const grid = document.getElementById('adminSlotsGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const dur = adminSettings.duracaoPadrao || 60;
+  const durLabel = dur >= 60 ? (dur === 60 ? '1h' : (dur/60).toFixed(1).replace('.0','')+'h') : dur+'min';
+  const sel = document.getElementById('selectDuracaoPadrao');
+  if (sel) sel.value = String(dur);
+  const labelEl = document.getElementById('labelDuracaoAtual');
+  if (labelEl) labelEl.textContent = durLabel + ' (' + dur + ' min)';
+  [...adminSettings.slots].sort().forEach(slot => {
+    const blocked = adminSettings.takenSlots.includes(slot);
+    const card = document.createElement('div');
+    card.className = 'slot-manage-card' + (blocked ? ' blocked' : '');
+    card.innerHTML = `<span class="slot-time">${slot}</span>
+      <span style="font-size:0.58rem;color:var(--gray2)">⏱ ${durLabel}</span>
+      <span class="slot-status-badge ${blocked?'blocked':'ok'}">${blocked?'🔴 Bloqueado':'🟢 Livre'}</span>
+      <div class="slot-actions">
+        <button class="slot-toggle-btn" onclick="toggleSlot('${slot}',this)">${blocked?'Liberar':'Bloquear'}</button>
+        <button class="slot-del-btn" onclick="deleteSlot('${slot}')">✕</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  updateAdminStats();
+}
+
+export function aplicarDuracaoPadrao() {
+  const novasDuracao = parseInt(document.getElementById('selectDuracaoPadrao')?.value);
+  adminSettings.duracaoPadrao = novasDuracao;
+  const todosSlots = new Set();
+  adminSettings.workDays.forEach(dia => {
+    const h = adminSettings.workHours[dia] || { open:'08:00', close:'18:00' };
+    const [hI, mI] = h.open.split(':').map(Number);
+    const [hF, mF] = h.close.split(':').map(Number);
+    let t = hI * 60 + mI;
+    const fim = hF * 60 + mF;
+    while (t + novasDuracao <= fim) {
+      todosSlots.add(String(Math.floor(t/60)).padStart(2,'0') + ':' + String(t%60).padStart(2,'0'));
+      t += novasDuracao;
+    }
+  });
+  if (todosSlots.size > 0) {
+    adminSettings.slots = [...todosSlots].sort();
+    adminSettings.takenSlots = adminSettings.takenSlots.filter(s => adminSettings.slots.includes(s));
+  }
+  renderAdminSlots();
+  showToast('⏱ ' + novasDuracao + ' min → ' + adminSettings.slots.length + ' horários. Clique em Salvar tudo.');
+}
+
+export function toggleSlot(slot, btn) {
+  const card  = btn.closest('.slot-manage-card');
+  const badge = card.querySelector('.slot-status-badge');
+  if (adminSettings.takenSlots.includes(slot)) {
+    adminSettings.takenSlots = adminSettings.takenSlots.filter(s => s !== slot);
+    card.classList.remove('blocked'); badge.className = 'slot-status-badge ok'; badge.textContent = '🟢 Livre'; btn.textContent = 'Bloquear';
+  } else {
+    adminSettings.takenSlots.push(slot);
+    card.classList.add('blocked'); badge.className = 'slot-status-badge blocked'; badge.textContent = '🔴 Bloqueado'; btn.textContent = 'Liberar';
+  }
+  updateAdminStats();
+}
+export function deleteSlot(slot) {
+  if (!confirm('Remover ' + slot + '?')) return;
+  adminSettings.slots = adminSettings.slots.filter(s => s !== slot);
+  adminSettings.takenSlots = adminSettings.takenSlots.filter(s => s !== slot);
+  renderAdminSlots(); showToast('🗑 ' + slot + ' removido.');
+}
+export function openAddSlotModal()  { document.getElementById('slotErr').classList.remove('show'); document.getElementById('addSlotOverlay').classList.add('show'); }
+export function closeAddSlotModal() { document.getElementById('addSlotOverlay').classList.remove('show'); }
+export function confirmAddSlot() {
+  const v = document.getElementById('newSlotInput').value;
+  if (!v) return;
+  if (adminSettings.slots.includes(v)) { document.getElementById('slotErr').classList.add('show'); return; }
+  adminSettings.slots.push(v); renderAdminSlots(); closeAddSlotModal(); showToast('✓ ' + v + ' adicionado!');
+}
+
+/* ── Serviços ── */
+function renderAdminServices() {
+  const list = document.getElementById('adminServicesList');
+  if (!list) return;
+  list.innerHTML = '';
+  adminSettings.services.forEach(svc => {
+    const row = document.createElement('div');
+    row.className = 'svc-editor-card' + (svc.hidden ? ' hidden-svc' : '');
+    const iconHtml = svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))
+      ? `<img src="${svc.icon}" class="svc-ed-icon-img" alt="${svc.name}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+        + `<div class="svc-ed-icon" style="display:none">✂️</div>`
+      : `<div class="svc-ed-icon">${svc.icon || '✂️'}</div>`;
+    row.innerHTML = `${iconHtml}
+      <div class="svc-ed-info">
+        <div class="svc-ed-name">${svc.name}</div>
+        <div class="svc-ed-desc">${svc.desc || '—'}</div>
+        <div class="svc-ed-meta">
+          <span class="svc-ed-tag svc-ed-price">R$ ${svc.price}</span>
+          <span class="svc-ed-tag svc-ed-time">⏱ ${svc.time}</span>
+        </div>
+      </div>
+      <div class="svc-ed-actions">
+        <button class="svc-ed-btn" onclick="openEditSvcModal('${svc.id}')">✏ Editar</button>
+        <button class="svc-ed-btn" onclick="toggleSvcVis('${svc.id}')">${svc.hidden?'👁 Mostrar':'🙈 Ocultar'}</button>
+        <button class="svc-ed-btn" onclick="deleteSvc('${svc.id}')">✕</button>
+      </div>`;
+    list.appendChild(row);
+  });
+  updateAdminStats();
+}
+
+export function toggleSvcVis(id) {
+  const svc = adminSettings.services.find(s => s.id === id); if (!svc) return;
+  svc.hidden = !svc.hidden; renderAdminServices();
+  import('./index.js').then(m => m.renderGallery());
+  showToast(svc.hidden ? '🙈 Ocultado' : '👁 Visível');
+}
+export function deleteSvc(id) {
+  const svc = adminSettings.services.find(s => s.id === id);
+  if (!svc || !confirm('Remover "' + svc.name + '"?')) return;
+  adminSettings.services = adminSettings.services.filter(s => s.id !== id);
+  renderAdminServices(); import('./index.js').then(m => m.renderGallery()); showToast('🗑 Removido.');
+}
+
+let editingSvcId   = null;
+let _svcFotoFile   = null;   // File selecionado (ainda não enviado)
+let _svcFotoObjUrl = null;   // URL.createObjectURL para preview
+let _svcFotoUrl    = null;   // URL final (Firebase Storage ou existente)
+
+/* ─── Redimensionamento de imagem via Canvas ─── */
+async function resizeImage(file, maxPx) {
+  return new Promise((resolve) => {
+    if (!maxPx || maxPx === 0) { resolve(file); return; }
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= maxPx && h <= maxPx) { resolve(file); return; }
+      const scale  = Math.min(maxPx / w, maxPx / h);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      canvas.toBlob(blob => {
+        const resized = new File([blob], file.name, { type: mimeType });
+        resolve(resized);
+      }, mimeType, 0.88);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
+    img.src = objUrl;
+  });
+}
+
+/* ─── Seleção de foto ─── */
+export function svcFotoSelecionada(input) {
+  const file = input.files && input.files[0];
+  document.getElementById('svcFotoErr').classList.remove('show');
+  if (!file) return;
+  if (!['image/jpeg','image/png'].includes(file.type)) {
+    document.getElementById('svcFotoErr').classList.add('show');
+    input.value = '';
+    return;
+  }
+  // Revoga objectURL anterior para liberar memória
+  if (_svcFotoObjUrl) URL.revokeObjectURL(_svcFotoObjUrl);
+  _svcFotoFile   = file;
+  _svcFotoObjUrl = URL.createObjectURL(file);
+  _svcFotoUrl    = null; // será definido após upload
+  _svcMostrarPreview(_svcFotoObjUrl);
+  // Mostrar seletor de tamanho
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'flex';
+}
+
+export function removerFotoSvc() {
+  if (_svcFotoObjUrl) URL.revokeObjectURL(_svcFotoObjUrl);
+  _svcFotoFile   = null;
+  _svcFotoObjUrl = null;
+  _svcFotoUrl    = null;
+  document.getElementById('svcFotoInput').value = '';
+  document.getElementById('svcFotoPreview').style.display  = 'none';
+  document.getElementById('svcFotoPreview').src            = '';
+  document.getElementById('svcFotoPlaceholder').style.display = 'flex';
+  document.getElementById('svcFotoAcoes').style.display    = 'none';
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'none';
+}
+
+function _svcMostrarPreview(src) {
+  const img  = document.getElementById('svcFotoPreview');
+  img.src    = src;
+  img.style.display = 'block';
+  document.getElementById('svcFotoPlaceholder').style.display = 'none';
+  document.getElementById('svcFotoAcoes').style.display       = 'flex';
+}
+
+function _svcResetFoto() {
+  if (_svcFotoObjUrl) URL.revokeObjectURL(_svcFotoObjUrl);
+  _svcFotoFile   = null;
+  _svcFotoObjUrl = null;
+  _svcFotoUrl    = null;
+  const inp = document.getElementById('svcFotoInput');
+  if (inp) inp.value = '';
+  const img = document.getElementById('svcFotoPreview');
+  if (img) { img.style.display = 'none'; img.src = ''; }
+  const ph = document.getElementById('svcFotoPlaceholder');
+  if (ph) ph.style.display = 'flex';
+  const ac = document.getElementById('svcFotoAcoes');
+  if (ac) ac.style.display = 'none';
+  const rw = document.getElementById('svcFotoResizeWrap');
+  if (rw) rw.style.display = 'none';
+  const err = document.getElementById('svcFotoErr');
+  if (err) err.classList.remove('show');
+}
+
+export function openAddSvcModal() {
+  editingSvcId = null;
+  document.getElementById('svcModalTitle').textContent = '+ Novo Serviço';
+  ['svcIcon','svcName','svcDesc','svcTime'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('svcTime').value  = '30min';
+  document.getElementById('svcPrice').value = '';
+  document.getElementById('svcErr').classList.remove('show');
+  _svcResetFoto();
+  document.getElementById('addSvcOverlay').classList.add('show');
+}
+
+export function openEditSvcModal(id) {
+  editingSvcId = id;
+  const svc = adminSettings.services.find(s => s.id === id); if (!svc) return;
+  document.getElementById('svcModalTitle').textContent = '✏ Editar Serviço';
+  document.getElementById('svcIcon').value  = svc.icon || '';
+  document.getElementById('svcName').value  = svc.name;
+  document.getElementById('svcDesc').value  = svc.desc || '';
+  document.getElementById('svcPrice').value = svc.price;
+  document.getElementById('svcTime').value  = svc.time;
+  document.getElementById('svcErr').classList.remove('show');
+  _svcResetFoto();
+  // Se o serviço já tem foto, exibir preview
+  if (svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))) {
+    _svcFotoUrl = svc.icon;
+    _svcMostrarPreview(svc.icon);
+  }
+  document.getElementById('addSvcOverlay').classList.add('show');
+}
+
+export function closeAddSvcModal() { document.getElementById('addSvcOverlay').classList.remove('show'); }
+
+export async function confirmSaveService() {
+  const name  = document.getElementById('svcName').value.trim();
+  const price = parseFloat(document.getElementById('svcPrice').value);
+  if (!name || isNaN(price)) { document.getElementById('svcErr').classList.add('show'); return; }
+  document.getElementById('svcErr').classList.remove('show');
+
+  const desc = document.getElementById('svcDesc').value.trim();
+  const time = document.getElementById('svcTime').value.trim() || '30min';
+
+  // ── Upload de foto se houver arquivo novo ──
+  let icon = _svcFotoUrl || document.getElementById('svcIcon').value || '✂️';
+  if (_svcFotoFile) {
+    const loading   = document.getElementById('svcFotoLoading');
+    const btn       = document.getElementById('svcSalvarBtn');
+    const uploadErr = document.getElementById('svcFotoUploadErr');
+    if (uploadErr) { uploadErr.textContent = ''; uploadErr.classList.remove('show'); }
+    if (loading) loading.style.display = 'flex';
+    if (btn)     btn.disabled = true;
+    try {
+      // Redimensionar antes do upload (800px para garantir tamanho menor)
+      const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '800') || 800;
+      const arquivo = await resizeImage(_svcFotoFile, maxPx);
+
+      // Tentar Firebase Storage primeiro
+      let uploadOk = false;
+      const fb = window._fb;
+      if (fb?.storage) {
+        try {
+          const svcId  = editingSvcId || ('svc_' + Date.now());
+          const ext    = arquivo.type === 'image/png' ? 'png' : 'jpg';
+          const path   = `servicos/${svcId}.${ext}`;
+          const ref    = fb.storageRef(fb.storage, path);
+          const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          );
+          await Promise.race([uploadPromise, timeoutPromise]);
+          icon      = await fb.getDownloadURL(ref);
+          uploadOk  = true;
+        } catch(storageErr) {
+          console.warn('Firebase Storage falhou, usando base64:', storageErr.code || storageErr.message);
+        }
+      }
+
+      // Fallback: salvar como base64 direto no Firestore
+      if (!uploadOk) {
+        icon = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = e => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+          reader.readAsDataURL(arquivo);
+        });
+      }
+
+      _svcFotoUrl  = icon;
+      _svcFotoFile = null;
+    } catch(err) {
+      console.error('Erro ao processar foto:', err);
+      if (uploadErr) { uploadErr.textContent = '⚠ ' + (err.message || 'Erro ao processar foto.'); uploadErr.classList.add('show'); }
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (btn)     btn.disabled = false;
+    }
+  }
+
+  if (editingSvcId) {
+    const svc = adminSettings.services.find(s => s.id === editingSvcId);
+    if (svc) Object.assign(svc, { icon, name, desc, price, time });
+  } else {
+    adminSettings.services.push({ id:'svc_'+Date.now(), name, desc, price, time, icon, bg:'gi-corte', hidden:false });
+  }
+  closeAddSvcModal(); renderAdminServices(); import('./index.js').then(m => m.renderGallery());
+  await saveAdminSettings();
+}
+
+/* ── Barbeiros Admin ── */
+let _barbEmojiSelecionado = '💈';
+
+export function renderBarbeirosAdmin() {
+  const lista = document.getElementById('listaBarbeirosAdmin');
+  if (!lista) return;
+  const barbs = adminSettings.barbeiros || [];
+  if (!barbs.length) { lista.innerHTML = '<div class="atend-sem-data">Nenhum barbeiro cadastrado.</div>'; return; }
+  lista.innerHTML = barbs.map(b => {
+    const dias  = (b.diasAtendimento||[]).map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ');
+    const slots = gerarHorariosBarbeiro(b);
+    const fotoHtml = b.foto ? `<img src="${b.foto}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${b.emoji||'💈'}'">` : (b.emoji||'💈');
+    return `<div class="barb-editor-card${b.ativo===false?' inativo':''}">
+      <div class="barb-ed-foto">${fotoHtml}</div>
+      <div class="barb-ed-info">
+        <div class="barb-ed-nome">${b.nome} <span class="barbeiro-status-badge ${b.ativo!==false?'ativo':'inativo'}">${b.ativo!==false?'Ativo':'Inativo'}</span></div>
+        <div class="barb-ed-detalhe">${b.especialidade||''} · ${b.horarioInicio}–${b.horarioFim} · ${slots.length} horários · ${dias}</div>
+        <div class="barb-ed-detalhe" style="margin-top:0.15rem;color:var(--gray2)">${b.takenSlots?.length||0} ocupados</div>
+      </div>
+      <div class="barb-ed-acoes">
+        <button class="svc-ed-btn" onclick="abrirModalBarbeiro('${b.id}')">✏ Editar</button>
+        <button class="svc-ed-btn" onclick="toggleAtivoBarbeiro('${b.id}')">${b.ativo!==false?'⏸ Desativar':'▶ Ativar'}</button>
+        <button class="svc-ed-btn" onclick="excluirBarbeiro('${b.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+export function abrirModalBarbeiro(id) {
+  const barb = id ? (adminSettings.barbeiros||[]).find(b=>b.id===id) : null;
+  document.getElementById('tituloModalBarbeiro').textContent = barb ? '✏ Editar Barbeiro' : '+ Novo Barbeiro';
+  document.getElementById('barbIdEditando').value = id || '';
+  document.getElementById('barbNome').value = barb?.nome || '';
+  document.getElementById('barbEsp').value  = barb?.especialidade || '';
+  document.getElementById('barbFotoUrl').value = barb?.foto || '';
+  document.getElementById('barbHorarioInicio').value = barb?.horarioInicio || '08:00';
+  document.getElementById('barbHorarioFim').value    = barb?.horarioFim || '18:00';
+  document.getElementById('barbIntervalo').value     = String(barb?.intervalo || 60);
+  document.getElementById('barbAtivo').value = String(barb?.ativo !== false);
+  // Bio
+  const bioEl = document.getElementById('barbBio');
+  if (bioEl) bioEl.value = barb?.bio || '';
+  _barbEmojiSelecionado = barb?.emoji || '💈';
+  const diasAtivos = barb?.diasAtendimento || [1,2,3,4,5,6];
+  document.querySelectorAll('#barbDiasGrid .barb-dia-btn').forEach(btn => {
+    btn.classList.toggle('on', diasAtivos.includes(parseInt(btn.dataset.dia)));
+  });
+  atualizarPreviewFoto(barb?.foto || '');
+  document.getElementById('erroBarbeiro')?.classList.remove('show');
+  // Portfólio
+  renderPortfolioAdmin(id);
+  document.getElementById('overlayModalBarbeiro').classList.add('show');
+}
+export function fecharModalBarbeiro() { document.getElementById('overlayModalBarbeiro').classList.remove('show'); }
+export function atualizarPreviewFoto(url) {
+  const prev = document.getElementById('barb-foto-preview');
+  if (!prev) return;
+  prev.innerHTML = url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${_barbEmojiSelecionado}'">` : _barbEmojiSelecionado;
+}
+export function selecionarEmoji(btn, emoji) {
+  _barbEmojiSelecionado = emoji;
+  if (!document.getElementById('barbFotoUrl')?.value) {
+    const prev = document.getElementById('barb-foto-preview');
+    if (prev) prev.textContent = emoji;
+  }
+}
+export function toggleDiaBarb(btn) { btn.classList.toggle('on'); }
+export async function confirmarSalvarBarbeiro() {
+  const nome = document.getElementById('barbNome')?.value.trim();
+  if (!nome) { document.getElementById('erroBarbeiro').classList.add('show'); return; }
+  document.getElementById('erroBarbeiro').classList.remove('show');
+  const id = document.getElementById('barbIdEditando').value || 'barb_' + Date.now();
+  const existente = (adminSettings.barbeiros||[]).find(b=>b.id===id);
+  const barbeiro = {
+    id, nome,
+    foto:            document.getElementById('barbFotoUrl')?.value.trim() || '',
+    emoji:           _barbEmojiSelecionado,
+    especialidade:   document.getElementById('barbEsp')?.value.trim() || '',
+    bio:             document.getElementById('barbBio')?.value.trim() || '',
+    portfolio:       existente?.portfolio || [],
+    limitePortfolio: existente?.limitePortfolio || 20,
+    totalCortes:     existente?.totalCortes || 0,
+    avaliacoes:      existente?.avaliacoes || [],
+    diasAtendimento: [...document.querySelectorAll('#barbDiasGrid .barb-dia-btn.on')].map(b => parseInt(b.dataset.dia)),
+    horarioInicio:   document.getElementById('barbHorarioInicio')?.value || '08:00',
+    horarioFim:      document.getElementById('barbHorarioFim')?.value || '18:00',
+    intervalo:       parseInt(document.getElementById('barbIntervalo')?.value || '60'),
+    ativo:           document.getElementById('barbAtivo')?.value === 'true',
+    takenSlots:      existente?.takenSlots || [],
   };
-  const app     = initializeApp(firebaseConfig);
-  const auth    = getAuth(app);
-  const db      = getFirestore(app);
-  const storage = getStorage(app);
-  window._fb = {
-    auth, db, storage,
-    createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    signOut, onAuthStateChanged, updateProfile,
-    doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy,
-    storageRef, uploadBytes, getDownloadURL
+  if (!adminSettings.barbeiros) adminSettings.barbeiros = [];
+  const idx = adminSettings.barbeiros.findIndex(b => b.id === id);
+  if (idx >= 0) adminSettings.barbeiros[idx] = barbeiro; else adminSettings.barbeiros.push(barbeiro);
+  fecharModalBarbeiro(); renderBarbeirosAdmin();
+  import('./agendamento.js').then(m => m.renderBarbeiroGrid());
+  await saveAdminSettings();
+}
+export function toggleAtivoBarbeiro(id) {
+  const b = (adminSettings.barbeiros||[]).find(x=>x.id===id); if (!b) return;
+  b.ativo = !b.ativo; renderBarbeirosAdmin(); showToast(b.ativo ? '▶ Ativado!' : '⏸ Desativado!');
+}
+export function excluirBarbeiro(id) {
+  const b = (adminSettings.barbeiros||[]).find(x=>x.id===id);
+  if (!b || !confirm('Excluir "' + b.nome + '"?')) return;
+  adminSettings.barbeiros = adminSettings.barbeiros.filter(x=>x.id!==id);
+  renderBarbeirosAdmin(); showToast('🗑 Barbeiro excluído.');
+}
+
+/* ── Atendimentos do dia ── */
+function renderAtendBarbeiros() {
+  const grid = document.getElementById('atendBarbeirosGrid');
+  if (!grid) return;
+  const ativos = (adminSettings.barbeiros || []).filter(b => b.ativo !== false);
+  grid.innerHTML = '';
+  if (!ativos.length) {
+    grid.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;padding:1rem">Nenhum barbeiro ativo cadastrado.</div>';
+    return;
+  }
+  ativos.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'atend-barb-card' + (atendBarbeiroId === b.id ? ' selecionado' : '');
+    card.innerHTML = `<div class="atend-barb-emoji">${b.foto || b.emoji || '💈'}</div><div class="atend-barb-nome">${b.nome}</div>`;
+    card.onclick = () => selecionarBarbeiro(b.id, b.nome);
+    grid.appendChild(card);
+  });
+}
+
+function selecionarBarbeiro(id, nome) {
+  atendBarbeiroId   = id;
+  atendBarbeiroNome = nome;
+  atendData         = '';
+  document.getElementById('atendBarbeiroStep').style.display = 'none';
+  document.getElementById('atendCalStep').style.display      = 'block';
+  const label = document.getElementById('atendBarbeiroNomeLabel');
+  if (label) label.textContent = '💈 ' + nome;
+  document.getElementById('atendDataTitulo').textContent = 'Selecione uma data';
+  document.getElementById('atendLista').innerHTML = '';
+  renderAtendCal();
+}
+
+export function trocarBarbeiro() {
+  atendBarbeiroId   = null;
+  atendBarbeiroNome = '';
+  atendData         = '';
+  document.getElementById('atendCalStep').style.display      = 'none';
+  document.getElementById('atendBarbeiroStep').style.display = 'block';
+  renderAtendBarbeiros();
+}
+
+function renderAtendCal() {
+  const labelEl = document.getElementById('atendCalLabel');
+  if (labelEl) labelEl.textContent = MONTHS_PT[atendMes] + ' ' + atendAno;
+  const grid = document.getElementById('atendCalGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  DAYS_SHORT_PT.forEach(d => { const el = document.createElement('div'); el.className = 'cal-day-label'; el.textContent = d; grid.appendChild(el); });
+  const firstDay    = new Date(atendAno, atendMes, 1).getDay();
+  const daysInMonth = new Date(atendAno, atendMes+1, 0).getDate();
+  for (let i = 0; i < firstDay; i++) { const el = document.createElement('div'); el.className = 'cal-day empty'; grid.appendChild(el); }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const ds = d.toString().padStart(2,'0') + '/' + (atendMes+1).toString().padStart(2,'0') + '/' + atendAno;
+    const ehHoje = new Date(atendAno,atendMes,d).toDateString() === new Date().toDateString();
+    el.className = 'cal-day' + (ehHoje ? ' today' : '');
+    el.textContent = d; el.style.cursor = 'pointer';
+    if (atendData === ds) el.classList.add('selected');
+    el.onclick = () => { document.querySelectorAll('#atendCalGrid .cal-day').forEach(d=>d.classList.remove('selected')); el.classList.add('selected'); atendData = ds; carregarAtendimentosDoDia(ds); };
+    grid.appendChild(el);
+  }
+}
+export function prevMonthAtend() { atendMes--; if(atendMes<0){atendMes=11;atendAno--;} renderAtendCal(); }
+export function nextMonthAtend() { atendMes++; if(atendMes>11){atendMes=0;atendAno++;} renderAtendCal(); }
+
+async function carregarAtendimentosDoDia(data) {
+  document.getElementById('atendDataTitulo').textContent = 'Atendimentos — ' + data;
+  const lista = document.getElementById('atendLista');
+  lista.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray)">Carregando...</div>';
+  const todos = await buscarAgendamentosDoDia(data);
+  const agendamentos = atendBarbeiroId
+    ? todos.filter(a => a.barbeiroId === atendBarbeiroId)
+    : todos;
+  lista.innerHTML = '';
+  if (!agendamentos.length && atendBarbeiroId) {
+    lista.innerHTML = `<div class="atend-sem-data">Nenhum atendimento para ${atendBarbeiroNome} neste dia.</div>`;
+    return;
+  }
+  const dur = adminSettings.duracaoPadrao || 60;
+  const durLabel = dur >= 60 ? (dur===60?'1h':(dur/60).toFixed(1).replace('.0','')+'h') : dur+'min';
+
+  /* Barbeiro ativo: usar os slots do próprio barbeiro se disponível */
+  let slots = adminSettings.slots || [];
+  if (atendBarbeiroId) {
+    const barb = (adminSettings.barbeiros||[]).find(b => b.id === atendBarbeiroId);
+    if (barb && barb.slots && barb.slots.length) slots = barb.slots;
+  }
+
+  [...slots].sort().forEach(horario => {
+    const bloqueado = adminSettings.takenSlots.includes(horario);
+    const reserva   = agendamentos.find(a => a.horario === horario);
+    const card = document.createElement('div');
+    const base = `<div><div class="atend-hora">${horario}</div><div class="atend-duracao">⏱ ${durLabel}</div>`;
+    if (bloqueado) {
+      card.className = 'card-atendimento bloqueado';
+      card.innerHTML = base + '<span class="atend-badge bloqueado">🔴 Bloqueado</span></div><div class="atend-info"><div class="atend-livre-msg">Horário bloqueado</div></div>';
+    } else if (reserva) {
+      const svcs = (reserva.servicos||'').split(', ').map(s=>`<span class="service-tag">${s}</span>`).join('');
+      const jaRealizado = reserva.realizado === true;
+      card.className = 'card-atendimento ' + (jaRealizado ? 'realizado' : 'reservado');
+      const btnReal = jaRealizado
+        ? '<button class="atend-btn-realizado done" disabled>✓ Realizado</button>'
+        : `<button class="atend-btn-realizado" onclick="marcarAtendimentoRealizado('${reserva.id || ''}','${atendBarbeiroId}',this)">✓ Concluir</button>`;
+      card.innerHTML = base + '<span class="atend-badge ' + (jaRealizado ? 'realizado' : 'reservado') + '">' + (jaRealizado ? '✅ Realizado' : '🟠 Reservado') + '</span></div><div class="atend-info"><div class="atend-cliente-nome">👤 '+(reserva.cliente||'—')+'</div><div class="atend-cliente-tel">📱 '+(reserva.telefone||reserva.whatsapp||'—')+'</div><div class="atend-servicos">'+svcs+'</div><div class="atend-total">R$ '+(reserva.total||'—')+'</div>' + btnReal + '</div>';
+    } else {
+      card.className = 'card-atendimento livre';
+      card.innerHTML = base + '<span class="atend-badge livre">🟢 Livre</span></div><div class="atend-info"><div class="atend-livre-msg">Disponível</div></div>';
+    }
+    lista.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════════════════
+   INSTAGRAM STORIES
+══════════════════════════════════════════ */
+
+/* Inicializa a aba com data de hoje e lista de barbeiros */
+function renderInstagramTab() {
+  const dataInput = document.getElementById('instaData');
+  if (dataInput && !dataInput.value) {
+    const hoje = new Date();
+    dataInput.value = hoje.toISOString().split('T')[0];
+  }
+  const sel = document.getElementById('instaBarbeiro');
+  if (sel) {
+    sel.innerHTML = '<option value="todos">Todos os barbeiros</option>';
+    (adminSettings.barbeiros || []).filter(b => b.ativo !== false).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id; opt.textContent = b.nome;
+      sel.appendChild(opt);
+    });
+  }
+  // Mostrar botão compartilhar apenas se suportado
+  const btnComp = document.getElementById('btnCompartilhar');
+  if (btnComp) btnComp.style.display = !!navigator.share ? 'block' : 'none';
+}
+
+/* Retorna os slots livres para um barbeiro numa data (async, consulta Firestore) */
+async function obterSlotsDoBarbeiro(barbeiroId, dataStr) {
+  let slots = [];
+  if (barbeiroId === 'todos') {
+    slots = [...(adminSettings.slots || [])];
+  } else {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === barbeiroId);
+    slots = barb && barb.slots && barb.slots.length ? [...barb.slots] : [...(adminSettings.slots || [])];
+  }
+  // Buscar agendamentos do dia para filtrar ocupados
+  let ocupados = [];
+  try {
+    const ags = await buscarAgendamentosDoDia(dataStr);
+    ocupados = ags
+      .filter(a => barbeiroId === 'todos' || a.barbeiroId === barbeiroId)
+      .map(a => a.horario);
+  } catch (_) {}
+  const bloqueados = adminSettings.takenSlots || [];
+  return slots.filter(s => !ocupados.includes(s) && !bloqueados.includes(s)).sort();
+}
+
+/* Converte "2025-04-11" → "11 de abril de 2025" */
+function formatarDataPtBR(iso) {
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} de ${meses[m-1]} de ${y}`;
+}
+
+/* Função principal — gera o canvas */
+export async function gerarStory() {
+  const dataVal    = document.getElementById('instaData')?.value;
+  const barbeiroId = document.getElementById('instaBarbeiro')?.value || 'todos';
+  const promoTxt   = (document.getElementById('instaPromo')?.value || '').trim();
+
+  if (!dataVal) { showToast('⚠ Selecione uma data'); return; }
+
+  showToast('⏳ Gerando Story...');
+
+  // Coletar dados
+  let dadosBarbeiros = [];
+  if (barbeiroId === 'todos') {
+    const ativos = (adminSettings.barbeiros || []).filter(b => b.ativo !== false);
+    for (const b of ativos) {
+      const livres = await obterSlotsDoBarbeiro(b.id, formatarDataFirestore(dataVal));
+      dadosBarbeiros.push({ nome: b.nome, emoji: b.emoji || b.foto || '💈', livres });
+    }
+  } else {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === barbeiroId);
+    const livres = await obterSlotsDoBarbeiro(barbeiroId, formatarDataFirestore(dataVal));
+    dadosBarbeiros.push({ nome: barb?.nome || 'Barbeiro', emoji: barb?.emoji || barb?.foto || '💈', livres });
+  }
+
+  desenharStoryCanvas({ dataVal, dadosBarbeiros, promoTxt });
+
+  // Mostrar ações
+  const acoes = document.getElementById('instaAcoes');
+  if (acoes) { acoes.style.display = 'flex'; }
+  document.getElementById('instaPlaceholder')?.style && (document.getElementById('instaPlaceholder').style.display = 'none');
+  showToast('✅ Story gerado!');
+}
+
+/* Converte ISO "2025-04-11" para formato Firestore "11/04/2025" */
+function formatarDataFirestore(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+/* Calcula a altura necessária do canvas baseada no conteúdo */
+function calcularAlturaCanvas(dadosBarbeiros, promoTxt) {
+  const slotCols = 3, slotH = 88, slotGapY = 20;
+  const HEADER = 720;   // logo + título + data + separador
+  const FOOTER = 320;   // separador + nome barbearia + link + barra vermelha
+  const PROMO  = promoTxt ? 180 : 0;
+  let contentH = 0;
+  for (const barb of dadosBarbeiros) {
+    contentH += 80; // nome do barbeiro
+    if (!barb.livres.length) {
+      contentH += 90;
+    } else {
+      const rows = Math.ceil(barb.livres.length / slotCols);
+      contentH += rows * (slotH + slotGapY) + 40;
+    }
+    contentH += 90; // espaço / separador entre barbeiros
+  }
+  return Math.max(HEADER + contentH + PROMO + FOOTER, 1920);
+}
+
+/* Desenha tudo no canvas com altura dinâmica */
+function desenharStoryCanvas({ dataVal, dadosBarbeiros, promoTxt }) {
+  const canvas = document.getElementById('instaCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = 1080;
+  const H = calcularAlturaCanvas(dadosBarbeiros, promoTxt);
+  canvas.width = W; canvas.height = H;
+
+  // ── Fundo ───────────────────────────────────────────────
+  ctx.fillStyle = '#0D0D0D';
+  ctx.fillRect(0, 0, W, H);
+
+  // Textura pontilhada sutil
+  ctx.fillStyle = 'rgba(255,255,255,0.018)';
+  for (let x = 0; x < W; x += 40) for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Barras vermelhas (topo, base, lateral)
+  ctx.fillStyle = '#E02020';
+  ctx.fillRect(0, 0, W, 14);
+  ctx.fillRect(0, H - 14, W, 14);
+  ctx.fillStyle = 'rgba(224,32,32,0.12)';
+  ctx.fillRect(0, 14, 6, H - 28);
+
+  // ── Logo ────────────────────────────────────────────────
+  let curY = 60;
+  ctx.font = 'bold 110px "Arial Black", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  curY += 110;
+  ctx.fillText('BARBEARIA', W/2, curY);
+
+  ctx.font = 'bold 180px "Arial Black", Arial, sans-serif';
+  ctx.fillStyle = '#E02020';
+  curY += 190;
+  ctx.fillText('DAVI', W/2, curY);
+
+  // Linha separadora vermelha
+  curY += 50;
+  ctx.strokeStyle = '#E02020'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke();
+
+  // ── Título + Data ────────────────────────────────────────
+  curY += 90;
+  ctx.font = 'bold 68px "Arial Black", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText('HORÁRIOS DISPONÍVEIS', W/2, curY);
+
+  curY += 65;
+  ctx.font = '400 44px Arial, sans-serif';
+  ctx.fillStyle = '#888888';
+  ctx.fillText(formatarDataPtBR(dataVal).toUpperCase(), W/2, curY);
+
+  // Linha separadora fina
+  curY += 50;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke();
+  curY += 60;
+
+  // ── Lista por barbeiro ───────────────────────────────────
+  const slotCols = 3;
+  const slotW = 240, slotH = 88;
+  const slotGapX = 40, slotGapY = 20;
+  const blockX = (W - (slotCols * slotW + (slotCols - 1) * slotGapX)) / 2;
+
+  for (let bi = 0; bi < dadosBarbeiros.length; bi++) {
+    const barb = dadosBarbeiros[bi];
+
+    // Nome do barbeiro
+    ctx.font = 'bold 50px "Arial Black", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${barb.emoji}  ${barb.nome.toUpperCase()}`, 80, curY);
+    curY += 70;
+
+    if (!barb.livres.length) {
+      ctx.font = '400 40px Arial, sans-serif';
+      ctx.fillStyle = '#555555';
+      ctx.fillText('Sem horários disponíveis', 80, curY + 40);
+      curY += 90;
+    } else {
+      const rowStartY = curY;
+      barb.livres.forEach((h, i) => {
+        const col = i % slotCols;
+        const row = Math.floor(i / slotCols);
+        const sx = blockX + col * (slotW + slotGapX);
+        const sy = rowStartY + row * (slotH + slotGapY);
+        ctx.fillStyle = 'rgba(224,32,32,0.15)';
+        roundRect(ctx, sx, sy, slotW, slotH, 6); ctx.fill();
+        ctx.strokeStyle = '#E02020'; ctx.lineWidth = 2;
+        roundRect(ctx, sx, sy, slotW, slotH, 6); ctx.stroke();
+        ctx.font = 'bold 48px "Arial Black", Arial, sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.fillText(h, sx + slotW / 2, sy + slotH / 2 + 17);
+      });
+      const rows = Math.ceil(barb.livres.length / slotCols);
+      curY += rows * (slotH + slotGapY) + 30;
+    }
+
+    // Separador entre barbeiros (exceto o último)
+    if (bi < dadosBarbeiros.length - 1) {
+      curY += 20;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke();
+      curY += 40;
+    }
+  }
+
+  curY += 60;
+
+  // ── Promoção ─────────────────────────────────────────────
+  if (promoTxt) {
+    ctx.fillStyle = 'rgba(224,32,32,0.2)';
+    roundRect(ctx, 80, curY, W - 160, 110, 6); ctx.fill();
+    ctx.strokeStyle = '#E02020'; ctx.lineWidth = 3;
+    roundRect(ctx, 80, curY, W - 160, 110, 6); ctx.stroke();
+    ctx.font = 'bold 50px "Arial Black", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.fillText(promoTxt.toUpperCase(), W / 2, curY + 73);
+    curY += 150;
+  }
+
+  // ── Rodapé ───────────────────────────────────────────────
+  curY += 20;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke();
+
+  curY += 80;
+  ctx.font = 'bold 52px "Arial Black", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText('BARBEARIA DO DAVI', W / 2, curY);
+
+  curY += 70;
+  ctx.font = '400 40px Arial, sans-serif';
+  ctx.fillStyle = '#E02020';
+  ctx.fillText('Agende pelo link na bio 📲', W / 2, curY);
+}
+
+/* Helper: roundRect path */
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/* Download da imagem */
+export function baixarStory() {
+  const canvas = document.getElementById('instaCanvas');
+  if (!canvas) return;
+  const dataVal = document.getElementById('instaData')?.value || 'hoje';
+  const [y, m, d] = dataVal.split('-');
+  const nome = `story-barbearia-${d || ''}${m || ''}${y || ''}.png`;
+  const link = document.createElement('a');
+  link.download = nome;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('⬇ Download iniciado!');
+}
+
+/* Compartilhar via Web Share API */
+export async function compartilharStory() {
+  const canvas = document.getElementById('instaCanvas');
+  if (!canvas || !navigator.share) return;
+  canvas.toBlob(async (blob) => {
+    const dataVal = document.getElementById('instaData')?.value || 'hoje';
+    const file = new File([blob], `story-barbearia-${dataVal}.png`, { type: 'image/png' });
+    try {
+      await navigator.share({ files: [file], title: 'Story Barbearia do Davi' });
+    } catch (e) {
+      if (e.name !== 'AbortError') showToast('⚠ Compartilhamento não suportado neste dispositivo.');
+    }
+  }, 'image/png');
+}
+
+
+export function exportarAtendimentosPDF() {
+  if (!atendData) { showToast('⚠ Selecione uma data primeiro!'); return; }
+  showToast('📄 Função de PDF disponível — instale jsPDF para usar.');
+}
+
+/* ── Backup ── */
+function gerarDadosBackup() {
+  return { versao:'1.0', app:'Barbearia do Davi', geradoEm:new Date().toISOString(), geradoEmFormatado:new Date().toLocaleString('pt-BR'),
+    configuracoes:{ barbeariaAberta:adminSettings.shopOpen, diasTrabalho:adminSettings.workDays, horariosTrabalho:adminSettings.workHours, horarios:adminSettings.slots, horariosOcupados:adminSettings.takenSlots, datasBloqueadas:adminSettings.blockedDates, duracaoPadrao:adminSettings.duracaoPadrao, servicos:adminSettings.services } };
+}
+export function fazerBackupJSON() {
+  const dados = gerarDadosBackup();
+  const blob  = new Blob([JSON.stringify(dados, null, 2)], { type:'application/json;charset=utf-8' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a'); a.href = url; a.download = 'backup-barbearia-davi-'+new Date().toISOString().split('T')[0]+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  salvarBackupFirestore(dados); showToast('✅ Backup JSON baixado!');
+}
+async function salvarBackupFirestore(dados) {
+  if (!window._fb) return;
+  try { await window._fb.setDoc(window._fb.doc(window._fb.db,'backups','backup_'+Date.now()), {...dados}); } catch (e) { /* ignora */ }
+}
+export async function carregarHistoricoBackup() {
+  const lista = document.getElementById('backupHistoricoLista');
+  if (!lista) return;
+  lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--gray)">Carregando...</div>';
+  if (!window._fb) { lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--gray2)">Firebase não disponível.</div>'; return; }
+  try {
+    const q = window._fb.query(window._fb.collection(window._fb.db,'backups'), window._fb.orderBy('geradoEm','desc'));
+    const snap = await window._fb.getDocs(q);
+    if (snap.empty) { lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--gray2)">Nenhum backup ainda.</div>'; return; }
+    lista.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data(); if (d.deletado) return;
+      const item = document.createElement('div'); item.className = 'backup-item';
+      item.innerHTML = `<div class="backup-item-info"><div class="backup-item-data">📦 ${d.geradoEmFormatado||d.geradoEm}</div><div class="backup-item-detalhe">${d.configuracoes?.servicos?.length||0} serviços · ${d.configuracoes?.horarios?.length||0} horários</div></div>
+        <div class="backup-item-acoes">
+          <button class="btn-restaurar-backup" onclick="restaurarBackupFirestore('${doc.id}')">↩ Restaurar</button>
+          <button class="btn-del-backup" onclick="excluirBackup('${doc.id}',this)">✕</button>
+        </div>`;
+      lista.appendChild(item);
+    });
+  } catch (e) { lista.innerHTML = '<div style="text-align:center;color:var(--red)">Erro: '+e.message+'</div>'; }
+}
+export function importarBackupJSON() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const arquivo = e.target.files[0]; if (!arquivo) return;
+    const leitor = new FileReader();
+    leitor.onload = ev => {
+      try {
+        const dados = JSON.parse(ev.target.result);
+        const cfg = dados.configuracoes || dados;
+        if (!cfg.servicos && !cfg.horarios) { showToast('❌ Arquivo inválido.'); return; }
+        if (!confirm('Importar backup?')) return;
+        if (cfg.barbeariaAberta !== undefined) adminSettings.shopOpen = cfg.barbeariaAberta;
+        if (cfg.diasTrabalho    !== undefined) adminSettings.workDays = cfg.diasTrabalho;
+        if (cfg.horariosTrabalho!== undefined) adminSettings.workHours= cfg.horariosTrabalho;
+        if (cfg.horarios        !== undefined) adminSettings.slots    = cfg.horarios;
+        if (cfg.horariosOcupados!== undefined) adminSettings.takenSlots= cfg.horariosOcupados;
+        if (cfg.datasBloqueadas !== undefined) adminSettings.blockedDates= cfg.datasBloqueadas;
+        if (cfg.duracaoPadrao   !== undefined) adminSettings.duracaoPadrao= cfg.duracaoPadrao;
+        if (cfg.servicos        !== undefined) adminSettings.services  = cfg.servicos;
+        renderAdminDash(); import('./index.js').then(m => m.renderGallery()); showToast('✅ Importado! Salve para confirmar.');
+      } catch (err) { showToast('❌ Arquivo corrompido.'); }
+    };
+    leitor.readAsText(arquivo);
   };
-</script>
-<link rel="stylesheet" href="css/global.css">
-<link rel="stylesheet" href="css/index.css">
-<link rel="stylesheet" href="css/agendamento.css">
-  <link rel="stylesheet" href="css/galeria.css">
-<link rel="stylesheet" href="css/login.css">
-<link rel="stylesheet" href="css/perfil.css">
-<link rel="stylesheet" href="css/historico.css">
-<link rel="stylesheet" href="css/admin.css">
-<!-- ★ BOTTOM NAV — NOVO ★ -->
-<link rel="stylesheet" href="css/bottom-nav.css">
+  input.click();
+}
+export async function restaurarBackupFirestore(id) {
+  if (!confirm('Restaurar este backup?') || !window._fb) return;
+  try {
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db,'backups',id));
+    if (!snap.exists()) { showToast('❌ Backup não encontrado.'); return; }
+    const cfg = snap.data().configuracoes; if (!cfg) { showToast('❌ Inválido.'); return; }
+    if (cfg.barbeariaAberta !== undefined) adminSettings.shopOpen = cfg.barbeariaAberta;
+    if (cfg.servicos        !== undefined) adminSettings.services = cfg.servicos;
+    renderAdminDash(); import('./index.js').then(m => m.renderGallery()); showToast('✅ Restaurado! Salve para confirmar.');
+  } catch (e) { showToast('❌ Erro: ' + e.message); }
+}
+export async function excluirBackup(id, btn) {
+  if (!confirm('Excluir este backup?') || !window._fb) return;
+  try {
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'backups',id),{deletado:true},{merge:true});
+    btn?.closest('.backup-item')?.remove(); showToast('🗑 Backup excluído.');
+  } catch (e) { showToast('❌ Erro: ' + e.message); }
+}
 
-  <style>
-    /* ── Atendimento realizado ── */
-    .card-atendimento.realizado { border-left: 3px solid #27ae60 !important; }
-    .atend-badge.realizado { background: rgba(39,174,96,0.15); color: #27ae60; border-color: rgba(39,174,96,0.3); }
-    .atend-btn-realizado {
-      margin-top: 0.5rem; width: 100%; padding: 0.45rem;
-      background: transparent; border: 1.5px solid #27ae60;
-      color: #27ae60; border-radius: 5px;
-      font-size: 0.75rem; font-weight: 700;
-      cursor: pointer; letter-spacing: 0.05em;
-      text-transform: uppercase; transition: all 0.18s;
-    }
-    .atend-btn-realizado:hover:not(:disabled) { background: #27ae60; color: #fff; }
-    .atend-btn-realizado.done { opacity: 0.5; cursor: default; }
-  </style>
-</head>
-<body>
+/* ── Solicitações ── */
+let _solicitacoesCache = [];
+let solFiltroAtual = 'todos';
+export async function carregarSolicitacoes() {
+  const lista = document.getElementById('listaSolicitacoes');
+  if (!lista) return;
+  lista.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray)">Carregando...</div>';
+  if (!window._fb) { lista.innerHTML = '<div class="atend-sem-data">Firebase não disponível.</div>'; return; }
+  try {
+    const q = window._fb.query(window._fb.collection(window._fb.db,'solicitacoes'), window._fb.orderBy('criadoEm','desc'));
+    const snap = await window._fb.getDocs(q);
+    _solicitacoesCache = [];
+    snap.forEach(doc => _solicitacoesCache.push({id:doc.id,...doc.data()}));
+    if (snap.empty) { lista.innerHTML = '<div class="atend-sem-data">Nenhuma solicitação.</div>'; return; }
+    renderSolicitacoesFiltradas();
+  } catch (e) { lista.innerHTML = '<div class="atend-sem-data" style="color:var(--red)">Erro: '+e.message+'</div>'; }
+}
+export function filtrarSolicitacoes(filtro) {
+  solFiltroAtual = filtro;
+  ['filtroTodos','filtroPendente','filtroAprovado','filtroRecusado'].forEach(id => document.getElementById(id)?.classList.remove('ativo'));
+  document.getElementById('filtro'+filtro.charAt(0).toUpperCase()+filtro.slice(1))?.classList.add('ativo');
+  renderSolicitacoesFiltradas();
+}
+function renderSolicitacoesFiltradas() {
+  const lista = document.getElementById('listaSolicitacoes');
+  if (!lista) return;
+  const dados = solFiltroAtual === 'todos' ? _solicitacoesCache : _solicitacoesCache.filter(s=>s.status===solFiltroAtual);
+  if (!dados.length) { lista.innerHTML = '<div class="atend-sem-data">Nenhuma solicitação encontrada.</div>'; return; }
+  lista.innerHTML = '';
+  dados.forEach(sol => {
+    const card = document.createElement('div'); card.className = 'card-solicitacao '+sol.status;
+    const isRemarc = sol.tipo === 'remarcacao';
+    const acoesBtns = sol.status === 'pendente' ? `<button class="btn-aprovar-sol" onclick="responderSolicitacao('${sol.id}','aprovado')">✓ Aprovar</button><button class="btn-recusar-sol" onclick="responderSolicitacao('${sol.id}','recusado')">✕ Recusar</button>` : '';
+    card.innerHTML = `<div class="sol-header"><div style="display:flex;gap:0.4rem;flex-wrap:wrap"><span class="sol-badge ${isRemarc?'remarcacao':'reembolso'}">${isRemarc?'🔄 Remarcação':'💰 Reembolso'}</span><span class="sol-badge ${sol.status}">${sol.status==='pendente'?'🟠 Pendente':sol.status==='aprovado'?'✅ Aprovado':'❌ Recusado'}</span></div><div style="font-size:0.68rem;color:var(--gray)">${sol.criadoEmFormatado||''}</div></div>
+    <div class="sol-info-grid"><div class="sol-info-item"><span>Cliente</span><span>${sol.cliente||'—'}</span></div><div class="sol-info-item"><span>Telefone</span><span>${sol.telefone||'—'}</span></div><div class="sol-info-item"><span>Data original</span><span>${sol.dataOriginal||'—'} às ${sol.horarioOriginal||'—'}</span></div>${isRemarc?`<div class="sol-info-item"><span>Nova data</span><span style="color:#6FCF97">${sol.novaData||'—'} às ${sol.novoHorario||'—'}</span></div>`:''}${sol.motivo?`<div class="sol-info-item" style="grid-column:1/-1"><span>Motivo</span><span>${sol.motivo}</span></div>`:''}</div>
+    ${acoesBtns ? `<div class="sol-acoes">${acoesBtns}</div>` : ''}`;
+    lista.appendChild(card);
+  });
+}
+export async function responderSolicitacao(id, decisao) {
+  if (!window._fb || !confirm((decisao==='aprovado'?'Aprovar':'Recusar') + ' esta solicitação?')) return;
+  try {
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'solicitacoes',id),{status:decisao,respondidoEm:new Date().toISOString()},{merge:true});
+    showToast(decisao==='aprovado'?'✅ Aprovada!':'❌ Recusada.'); await carregarSolicitacoes();
+  } catch (e) { showToast('❌ Erro: '+e.message); }
+}
+export function carregarPoliticaReembolsoForm() {
+  const pol = adminSettings.politicaReembolso || {};
+  const set = (id,val) => { const el=document.getElementById(id); if(el) el.value=String(val); };
+  set('politReembolsoAtivo',   String(pol.reembolsoAtivo !== false));
+  set('politRemarcacaoAtiva',  String(pol.remarcacaoAtiva !== false));
+  set('politPrazoReembolso',   pol.prazoReembolsoDias  ?? 1);
+  set('politPrazoRemarcacao',  pol.prazoRemarcacaoDias ?? 1);
+  set('politMaxRemarcacoes',   pol.maxRemarcacoes      ?? 2);
+  set('politTaxaPlataforma',   pol.taxaPlataforma      ?? 0);
+  set('politTipoReembolso',    pol.tipoReembolso       || 'integral');
+}
+export async function salvarPoliticaReembolso() {
+  const get = id => document.getElementById(id)?.value;
+  adminSettings.politicaReembolso = {
+    reembolsoAtivo:      get('politReembolsoAtivo')  === 'true',
+    remarcacaoAtiva:     get('politRemarcacaoAtiva') === 'true',
+    prazoReembolsoDias:  parseInt(get('politPrazoReembolso')  || '1'),
+    prazoRemarcacaoDias: parseInt(get('politPrazoRemarcacao') || '1'),
+    maxRemarcacoes:      parseInt(get('politMaxRemarcacoes')   || '2'),
+    taxaPlataforma:      parseFloat(get('politTaxaPlataforma') || '0'),
+    tipoReembolso:       get('politTipoReembolso') || 'integral',
+  };
+  await saveAdminSettings(); showToast('💾 Política salva!');
+}
 
-<!-- ═══ NAV ═══ -->
-<nav>
-  <a href="#" class="nav-logo">
-    <span class="nav-logo-main">Barbearia do Davi</span>
-    <span class="nav-logo-sub">Luziânia · Vila Guará</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="#servicos">Serviços</a></li>
-    <li><a href="#localizacao">Localização</a></li>
-    <li><a href="#agendar">Agendar</a></li>
-  </ul>
-  <div class="nav-right">
-    <button class="nav-admin-btn" id="navAdminBtn" onclick="openAdmin(true)">⚙ Painel Admin</button>
-    <button class="nav-user-btn" id="navUserBtn" onclick="openUserModal()">👤 Entrar</button>
-    <!-- ★ CARRINHO MOBILE — no lugar do hamburger ★ -->
-    <button class="nav-cart-btn" id="navCartBtn" onclick="toggleCart()" aria-label="Carrinho">
-      <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-      </svg>
-      <span class="nav-cart-badge" id="navCartBadge">0</span>
-    </button>
-    <!-- hamburger oculto no mobile via css/bottom-nav.css -->
-    <button class="hamburger" id="hamburger" onclick="toggleDrawer()">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-</nav>
-
-<!-- ═══ DRAWER MOBILE (oculto no mobile via CSS — bottom nav substitui) ═══ -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-<div class="mobile-drawer" id="mobileDrawer">
-  <div class="drawer-header">
-    <span class="drawer-logo">Barbearia <span>do Davi</span></span>
-    <button class="drawer-close" onclick="closeDrawer()">✕</button>
-  </div>
-  <nav class="drawer-links">
-    <a href="#servicos"   onclick="closeDrawer()">Serviços</a>
-    <a href="#localizacao" onclick="closeDrawer()">Localização</a>
-    <a href="#agendar"    onclick="closeDrawer()">Agendar</a>
-    <a href="https://instagram.com/davi_barber10" target="_blank" onclick="closeDrawer()">Instagram</a>
-  </nav>
-  <div class="drawer-cta">
-    <button class="drawer-admin-btn" id="drawerAdminBtn"
-            onclick="closeDrawer();openAdmin(true)">⚙ Painel Admin</button>
-    <div id="drawerLoggedInfo" style="display:none;flex-direction:column;gap:0.5rem">
-      <div class="drawer-user-name"  id="drawerUserName"></div>
-      <div class="drawer-user-email" id="drawerUserEmail"></div>
-      <button class="btn-red" style="width:100%;justify-content:center"
-              onclick="closeDrawer();openUserModal()">👤 Minha Conta</button>
-      <button class="drawer-logout-btn show" onclick="closeDrawer();fbLogout()">Sair da conta</button>
-    </div>
-    <div id="drawerGuestInfo">
-      <button class="btn-red" style="width:100%;justify-content:center"
-              onclick="closeDrawer();openUserModal()">👤 Entrar / Criar Conta</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ HERO ═══ -->
-<section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid-lines"></div>
-  <div class="hero-redline"></div>
-  <div class="hero-content">
-    <div class="hero-tag open" id="heroStatusTag">🔴 Aberto agora · Luziânia, GO</div>
-    <h1>BARBEARIA<br><span class="red">DO DAVI</span></h1>
-    <p class="hero-sub">Vila Guará · <span>Luziânia – GO</span></p>
-    <div class="hero-btns">
-      <a href="#servicos" class="btn-red">✂ Ver Serviços</a>
-      <a href="#agendar"  class="btn-ghost">Agendar Horário</a>
-    </div>
-    <div class="hero-stats">
-      <div><span class="stat-n">300+</span><span class="stat-l">Clientes</span></div>
-      <div><span class="stat-n">5★</span><span class="stat-l">Avaliação</span></div>
-      <div><span class="stat-n">7 Anos</span><span class="stat-l">Experiência</span></div>
-    </div>
-  </div>
-  <div class="hero-scroll"><div class="scroll-line"></div><span class="scroll-label">Scroll</span></div>
-</section>
-
-<!-- ═══ SERVIÇOS ═══ -->
-<section id="servicos">
-  <div class="max-w">
-    <div class="gallery-intro">
-      <div>
-        <div class="sec-label">Serviços</div>
-        <div class="sec-title">Monte seu <span>Pedido</span></div>
-        <div class="sec-sub">Escolha um ou mais serviços, adicione ao carrinho e agende.</div>
-      </div>
-      <div class="cart-summary">
-        <div class="cart-total" id="cartTotalDisplay">R$ 0</div>
-        <button class="cart-badge" onclick="toggleCart()">🛒 Pedido <span id="cartCount">0</span></button>
-      </div>
-    </div>
-    <div class="gallery-grid" id="galleryGrid"></div>
-  </div>
-</section>
-
-<!-- ═══ LOCALIZAÇÃO ═══ -->
-<section id="localizacao">
-  <div class="mapa-wrap">
-    <div class="sec-label">Onde estamos</div>
-    <div class="sec-title">Nossa <span>Localização</span></div>
-    <div class="sec-sub">Clique no mapa ou no botão para abrir no GPS.</div>
-    <div class="mapa-container">
-      <iframe
-        src="https://maps.google.com/maps?q=-16.2223425,-47.9128605&z=17&output=embed&hl=pt-BR"
-        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-        title="Localização Barbearia do Davi"></iframe>
-    </div>
-    <div class="mapa-info">
-      <div class="mapa-address">
-        <strong>Barbearia do Davi</strong>
-        Av. Manoel Bras, Qd. 147 Lote 01 "B" PED 2<br>
-        Vila Guará · Luziânia – GO · CEP 72820-200
-      </div>
-      <a href="https://maps.app.goo.gl/DFPsBaEbefZAjbjk7" target="_blank" class="mapa-btn">
-        📍 Abrir no Maps
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ AGENDAMENTO ═══ -->
-<section id="agendar">
-  <div class="booking-wrap">
-    <div class="sec-label">Agendamento</div>
-    <div class="sec-title">Confirmar <span>Horário</span></div>
-    <div class="sec-sub">Selecione serviços acima, depois escolha data e horário.</div>
-    <div class="steps-bar">
-      <div class="barb-indicador" id="barbIndicador">
-        <div class="barb-ind-foto" id="barbIndFoto">💈</div>
-        <div class="barb-ind-info">
-          <span class="barb-ind-label">Barbeiro</span>
-          <span class="barb-ind-nome" id="barbIndNome">—</span>
-          <button class="barb-ind-trocar" onclick="goBookStep(0)">trocar</button>
-        </div>
-      </div>
-      <div class="step-tab active" data-step="0"><span class="tab-num">01</span>Barbeiro</div>
-      <div class="step-tab" data-step="1"><span class="tab-num">02</span>Seus Dados</div>
-      <div class="step-tab" data-step="2"><span class="tab-num">03</span>Data &amp; Hora</div>
-      <div class="step-tab" data-step="3"><span class="tab-num">04</span>Revisão</div>
-      <div class="step-tab" data-step="4"><span class="tab-num">05</span>Pagamento</div>
-    </div>
-    <div class="step-panel active" id="bStep0">
-      <div style="margin-bottom:1.5rem">
-        <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:0.3rem">✂ Escolha seu Barbeiro</div>
-        <div style="font-size:0.82rem;color:var(--gray);line-height:1.6">Cada barbeiro tem sua própria agenda. Selecione com quem prefere ser atendido.</div>
-      </div>
-      <div class="barbeiro-grid" id="barbeiroGrid"></div>
-      <div style="text-align:center;font-size:0.72rem;color:var(--gray);margin-top:0.5rem;padding:0.6rem;background:rgba(224,32,32,0.04);border:1px solid rgba(224,32,32,0.12);border-radius:2px" id="step0Hint">👆 Toque em um barbeiro para selecionar e avançar automaticamente</div>
-    </div>
-    <div class="step-panel" id="bStep1">
-      <div class="user-info-section">
-        <h3>💈 Informações do cliente</h3>
-        <div id="loggedUserInfo" style="display:none;margin-bottom:1rem;background:rgba(224,32,32,0.06);border:1px solid var(--border-red);border-radius:2px;padding:0.8rem">
-          <div style="font-size:0.82rem;color:var(--light);font-weight:600" id="loggedUserName">-</div>
-          <div style="font-size:0.72rem;color:var(--gray);margin-top:0.1rem" id="loggedUserEmail">-</div>
-        </div>
-        <div id="guestFields">
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="clientName" type="text" placeholder="Seu nome completo" oninput="checkStep1()"></div>
-            <div class="form-group"><label class="form-label">WhatsApp *</label><input class="form-input" id="clientPhone" type="tel" placeholder="(61) 9 0000-0000" oninput="checkStep1()"></div>
-          </div>
-          <div class="form-row single">
-            <div class="form-group"><label class="form-label">E-mail (opcional)</label><input class="form-input" id="clientEmail" type="email" placeholder="seu@email.com"></div>
-          </div>
-        </div>
-      </div>
-      <div class="step-nav"><div></div><button class="btn-next" id="step1Next" disabled onclick="goBookStep(2)">Escolher Data →</button></div>
-    </div>
-    <div class="step-panel" id="bStep2">
-      <div class="cal-wrap">
-        <div class="calendar">
-          <div class="calendar-header">
-            <button class="cal-nav" onclick="prevMonth()">‹</button>
-            <span class="cal-month" id="calMonthLabel"></span>
-            <button class="cal-nav" onclick="nextMonth()">›</button>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
-        </div>
-        <div class="slots-panel">
-          <h3>Horários disponíveis</h3>
-          <div class="slots-grid" id="slotsGrid"><p class="slots-empty">Selecione uma data</p></div>
-        </div>
-      </div>
-      <div class="step-nav">
-        <button class="btn-back" onclick="goBookStep(1)">← Voltar</button>
-        <button class="btn-next" id="step2Next" disabled onclick="goBookStep(3)">Revisar →</button>
-      </div>
-    </div>
-    <div class="step-panel" id="bStep3">
-      <div class="order-summary">
-        <h3>📋 Resumo do Pedido</h3>
-        <div class="sum-row"><span class="sum-label">Cliente</span><span class="sum-val" id="sumClient">—</span></div>
-        <div class="sum-row"><span class="sum-label">WhatsApp</span><span class="sum-val" id="sumPhone">—</span></div>
-        <div class="sum-row"><span class="sum-label">Serviços</span><div class="services-list" id="sumServices"></div></div>
-        <div class="sum-row"><span class="sum-label">Data</span><span class="sum-val" id="sumDate">—</span></div>
-        <div class="sum-row"><span class="sum-label">Horário</span><span class="sum-val" id="sumTime">—</span></div>
-        <div class="sum-row sum-total"><span class="sum-label">Total</span><span class="sum-val" id="sumTotal">—</span></div>
-      </div>
-      <div class="termo-wrap">
-        <div class="termo-texto">
-          <strong>📋 Termos do Agendamento</strong><br>
-          Ao confirmar o pagamento, você declara estar ciente das seguintes condições:
-          <ul style="margin:0.6rem 0 0 1rem;display:flex;flex-direction:column;gap:0.3rem">
-            <li>❌ <strong>Não há reembolso</strong> após a confirmação do pagamento.</li>
-            <li>🔄 É permitida <strong>remarcação</strong> com no mínimo <strong>24 horas de antecedência</strong>.</li>
-            <li>🔁 Limite de <strong>2 remarcações</strong> por agendamento.</li>
-          </ul>
-        </div>
-        <label class="termo-label" id="termoLabel">
-          <input type="checkbox" id="termoCheckbox" onchange="verificarTermoAceito()">
-          <span>Declaro que estou ciente de que <strong>não há reembolso</strong> após a confirmação. Posso remarcar com até <strong>24 horas de antecedência</strong>.</span>
-        </label>
-        <div class="termo-aviso" id="termoAviso">⚠ Você precisa aceitar os termos para prosseguir.</div>
-      </div>
-      <div class="step-nav">
-        <button class="btn-back" onclick="goBookStep(2)">← Voltar</button>
-        <button class="btn-next" id="btnIrPagamento" onclick="irParaPagamentoComTermo()" disabled>Ir para Pagamento →</button>
-      </div>
-    </div>
-    <div class="step-panel" id="bStep4">
-      <div id="pixLoading" style="text-align:center;padding:3rem 1rem">
-        <div class="pix-spinner"></div>
-        <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--white);margin-top:1.2rem;text-transform:uppercase;letter-spacing:0.05em">Preparando pagamento...</div>
-        <div style="font-size:0.78rem;color:var(--gray);margin-top:0.4rem">Conectando à Cakto</div>
-      </div>
-      <div id="pixReady" style="display:none">
-        <div class="pix-grid">
-          <div class="pix-steps">
-            <h4>Como pagar</h4>
-            <div class="px-step"><div class="px-n">1</div><div class="px-t">Clique em <strong>"Ir para o Pagamento"</strong>.</div></div>
-            <div class="px-step"><div class="px-n">2</div><div class="px-t">Escolha <strong>Pix</strong> e escaneie o QR Code.</div></div>
-            <div class="px-step"><div class="px-n">3</div><div class="px-t">Volte aqui. Confirmação <strong>automática!</strong> 🎉</div></div>
-            <div style="margin-top:1rem;background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:1rem">
-              <div id="pixSumServices" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.5rem"></div>
-              <div style="font-size:0.78rem;color:var(--gray)">📅 <span id="pixSumDate">—</span> às <span id="pixSumTime">—</span></div>
-              <div style="font-size:0.78rem;color:var(--gray);margin-top:0.2rem">👤 <span id="pixSumClient">—</span></div>
-            </div>
-            <div id="pixPollingStatus" style="margin-top:0.8rem;font-size:0.72rem;color:var(--gray);display:flex;align-items:center;gap:0.5rem;background:var(--card2);padding:0.6rem;border-radius:2px">
-              <span class="polling-dot"></span><span id="pixPollingMsg">Aguardando confirmação...</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-top:0.5rem;font-size:0.7rem;color:var(--gray)">
-              <span>Expira em <span id="pixTimer" style="color:var(--red);font-weight:700">14:59</span></span>
-              <button class="forgot-link" onclick="iniciarPagamentoCakto(true)">Gerar novo link</button>
-            </div>
-          </div>
-          <div class="pix-box" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;min-height:280px">
-            <div style="text-align:center">
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:0.1em;color:var(--white);line-height:1">CAKTO</div>
-              <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--gray)">Checkout Seguro</div>
-            </div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--red)">R$ <span id="pixSumTotal">0</span></div>
-            <a id="caktoCheckoutBtn" href="#" target="_blank" rel="noopener" class="btn-red" style="width:100%;justify-content:center;padding:1.1rem;text-decoration:none;text-align:center">🔒 Ir para o Pagamento →</a>
-            <div style="font-size:0.65rem;color:var(--gray2);text-align:center">🔐 Pagamento seguro via Cakto</div>
-          </div>
-        </div>
-      </div>
-      <div id="pixError" style="display:none;text-align:center;padding:3rem 1rem">
-        <div style="font-size:2rem;margin-bottom:1rem">⚠️</div>
-        <div style="font-family:'Oswald',sans-serif;font-size:1rem;color:var(--white);margin-bottom:0.5rem;text-transform:uppercase">Erro ao gerar link</div>
-        <div style="font-size:0.8rem;color:var(--gray);margin-bottom:1.5rem" id="pixErrorMsg">Tente novamente.</div>
-        <button class="btn-red" style="justify-content:center" onclick="iniciarPagamentoCakto()">🔄 Tentar novamente</button>
-      </div>
-      <div class="step-nav" style="margin-top:1rem">
-        <button class="btn-back" id="pixBackBtn" onclick="goBookStep(3)">← Voltar</button>
-        <div></div>
-      </div>
-    </div>
-    <div class="step-panel" id="bStep5">
-      <div class="confirmed-wrap">
-        <div class="conf-icon">✓</div>
-        <div class="conf-title">AGENDADO <span>COM SUCESSO!</span></div>
-        <p class="conf-desc">Seu horário está garantido. O Davi já sabe te esperar! Baixe ou compartilhe seu comprovante.</p>
-        <div class="conf-card">
-          <div class="conf-row"><span>Cliente</span><span id="confClient">—</span></div>
-          <div class="conf-row"><span>Serviços</span><span id="confServices">—</span></div>
-          <div class="conf-row"><span>Data</span><span id="confDate">—</span></div>
-          <div class="conf-row"><span>Horário</span><span id="confTime">—</span></div>
-          <div class="conf-row"><span>Total</span><span id="confTotal" style="color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:1.3rem">—</span></div>
-          <div class="conf-row"><span>Pagamento</span><span class="conf-paid">✓ Confirmado via Pix</span></div>
-        </div>
-        <div class="conf-btns">
-          <button class="btn-pdf"   onclick="generatePDF()">📄 Baixar Comprovante PDF</button>
-          <button class="btn-share" onclick="shareWhatsApp()">📲 Compartilhar no WhatsApp</button>
-          <button class="btn-back" style="width:100%;text-align:center;justify-content:center;margin-top:0.3rem" onclick="resetBooking()">+ Novo Agendamento</button>
-        </div>
-        <div class="conf-acoes-pos">
-          <div class="conf-acoes-titulo">Precisa alterar o horário?</div>
-          <button class="btn-remarcar" id="btnRemarcarPos" onclick="abrirModalRemarcacao()">🔄 Remarcar Atendimento</button>
-          <div style="margin-top:0.5rem;padding:0.7rem 0.9rem;background:rgba(224,32,32,0.04);border:1px solid rgba(224,32,32,0.15);border-radius:2px;font-size:0.72rem;color:var(--gray);line-height:1.6">
-            ❌ <strong style="color:var(--light)">Não há reembolso</strong> conforme os termos aceitos.<br>
-            🔄 Remarcação disponível com <strong style="color:var(--light)">24h de antecedência</strong>.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ INSTAGRAM ═══ -->
-<div class="insta-section">
-  <div class="sec-label" style="justify-content:center;margin-bottom:0.5rem">Nos siga</div>
-  <a href="https://instagram.com/davi_barber10" target="_blank" class="insta-link">
-    <div class="insta-icon">📸</div>
-    <span class="insta-handle"><span>@</span>davi_barber10</span>
-  </a>
-</div>
-
-<!-- ═══ FOOTER ═══ -->
-<footer>
-  <div class="max-w">
-    <div class="footer-logo">BARBEARIA <span>DO DAVI</span></div>
-    <div class="footer-info">
-      📍 Av. Manoel Bras, Qd. 147 Lote 01 "B" PED 2, Vila Guará · Luziânia – GO<br>
-      📱 (61) 9 0000-0000 &nbsp;·&nbsp; Seg–Sáb: 8h–19h
-    </div>
-    <div class="footer-bottom">
-      <span>© 2025 Barbearia do Davi. Todos os direitos reservados.</span>
-      <a href="https://www.instagram.com/eduardo_xis/" target="_blank" class="footer-dev">Desenvolvido por Eduardo ↗</a>
-    </div>
-  </div>
-</footer>
-
-<!-- ═══ CARRINHO ═══ -->
-<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
-<div class="cart-panel" id="cartPanel">
-  <div class="cart-header">
-    <span class="cart-title">Seu Pedido</span>
-    <button class="cart-close cart-close-enhanced" onclick="toggleCart()" title="Fechar carrinho">✕</button>
-  </div>
-  <div class="cart-items" id="cartItems"></div>
-  <div class="cart-footer">
-    <div class="cart-total-row">
-      <span class="cart-total-label">Total</span>
-      <span class="cart-total-val" id="cartTotalPanel">R$ 0</span>
-    </div>
-    <button class="btn-red cart-agendar-btn"
-            onclick="toggleCart();document.getElementById('agendar').scrollIntoView({behavior:'smooth'})">
-      ✂ Agendar Agora →
-    </button>
-  </div>
-</div>
-
-<!-- ═══ MODAL USUÁRIO ═══ -->
-<div class="modal-overlay" id="userModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeUserModal()">✕</button>
-    <div id="modalLoginRegister">
-      <div class="modal-title">Sua <span style="color:var(--red)">Conta</span></div>
-      <div class="modal-sub">Entre ou crie uma conta para salvar seu histórico.</div>
-      <div class="modal-tabs">
-        <button class="modal-tab active" id="tabLogin"    onclick="switchTab('login')">Entrar</button>
-        <button class="modal-tab"        id="tabRegister" onclick="switchTab('register')">Criar Conta</button>
-      </div>
-      <div id="loginForm" class="modal-form">
-        <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="loginEmail" type="email" placeholder="seu@email.com"></div>
-        <div class="form-group">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <label class="form-label">Senha</label>
-            <button class="forgot-link" onclick="switchTab('forgot')">Esqueceu a senha?</button>
-          </div>
-          <div class="pass-wrap">
-            <input class="form-input" id="loginPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-            <button class="pass-eye" onclick="togglePass('loginPass',this)">👁</button>
-          </div>
-        </div>
-        <div class="modal-err" id="loginErr">E-mail ou senha incorretos.</div>
-        <button class="btn-red" style="width:100%;justify-content:center" onclick="doLogin()">Entrar</button>
-      </div>
-      <div id="registerForm" class="modal-form" style="display:none">
-        <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="regName" type="text" placeholder="Seu nome"></div>
-        <div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="regEmail" type="email" placeholder="seu@email.com"></div>
-        <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" id="regPhone" type="tel" placeholder="(61) 9 0000-0000"></div>
-        <div class="form-group">
-          <label class="form-label">Senha *</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="regPass" type="password" placeholder="Mínimo 6 caracteres" oninput="checkPassStrength(this.value)">
-            <button class="pass-eye" onclick="togglePass('regPass',this)">👁</button>
-          </div>
-          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
-          <div class="strength-label" id="strengthLabel"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Confirmar senha *</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="regPass2" type="password" placeholder="Repita a senha">
-            <button class="pass-eye" onclick="togglePass('regPass2',this)">👁</button>
-          </div>
-        </div>
-        <div class="modal-err" id="regErr">Erro ao criar conta.</div>
-        <button class="btn-red" style="width:100%;justify-content:center" onclick="doRegister()">Criar Conta</button>
-      </div>
-      <div id="forgotForm" class="modal-form" style="display:none">
-        <button class="back-link" onclick="switchTab('login')">← Voltar</button>
-        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Recuperar <span style="color:var(--red)">Senha</span></div>
-        <div class="modal-sub" style="margin-bottom:1rem">Informe seu e-mail para receber o código.</div>
-        <div class="form-group"><label class="form-label">E-mail cadastrado</label><input class="form-input" id="forgotEmail" type="email" placeholder="seu@email.com"></div>
-        <div style="margin:0.5rem 0">
-          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem">Receber código via</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
-            <button id="chEmail" onclick="selectResetChannel('email')" style="border:1px solid var(--border);background:var(--card2);color:var(--gray);padding:0.7rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;transition:all 0.2s">📧 E-mail</button>
-            <button id="chPhone" onclick="selectResetChannel('phone')" style="border:1px solid var(--border);background:var(--card2);color:var(--gray);padding:0.7rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;transition:all 0.2s">📱 WhatsApp</button>
-          </div>
-        </div>
-        <div class="modal-err" id="forgotErr">E-mail não encontrado.</div>
-        <button class="btn-red" style="width:100%;justify-content:center" id="sendCodeBtn" disabled onclick="sendResetCode()">Enviar Código →</button>
-      </div>
-      <div id="forgotCodeForm" class="modal-form" style="display:none">
-        <button class="back-link" onclick="switchTab('forgot')">← Voltar</button>
-        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Verificar <span style="color:var(--red)">Código</span></div>
-        <div class="modal-sub" id="codeDeliveryMsg" style="margin-bottom:1rem">Código enviado.</div>
-        <div class="reset-code-box">
-          <span style="font-size:0.6rem;font-weight:700;color:var(--gray);display:block;margin-bottom:0.2rem;letter-spacing:0.1em;text-transform:uppercase">⚠ Demo — código gerado:</span>
-          <span class="reset-code" id="generatedCode">------</span>
-          <span class="reset-code-hint">Em produção seria enviado pelo canal escolhido</span>
-        </div>
-        <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem">Digite o código de 6 dígitos</div>
-        <div class="code-boxes">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,0)" onkeydown="codeKey(event,0)">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,1)" onkeydown="codeKey(event,1)">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,2)" onkeydown="codeKey(event,2)">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,3)" onkeydown="codeKey(event,3)">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,4)" onkeydown="codeKey(event,4)">
-          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,5)" onkeydown="codeKey(event,5)">
-        </div>
-        <div class="modal-err" id="codeErr" style="text-align:center">Código incorreto.</div>
-        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--gray);margin-top:0.3rem">
-          <span>Expira em <span id="codeTimer" style="color:var(--red);font-weight:700">10:00</span></span>
-          <button class="forgot-link" onclick="sendResetCode(true)">Reenviar</button>
-        </div>
-        <button class="btn-red" style="width:100%;justify-content:center" id="verifyBtn" disabled onclick="verifyCode()">Verificar →</button>
-      </div>
-      <div id="forgotNewPass" class="modal-form" style="display:none">
-        <button class="back-link" onclick="switchTab('forgotCode')">← Voltar</button>
-        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Nova <span style="color:var(--red)">Senha</span></div>
-        <div class="modal-sub" style="margin-bottom:1rem">Os dois campos devem ser idênticos.</div>
-        <div class="form-group">
-          <label class="form-label">Nova senha</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="newPass1" type="password" placeholder="Mínimo 6 caracteres" oninput="checkNewPass()">
-            <button class="pass-eye" onclick="togglePass('newPass1',this)">👁</button>
-          </div>
-          <div class="strength-bar"><div class="strength-fill" id="newStrengthFill"></div></div>
-          <div class="strength-label" id="newStrengthLabel"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Confirmar nova senha</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="newPass2" type="password" placeholder="Repita a senha" oninput="checkNewPass()">
-            <button class="pass-eye" onclick="togglePass('newPass2',this)">👁</button>
-          </div>
-        </div>
-        <div class="modal-err" id="newPassErr">As senhas não coincidem.</div>
-        <button class="btn-red" style="width:100%;justify-content:center" id="savePassBtn" disabled onclick="saveNewPassword()">✓ Salvar Senha</button>
-      </div>
-    </div>
-    <div id="loggedInView" style="display:none">
-      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
-        <div style="width:52px;height:52px;border-radius:50%;background:var(--red);color:var(--white);font-size:1.3rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Bebas Neue',sans-serif" id="userAvatarModal">D</div>
-        <div style="min-width:0">
-          <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--white);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="loggedModalName">—</div>
-          <div style="font-size:0.72rem;color:var(--gray);margin-top:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="loggedModalEmail">—</div>
-        </div>
-      </div>
-      <div class="hist-abas">
-        <button class="hist-aba ativa" id="histAbaHistorico"  onclick="switchHistAba('historico')">📋 Histórico</button>
-        <button class="hist-aba"        id="histAbaProximos"  onclick="switchHistAba('proximos')">📅 Próximos</button>
-        <button class="hist-aba"        id="histAbaFidelidade" onclick="switchHistAba('fidelidade')">⭐ Fidelidade</button>
-      </div>
-      <div class="hist-filtros" id="histFiltros">
-        <button class="hist-filtro-btn ativo" onclick="filtrarHistorico('todos',this)">Todos</button>
-        <button class="hist-filtro-btn" onclick="filtrarHistorico('30',this)">30 dias</button>
-        <button class="hist-filtro-btn" onclick="filtrarHistorico('90',this)">90 dias</button>
-        <button class="hist-filtro-btn" onclick="filtrarHistorico('realizado',this)">✓ Realizados</button>
-        <button class="hist-filtro-btn" onclick="filtrarHistorico('remarcado',this)">🔄 Remarcados</button>
-      </div>
-      <div id="userHistoryList" style="max-height:380px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--gray3) transparent">
-        <div class="hist-loading">Carregando atendimentos...</div>
-      </div>
-      <div id="fidPanel" style="display:none;max-height:420px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--gray3) transparent">
-        <div id="fidContent" class="fid-panel"></div>
-      </div>
-      <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
-        <div id="histResumo" style="font-size:0.7rem;color:var(--gray)"></div>
-        <button class="btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="doLogout()">Sair ✕</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL REMARCAÇÃO ═══ -->
-<div class="modal-overlay" id="modalSolicitacao" style="z-index:460">
-  <div class="modal-solicitacao">
-    <button class="modal-close" onclick="fecharModalSolicitacao()">✕</button>
-    <div style="font-family:'Oswald',sans-serif;font-size:1.2rem;font-weight:700;color:var(--white);margin-bottom:1rem">🔄 Remarcar <span style="color:var(--red)">Atendimento</span></div>
-    <div style="background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.78rem">
-      <div style="font-size:0.62rem;color:var(--gray);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem">Agendamento atual</div>
-      <div style="color:var(--white);font-weight:600" id="solInfoServicos">—</div>
-      <div style="color:var(--gray);margin-top:0.2rem">📅 <span id="solInfoData">—</span> às <span id="solInfoHorario">—</span></div>
-      <div style="color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:1.2rem;margin-top:0.2rem" id="solInfoTotal">—</div>
-    </div>
-    <div id="solConteudoRemarcacao">
-      <div class="sol-aviso info" id="solAvisoRemarcacao">✅ Remarcação disponível. Escolha a nova data e horário.</div>
-      <div style="margin-bottom:1rem">
-        <div class="calendar">
-          <div class="calendar-header">
-            <button class="cal-nav" onclick="solMesAnterior()">‹</button>
-            <span class="cal-month" id="solCalLabel"></span>
-            <button class="cal-nav" onclick="solProximoMes()">›</button>
-          </div>
-          <div class="cal-grid" id="solCalGrid"></div>
-        </div>
-        <div class="slots-panel" style="margin-top:0.8rem">
-          <h3>Horários disponíveis</h3>
-          <div class="slots-grid" id="solHorariosGrid"><p class="slots-empty">Selecione uma data</p></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:0.5rem;background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.75rem;color:var(--gray);align-items:center">
-        <span>📅</span><span id="solNovaDataTexto">Nenhuma data selecionada</span>
-      </div>
-      <div class="form-group" style="margin-bottom:1rem">
-        <label class="form-label">Motivo (opcional)</label>
-        <textarea class="form-input" id="solMotivoRemarcacao" rows="2" placeholder="Ex: Compromisso surgiu de última hora..."></textarea>
-      </div>
-      <button class="btn-remarcar" id="btnConfirmarRemarcacao" onclick="confirmarSolicitacaoRemarcacao()" disabled>🔄 Confirmar Remarcação</button>
-    </div>
-    <div style="margin-top:0.8rem;padding:0.8rem 1rem;background:rgba(224,32,32,0.05);border:1px solid rgba(224,32,32,0.2);border-radius:2px;font-size:0.75rem;color:var(--gray);line-height:1.6">
-      ❌ <strong style="color:var(--light)">Não há reembolso</strong> conforme os termos aceitos. Você pode apenas remarcar com até 24h de antecedência.
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ADMIN PANEL (conteúdo idêntico ao original) ═══ -->
-<div id="admin-panel">
-  <div class="admin-container">
-    <div id="adminLogin">
-      <div class="admin-login">
-        <div class="a-eyebrow">⚙ Acesso Admin</div>
-        <h2 class="a-big-title">PAINEL <span>DO DAVI</span></h2>
-        <p class="a-sub">Entre com sua conta para acessar o painel de gerenciamento.</p>
-        <div class="admin-login-form">
-          <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="adminEmail" type="email" placeholder="davibarber@gmail.com"></div>
-          <div class="form-group">
-            <label class="form-label">Senha</label>
-            <div class="pass-wrap">
-              <input class="form-input" id="adminPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()">
-              <button class="pass-eye" onclick="togglePass('adminPass',this)">👁</button>
-            </div>
-          </div>
-          <div class="admin-err-msg" id="adminErr">E-mail ou senha incorretos.</div>
-          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.4rem" onclick="doAdminLogin()">Entrar no Painel →</button>
-          <button class="btn-ghost" style="width:100%;text-align:center;margin-top:0.6rem" onclick="closeAdmin()">Cancelar</button>
-        </div>
-      </div>
-    </div>
-    <div id="adminDash" style="display:none">
-      <div class="adm-topbar">
-        <div>
-          <div class="adm-topbar-title">PAINEL <span>DO DAVI</span></div>
-          <div class="adm-topbar-sub">Barbearia do Davi · Vila Guará, Luziânia – GO</div>
-        </div>
-        <div style="display:flex;gap:0.8rem;align-items:center">
-          <button class="adm-save-btn" id="globalSaveBtn" onclick="saveAdminSettings()">💾 Salvar tudo</button>
-          <button class="adm-logout-btn" onclick="adminLogout()">Sair ✕</button>
-        </div>
-      </div>
-      <div class="adm-stats">
-        <div class="adm-stat"><span class="adm-stat-n" id="stTotalSvc">8</span><span class="adm-stat-l">Serviços</span></div>
-        <div class="adm-stat"><span class="adm-stat-n" id="stWorkDays">6</span><span class="adm-stat-l">Dias/semana</span></div>
-        <div class="adm-stat"><span class="adm-stat-n" id="stSlots">11</span><span class="adm-stat-l">Horários</span></div>
-        <div class="adm-stat"><span class="adm-stat-n" id="stBlocked">0</span><span class="adm-stat-l">Bloqueados</span></div>
-      </div>
-      <div class="adm-tabs">
-        <button class="adm-tab"        onclick="switchAdmTab('dashboard')">📊 Dashboard</button>
-        <button class="adm-tab"        onclick="switchAdmTab('barbeiros')">💈 Barbeiros</button>
-        <button class="adm-tab active" onclick="switchAdmTab('status')">🔴 Status</button>
-        <button class="adm-tab"        onclick="switchAdmTab('funcionamento')">🕑 Funcionamento</button>
-        <button class="adm-tab"        onclick="switchAdmTab('dias')">📅 Dias</button>
-        <button class="adm-tab"        onclick="switchAdmTab('horarios')">🕐 Horários</button>
-        <button class="adm-tab"        onclick="switchAdmTab('servicos')">✂ Serviços</button>
-        <button class="adm-tab"        onclick="switchAdmTab('atendimentos')">📋 Atendimentos</button>
-        <button class="adm-tab"        onclick="switchAdmTab('historico')">📂 Histórico</button>
-        <button class="adm-tab"        onclick="switchAdmTab('backup')">📦 Backup</button>
-        <button class="adm-tab"        onclick="switchAdmTab('solicitacoes')">🔔 Solicitações</button>
-        <button class="adm-tab"        onclick="switchAdmTab('clientes')">👥 Clientes</button>
-        <button class="adm-tab"        onclick="switchAdmTab('instagram')">📸 Instagram</button>
-      </div>
-      <!-- painéis renderizados via JS — mantidos intactos -->
-      <div class="adm-panel" id="admTab-dashboard">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;margin-bottom:1.5rem">
-          <div><div class="adm-section-title">📊 Dashboard de Ganhos</div><div class="adm-section-sub">Visão financeira e operacional.</div></div>
-          <div style="display:flex;gap:0.5rem;align-items:center">
-            <select id="dashPeriodo" onchange="carregarDashboard()" style="background:var(--card2);border:1px solid var(--border);color:var(--white);padding:0.45rem 0.8rem;font-family:'Inter',sans-serif;font-size:0.78rem;border-radius:2px;outline:none;cursor:pointer">
-              <option value="7">Últimos 7 dias</option>
-              <option value="30" selected>Últimos 30 dias</option>
-              <option value="90">Últimos 90 dias</option>
-            </select>
-            <button class="adm-add-btn" onclick="carregarDashboard()">↻ Atualizar</button>
-          </div>
-        </div>
-        <div id="dashCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem;margin-bottom:1.5rem">
-          <div class="dash-kpi-card"><div class="dash-kpi-icone">📅</div><div class="dash-kpi-valor" id="kpiAgendVal">—</div><div class="dash-kpi-label">Agendamentos</div><div class="dash-kpi-sub" id="kpiAgendSub">no período</div></div>
-          <div class="dash-kpi-card"><div class="dash-kpi-icone">👤</div><div class="dash-kpi-valor" id="kpiClientesVal">—</div><div class="dash-kpi-label">Clientes</div><div class="dash-kpi-sub" id="kpiClientesSub">atendidos</div></div>
-          <div class="dash-kpi-card destaque"><div class="dash-kpi-icone">💰</div><div class="dash-kpi-valor" id="kpiFaturadoVal">—</div><div class="dash-kpi-label">Faturamento</div><div class="dash-kpi-sub">recebido no período</div></div>
-          <div class="dash-kpi-card"><div class="dash-kpi-icone">🎯</div><div class="dash-kpi-valor" id="kpiTicketVal">—</div><div class="dash-kpi-label">Ticket Médio</div><div class="dash-kpi-sub">por atendimento</div></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">📈 Faturamento por Dia</div><div class="dash-grafico-area" id="graficoFaturamento"><div class="dash-loading">Clique em Atualizar</div></div></div>
-          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">📊 Agendamentos por Dia da Semana</div><div class="dash-grafico-area" id="graficoDias"><div class="dash-loading">Clique em Atualizar</div></div></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">✂ Serviços Mais Vendidos</div><div id="dashServicos"><div class="dash-loading">Clique em Atualizar</div></div></div>
-          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">🕐 Horários Mais Movimentados</div><div id="dashHorarios"><div class="dash-loading">Clique em Atualizar</div></div></div>
-        </div>
-      </div>
-      <div class="adm-panel" id="admTab-barbeiros">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
-          <button class="btn-red" style="justify-content:center;gap:0.4rem" onclick="abrirModalBarbeiro('')">+ Novo Barbeiro</button>
-        </div>
-        <div id="listaBarbeirosAdmin"></div>
-      </div>
-      <div class="adm-panel active" id="admTab-status">
-        <div class="status-toggle-wrap">
-          <div class="status-toggle-info">
-            <div class="status-toggle-title" id="statusToggleTitle">🟢 Aberto Agora</div>
-            <div class="status-toggle-sub"   id="statusToggleSub">A barbearia está recebendo clientes</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="shopOpenToggle" checked onchange="toggleShopStatus()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-      <div class="adm-panel" id="admTab-funcionamento"><div id="funcionamentoGrid"></div></div>
-      <div class="adm-panel" id="admTab-dias">
-        <!-- ── Dias de atendimento (global) ── -->
-        <div class="dias-section-header">
-          <div class="dias-section-titulo">📅 Dias de Atendimento</div>
-        </div>
-        <div class="days-big-grid" id="adminDaysGrid"></div>
-
-        <!-- ── Datas bloqueadas (barbearia toda) ── -->
-        <hr class="dias-global-sep">
-        <div class="dias-section-header">
-          <div class="dias-section-titulo">🚫 Datas Bloqueadas (Barbearia Toda)</div>
-          <div class="dias-section-acoes">
-            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.8rem" onclick="openAddBlockedDate()">+ Bloquear Data</button>
-          </div>
-        </div>
-        <div id="blockedDatesList"></div>
-        <div id="blockedDatesEmpty" class="barb-bloq-empty" style="display:none">Nenhuma data global bloqueada.</div>
-
-        <!-- ── Bloqueios por barbeiro ── -->
-        <hr class="dias-global-sep">
-        <div class="dias-section-header">
-          <div class="dias-section-titulo">🔒 Dias Bloqueados por Barbeiro</div>
-          <div class="dias-section-acoes">
-            <select class="barb-bloq-filtro" id="filtroBloqueioBarb" onchange="renderBloqueiosBarb()">
-              <option value="">Todos os barbeiros</option>
-            </select>
-            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.8rem" onclick="openModalBloqueioBarb()">🔒 Bloquear Dia</button>
-          </div>
-        </div>
-        <div class="barb-bloq-lista" id="listaBloqueiosBarb"></div>
-        <div id="listaBloqueiosBarbEmpty" class="barb-bloq-empty">Nenhum dia bloqueado para barbeiros.</div>
-      </div>
-      <div class="adm-panel" id="admTab-horarios"><div class="slots-manage-grid" id="adminSlotsGrid"></div></div>
-      <div class="adm-panel" id="admTab-servicos"><div id="adminServicesList"></div></div>
-      <div class="adm-panel" id="admTab-atendimentos">
-        <!-- PASSO 1: Seleção de barbeiro -->
-        <div id="atendBarbeiroStep">
-          <div class="atend-step-titulo">Selecione o barbeiro</div>
-          <div class="atend-barbeiros-grid" id="atendBarbeirosGrid"></div>
-        </div>
-        <!-- PASSO 2+3: Calendário e lista -->
-        <div id="atendCalStep" style="display:none">
-          <div class="atend-barbeiro-header">
-            <div class="atend-barbeiro-selecionado" id="atendBarbeiroNomeLabel"></div>
-            <button class="atend-trocar-btn" onclick="trocarBarbeiro()">↩ Trocar barbeiro</button>
-          </div>
-          <div class="atend-layout">
-            <div class="atend-cal-wrap">
-              <div class="calendar-header">
-                <button class="cal-nav" onclick="prevMonthAtend()">‹</button>
-                <span class="cal-month" id="atendCalLabel"></span>
-                <button class="cal-nav" onclick="nextMonthAtend()">›</button>
-              </div>
-              <div class="cal-grid" id="atendCalGrid"></div>
-            </div>
-            <div><div class="atend-data-titulo" id="atendDataTitulo">Selecione uma data</div><div id="atendLista"></div></div>
-          </div>
-        </div>
-      </div>
-      <!-- ── Histórico de Atendimento ── -->
-      <div class="adm-panel" id="admTab-historico">
-        <!-- Seletor de barbeiro -->
-        <div id="histAtendBarbStep">
-          <div class="atend-step-titulo">Selecione o barbeiro</div>
-          <div class="atend-barbeiros-grid" id="histAtendBarbGrid"></div>
-        </div>
-        <!-- Lista de atendimentos -->
-        <div id="histAtendListStep" style="display:none">
-          <div class="atend-barbeiro-header">
-            <div class="atend-barbeiro-selecionado" id="histAtendBarbLabel"></div>
-            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
-              <input class="hist-atend-busca" id="histAtendBusca" type="text" placeholder="🔍 Buscar cliente..." oninput="filtrarHistoricoAtend()">
-              <button class="atend-trocar-btn" onclick="trocarBarbeiroHistorico()">↩ Trocar barbeiro</button>
-            </div>
-          </div>
-          <div class="hist-atend-stats" id="histAtendStats"></div>
-          <div id="histAtendLista"></div>
-        </div>
-      </div>
-
-      <div class="adm-panel" id="admTab-backup"><div id="backupHistoricoLista"></div></div>
-      <div class="adm-panel" id="admTab-solicitacoes"><div id="listaSolicitacoes"></div></div>
-      <div class="adm-panel" id="admTab-clientes"><div id="crmGrid"></div></div>
-
-      <!-- ── Instagram Stories ── -->
-      <div class="adm-panel" id="admTab-instagram">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;margin-bottom:1.5rem">
-          <div>
-            <div class="adm-section-title">📸 Instagram Stories</div>
-            <div class="adm-section-sub">Gere a imagem do Story com os horários disponíveis e publique manualmente.</div>
-          </div>
-        </div>
-        <div class="insta-layout">
-          <!-- Coluna de controles -->
-          <div class="insta-controls">
-            <div class="insta-group">
-              <label class="insta-label">Data</label>
-              <input type="date" id="instaData" class="form-input" />
-            </div>
-            <div class="insta-group">
-              <label class="insta-label">Barbeiro</label>
-              <select id="instaBarbeiro" class="form-input">
-                <option value="todos">Todos os barbeiros</option>
-              </select>
-            </div>
-            <div class="insta-group">
-              <label class="insta-label">Texto promocional <span style="color:var(--gray);font-weight:400">(opcional)</span></label>
-              <input type="text" id="instaPromo" class="form-input" placeholder="Ex: Promoção hoje! 20% off" maxlength="60" />
-            </div>
-            <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="gerarStory()">⚡ Gerar Story</button>
-            <div id="instaAcoes" style="display:none;margin-top:0.75rem;display:none;flex-direction:column;gap:0.5rem">
-              <button class="insta-btn-acao" onclick="baixarStory()">⬇ Baixar imagem PNG</button>
-              <button class="insta-btn-acao compartilhar" id="btnCompartilhar" onclick="compartilharStory()" style="display:none">📤 Compartilhar</button>
-            </div>
-            <div class="insta-dica">
-              <strong>Como usar:</strong> Gere a imagem → Baixe → Abra o Instagram → Crie um Story → Selecione a imagem salva.
-            </div>
-          </div>
-          <!-- Coluna de preview -->
-          <div class="insta-preview-wrap">
-            <div class="insta-preview-label">Preview (9:16)</div>
-            <div class="insta-canvas-wrap">
-              <canvas id="instaCanvas" width="1080" height="1920"></canvas>
-              <div class="insta-canvas-placeholder" id="instaPlaceholder">
-                <div class="insta-ph-icon">📸</div>
-                <div class="insta-ph-txt">Clique em "Gerar Story"<br>para ver o preview</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL CRM ═══ -->
-<div class="crm-modal-overlay hidden" id="crmModalOverlay" onclick="fecharCrmModal(event)">
-  <div class="crm-modal" id="crmModal">
-    <button class="crm-modal-close" onclick="document.getElementById('crmModalOverlay').classList.add('hidden')">✕</button>
-    <div class="crm-modal-name" id="crmModalNome">—</div>
-    <div class="crm-modal-contact" id="crmModalContato"></div>
-    <div class="crm-modal-kpis">
-      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiVisitas">0</span><span class="crm-kpi-l">Visitas</span></div>
-      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiGasto">R$0</span><span class="crm-kpi-l">Total gasto</span></div>
-      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiIntervalo">—</span><span class="crm-kpi-l">Intervalo médio</span></div>
-    </div>
-    <div class="crm-modal-section"><div class="crm-modal-section-title">✂ Serviços mais feitos</div><div id="crmModalServicos" class="crm-servicos-top"></div></div>
-    <div class="crm-modal-section"><div class="crm-modal-section-title">📋 Histórico</div><div id="crmModalHistorico"></div></div>
-    <div class="crm-modal-section">
-      <div class="crm-modal-section-title">📝 Observações</div>
-      <textarea class="crm-obs-area" id="crmObsArea" placeholder="Ex: Vem a cada 15 dias..."></textarea>
-      <button class="crm-obs-save-btn" onclick="salvarObsCRM()">💾 Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL BARBEIRO ═══ -->
-<div class="adm-modal-overlay" id="overlayModalBarbeiro">
-  <div class="modal-barb">
-    <!-- Título fixo no topo -->
-    <div class="modal-barb-title-wrap">
-      <div class="adm-modal-title" id="tituloModalBarbeiro">+ Novo Barbeiro</div>
-    </div>
-
-    <!-- Área scrollável -->
-    <div class="modal-barb-body">
-      <input type="hidden" id="barbIdEditando">
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Foto (URL) ou Emoji</label>
-        <div class="foto-preview-wrap">
-          <div class="foto-preview" id="barb-foto-preview">💈</div>
-          <div style="flex:1"><input class="form-input" id="barbFotoUrl" type="text" placeholder="https://... ou deixe vazio" oninput="atualizarPreviewFoto(this.value)"></div>
-        </div>
-        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
-          <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
-          <button onclick="selecionarEmoji(this,'✂️')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">✂️</button>
-          <button onclick="selecionarEmoji(this,'🪒')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🪒</button>
-          <button onclick="selecionarEmoji(this,'👨')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👨</button>
-          <button onclick="selecionarEmoji(this,'🧔')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🧔</button>
-          <button onclick="selecionarEmoji(this,'👦')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👦</button>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
-        <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="barbNome" type="text" placeholder="Ex: Davi"></div>
-        <div class="form-group"><label class="form-label">Especialidade</label><input class="form-input" id="barbEsp" type="text" placeholder="Ex: Degradê &amp; Barba"></div>
-      </div>
-      <!-- Bio logo após nome/especialidade -->
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Bio / Apresentação</label>
-        <textarea class="form-input" id="barbBio" rows="2" placeholder="Ex: 5 anos de experiência, especialista em degradê..." style="resize:vertical;min-height:52px"></textarea>
-      </div>
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Dias de Atendimento</label>
-        <div class="barb-dias-grid" id="barbDiasGrid">
-          <button class="barb-dia-btn on" data-dia="0" onclick="toggleDiaBarb(this)">Dom</button>
-          <button class="barb-dia-btn on" data-dia="1" onclick="toggleDiaBarb(this)">Seg</button>
-          <button class="barb-dia-btn on" data-dia="2" onclick="toggleDiaBarb(this)">Ter</button>
-          <button class="barb-dia-btn on" data-dia="3" onclick="toggleDiaBarb(this)">Qua</button>
-          <button class="barb-dia-btn on" data-dia="4" onclick="toggleDiaBarb(this)">Qui</button>
-          <button class="barb-dia-btn on" data-dia="5" onclick="toggleDiaBarb(this)">Sex</button>
-          <button class="barb-dia-btn on" data-dia="6" onclick="toggleDiaBarb(this)">Sáb</button>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
-        <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="barbHorarioInicio" type="time" value="08:00"></div>
-        <div class="form-group"><label class="form-label">Fim</label><input class="form-input" id="barbHorarioFim" type="time" value="18:00"></div>
-        <div class="form-group"><label class="form-label">Intervalo</label><select class="form-input" id="barbIntervalo" style="background:var(--card2)"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></div>
-      </div>
-      <div class="form-group" style="margin-bottom:1rem">
-        <label class="form-label">Situação</label>
-        <select class="form-input" id="barbAtivo" style="background:var(--card2)"><option value="true">✅ Ativo</option><option value="false">❌ Inativo</option></select>
-      </div>
-
-      <!-- Portfólio -->
-      <div id="portAdminWrap" style="display:none">
-        <div class="port-adm-titulo">📸 Galeria de Cortes</div>
-        <div id="portAdmHeader" class="port-adm-header"></div>
-        <div style="font-size:0.65rem;color:var(--gray2);margin-bottom:0.5rem">⠿ Arraste para reordenar · ⭐ Até 3 destaques aparecem no card do barbeiro</div>
-        <div class="port-adm-grid" id="portAdminGrid"></div>
-        <div class="port-adm-add">
-          <!-- Upload câmera/galeria -->
-          <input type="file" id="portFileInput" accept="image/*" multiple style="display:none"
-                 onchange="onPortFileChange(this)">
-          <button id="portUploadBtn" class="port-upload-btn" onclick="triggerUploadFoto()">
-            📷 Câmera / Galeria
-          </button>
-          <div class="port-adm-divider">ou cole uma URL</div>
-          <input class="form-input" id="portNovaUrl" type="url" placeholder="URL da imagem (https://...)">
-          <input class="form-input" id="portNovaCaption" type="text" placeholder="Legenda (opcional)" style="margin-top:0.4rem">
-          <div class="admin-err-msg" id="portAdmErr">Insira a URL da imagem.</div>
-          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar por URL</button>
-        </div>
-      </div>
-
-      <div class="admin-err-msg" id="erroBarbeiro">Preencha o nome do barbeiro.</div>
-    </div><!-- /modal-barb-body -->
-
-    <!-- Rodapé fixo — Cancelar / Salvar sempre visíveis -->
-    <div class="modal-barb-footer">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharModalBarbeiro()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarSalvarBarbeiro()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL GALERIA DO BARBEIRO (nova versão) ═══ -->
-<div class="gale-overlay" id="overlayGaleria" onclick="if(event.target===this)fecharGaleria()">
-  <div class="gale-modal">
-    <!-- Botão fechar -->
-    <div class="gale-close-btn"><button onclick="fecharGaleria()">✕</button></div>
-    <!-- Header: avatar + info + badges -->
-    <div class="gale-header" id="galeHeader"></div>
-    <!-- Filtro por tags -->
-    <div class="gale-tags-filtro" id="galeTagsFiltro"></div>
-    <!-- Grid de fotos -->
-    <div class="gale-grid" id="galeGrid"></div>
-    <!-- Avaliações -->
-    <div class="gale-avaliacoes-wrap">
-      <div class="gale-avaliacoes-titulo">⭐ Avaliações</div>
-      <div id="galeAvaliacoes"></div>
-      <div id="galeAvForm"></div>
-    </div>
-    <!-- Footer: botão agendar -->
-    <div class="gale-footer">
-      <button class="gale-agendar-btn" id="galeAgendarBtn">
-        ✂️ Agendar com este barbeiro
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ LIGHTBOX GALERIA (com swipe + navegação) ═══ -->
-<div class="gale-lb-overlay" id="galeOverlayLb"
-     ontouchstart="lbTouchStart(event)"
-     ontouchend="lbTouchEnd(event)">
-  <div class="gale-lb-top">
-    <span class="gale-lb-counter" id="galeLbCounter"></span>
-    <button class="gale-lb-close-btn" onclick="fecharLightboxGaleria()">✕</button>
-  </div>
-  <div class="gale-lb-img-wrap">
-    <button class="gale-lb-nav prev" id="galeLbPrev" onclick="navLightbox(-1)">‹</button>
-    <img id="galeLbImg" src="" alt="Foto do corte">
-    <button class="gale-lb-nav next" id="galeLbNext" onclick="navLightbox(1)">›</button>
-  </div>
-  <div class="gale-lb-bottom">
-    <div class="gale-lb-caption-text" id="galeLbCaption"></div>
-    <div class="gale-lb-tags-row" id="galeLbTags"></div>
-    <button class="gale-lb-quero-btn" onclick="queroEsseCorte()">
-      ✂️ Quero esse corte!
-    </button>
-  </div>
-</div>
-
-<!-- Compatibilidade: mantém IDs antigos ocultos para evitar erros de referência -->
-<div id="overlayPortfolio" style="display:none"></div>
-<div id="portLightbox"     style="display:none"></div>
-
-<!-- ═══ MODAL EDITAR TAGS DA FOTO ═══ -->
-<div class="tags-modal-overlay" id="overlayEditarTags">
-  <div class="tags-modal">
-    <div class="tags-modal-titulo">🏷 Tags da Foto</div>
-    <input type="hidden" id="tagsBarbId">
-    <input type="hidden" id="tagsFotoIdx">
-    <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.5rem">Toque nas sugestões ou adicione suas próprias:</div>
-    <div class="tags-sugeridas-grid" id="tagsChips"></div>
-    <input class="form-input" id="tagsAtuaisInput" placeholder="#degradê #barba #navalhado" style="margin:0.5rem 0;font-size:0.82rem" oninput="_sincronizarTagsInput && _sincronizarTagsInput()">
-    <div class="tags-modal-actions">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharEditarTags()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarEditarTags()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL BLOQUEAR DIA — BARBEIRO ═══ -->
-<div class="adm-modal-overlay" id="overlayBloqueioBarb">
-  <div class="adm-modal">
-    <div class="adm-modal-title">🔒 Bloquear Dia — Barbeiro</div>
-
-    <!-- Passo 1: Selecionar barbeiro -->
-    <div class="form-group">
-      <label class="form-label">Barbeiro <span style="color:var(--red)">*</span></label>
-      <select class="form-input" id="bloqueioBarberSelect" onchange="onBarbeiroBloqueioChange()">
-        <option value="">Selecione o barbeiro...</option>
-      </select>
-    </div>
-
-    <!-- Passo 2: Data + Motivo (revelado após seleção do barbeiro) -->
-    <div id="bloqueioDateStep" style="display:none">
-      <div class="form-group" style="margin-top:0.7rem">
-        <label class="form-label">Data <span style="color:var(--red)">*</span></label>
-        <input class="form-input" id="bloqueioDateInput" type="date" onchange="onDataBloqueioChange()">
-      </div>
-      <div class="form-group" style="margin-top:0.6rem">
-        <label class="form-label">Motivo (opcional)</label>
-        <input class="form-input" id="bloqueioReason" type="text" placeholder="Ex: Folga, Férias, Feriado pessoal...">
-      </div>
-      <!-- Alerta de agendamentos existentes -->
-      <div class="bloqueio-agend-alert" id="bloqueioAgendAlert" style="display:none"></div>
-    </div>
-
-    <div class="admin-err-msg" id="bloqueioErr">Preencha todos os campos obrigatórios.</div>
-    <div style="display:flex;gap:0.6rem;margin-top:1rem">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeModalBloqueioBarb()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarBloqueioBarb()">🔒 Confirmar Bloqueio</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL BLOQUEAR DATA ═══ -->
-<div class="adm-modal-overlay" id="addBlockedDateOverlay">
-  <div class="adm-modal">
-    <div class="adm-modal-title">📅 Bloquear Dia Específico</div>
-    <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="blockedDateInput" type="date"></div>
-    <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Motivo (opcional)</label><input class="form-input" id="blockedDateReason" type="text" placeholder="Ex: Feriado, Viagem..."></div>
-    <div class="admin-err-msg" id="blockedDateErr">Esta data já está bloqueada.</div>
-    <div style="display:flex;gap:0.6rem;margin-top:1rem">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddBlockedDate()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmAddBlockedDate()">Bloquear</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL NOVO HORÁRIO ═══ -->
-<div class="adm-modal-overlay" id="addSlotOverlay">
-  <div class="adm-modal">
-    <div class="adm-modal-title">+ Novo Horário</div>
-    <div class="form-group" style="margin-top:0.5rem"><label class="form-label">Horário</label><input class="form-input" id="newSlotInput" type="time" value="09:00"></div>
-    <div class="admin-err-msg" id="slotErr">Este horário já existe.</div>
-    <div style="display:flex;gap:0.6rem;margin-top:1rem">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddSlotModal()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmAddSlot()">Adicionar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL SERVIÇO ═══ -->
-<div class="adm-modal-overlay" id="addSvcOverlay">
-  <div class="adm-modal svc-modal-flex" style="max-width:460px">
-    <!-- Título fixo -->
-    <div class="adm-modal-title" id="svcModalTitle" style="padding:1.4rem 1.8rem 0;margin-bottom:0.6rem;flex-shrink:0">+ Novo Serviço</div>
-    <input type="hidden" id="editSvcId">
-    <input type="hidden" id="svcIcon">
-
-    <!-- Área scrollável -->
-    <div class="svc-modal-body">
-
-      <!-- ── Upload de Foto ── -->
-      <div class="form-group" style="margin-top:0.5rem">
-        <label class="form-label">Foto do Serviço</label>
-        <div class="svc-foto-upload" id="svcFotoUploadArea" onclick="document.getElementById('svcFotoInput').click()">
-          <div class="svc-foto-placeholder" id="svcFotoPlaceholder">
-            <span class="svc-foto-icon">📷</span>
-            <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
-          </div>
-          <img id="svcFotoPreview" class="svc-foto-img" style="display:none" alt="Preview do serviço">
-          <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">
-            <div class="svc-foto-loading-spinner"></div>
-            Enviando foto...
-          </div>
-        </div>
-        <input type="file" id="svcFotoInput" accept="image/jpeg,image/png" style="display:none" onchange="svcFotoSelecionada(this)">
-        <div class="svc-foto-acoes" id="svcFotoAcoes" style="display:none">
-          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('svcFotoInput').click()">🔄 Trocar foto</button>
-          <button type="button" class="svc-foto-btn-remove" onclick="removerFotoSvc()">✕ Remover</button>
-        </div>
-        <!-- Seletor de redimensionamento -->
-        <div id="svcFotoResizeWrap" style="display:none;margin-top:0.5rem;align-items:center;gap:0.5rem">
-          <span style="font-size:0.68rem;color:var(--gray);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Tamanho:</span>
-          <select id="svcFotoResizeOpt" class="form-input" style="flex:1;background:var(--card2);font-size:0.72rem;padding:0.3rem 0.5rem">
-            <option value="800">Pequeno (800px) — ideal para web</option>
-            <option value="1200" selected>Médio (1200px) — recomendado</option>
-            <option value="1920">Grande (1920px) — alta qualidade</option>
-            <option value="0">Original — sem redimensionar</option>
-          </select>
-        </div>
-        <div class="admin-err-msg" id="svcFotoErr">Formato inválido. Use apenas JPG ou PNG.</div>
-        <!-- Erro de upload visível (não só toast) -->
-        <div class="admin-err-msg" id="svcFotoUploadErr" style="margin-top:0.4rem"></div>
-      </div>
-
-      <div class="form-group" style="margin-top:0.6rem">
-        <label class="form-label">Nome *</label>
-        <input class="form-input" id="svcName" type="text" placeholder="Ex: Corte Clássico">
-      </div>
-      <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Descrição</label><textarea class="form-input" id="svcDesc" rows="2" placeholder="Descreva brevemente..."></textarea></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.6rem">
-        <div class="form-group"><label class="form-label">Preço (R$) *</label><input class="form-input" id="svcPrice" type="number" min="0" step="1" placeholder="35"></div>
-        <div class="form-group"><label class="form-label">Duração</label><input class="form-input" id="svcTime" type="text" placeholder="45min"></div>
-      </div>
-      <div class="admin-err-msg" id="svcErr" style="margin-top:0.5rem">Preencha nome e preço.</div>
-
-    </div><!-- /svc-modal-body -->
-
-    <!-- Rodapé fixo — sempre visível -->
-    <div class="svc-modal-footer">
-      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddSvcModal()">Cancelar</button>
-      <button class="btn-red"   style="flex:1;justify-content:center" id="svcSalvarBtn" onclick="confirmSaveService()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ TOAST ═══ -->
-<div class="toast" id="toast"></div>
-
-<!-- ═══════════════════════════════════════════
-     ★ BOTTOM NAV — substitui o hamburger ★
-     Idêntico ao design do preview enviado
-     ═══════════════════════════════════════════ -->
-<nav class="bottom-nav" id="bottomNav">
-
-  <div class="bn-item active" data-page="inicio"
-       onclick="bnSetActive(this); window.scrollTo({top:0,behavior:'smooth'})">
-    <span class="bn-icon">
-      <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
-    </span>
-    <span class="bn-label">Início</span>
-  </div>
-
-  <div class="bn-item" data-page="servicos"
-       onclick="bnSetActive(this); document.getElementById('servicos').scrollIntoView({behavior:'smooth'})">
-    <span class="bn-icon">
-      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-    </span>
-    <span class="bn-label">Serviços</span>
-  </div>
-
-  <div class="bn-item" data-page="agendar"
-       onclick="bnSetActive(this); document.getElementById('agendar').scrollIntoView({behavior:'smooth'})">
-    <span class="bn-icon">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    </span>
-    <span class="bn-label">Agendar</span>
-  </div>
-
-  <div class="bn-item" data-page="perfil" id="bnPerfil"
-       onclick="bnSetActive(this); openProfileSheetOrModal()">
-    <span class="bn-dot" id="bnPerfilDot"></span>
-    <span class="bn-icon">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </span>
-    <span class="bn-label">Perfil</span>
-  </div>
-
-</nav>
-
-<script>
-  /* ── Bottom Nav JS ── */
-  function bnSetActive(el) {
-    document.querySelectorAll('.bottom-nav .bn-item').forEach(function(i){ i.classList.remove('active'); });
-    el.classList.add('active');
-    el.style.transform = 'scale(0.9)';
-    setTimeout(function(){ el.style.transform = ''; }, 120);
+/* ── Dashboard ── */
+export async function carregarDashboard() {
+  const dias = parseInt(document.getElementById('dashPeriodo')?.value || '30');
+  const inicio = new Date(); inicio.setDate(inicio.getDate() - dias);
+  const inicioStr = inicio.toISOString();
+  ['graficoFaturamento','graficoDias','dashServicos','dashHorarios'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div class="dash-loading">Carregando...</div>'; });
+  ['kpiAgendVal','kpiClientesVal','kpiFaturadoVal','kpiTicketVal'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
+  let agendamentos = [];
+  try { agendamentos = (await buscarTodosAgendamentos()).filter(a => !a.criadoEm || a.criadoEm >= inicioStr); }
+  catch (e) { /* ignora */ }
+  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  const pagos = agendamentos.filter(a => a.status !== 'cancelado');
+  const totalFaturado = pagos.reduce((s,a) => s + parseFloat(a.total||0), 0);
+  set('kpiAgendVal',    pagos.length);
+  set('kpiClientesVal', new Set(pagos.map(a=>a.telefone||a.email||a.cliente)).size);
+  set('kpiFaturadoVal', 'R$ ' + totalFaturado.toFixed(0));
+  set('kpiTicketVal',   'R$ ' + (pagos.length ? (totalFaturado/pagos.length).toFixed(0) : '0'));
+  set('kpiAgendSub', 'nos últimos ' + dias + ' dias');
+  set('kpiClientesSub', 'nos últimos ' + dias + ' dias');
+  if (!pagos.length) { ['graficoFaturamento','graficoDias','dashServicos','dashHorarios'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div class="dash-loading">📭 Sem dados no período.</div>'; }); return; }
+  // Gráfico de barras simples: dias da semana
+  const conts = [0,0,0,0,0,0,0];
+  const nomes = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  pagos.forEach(a => { const dt=new Date(a.criadoEm||Date.now()); conts[dt.getDay()]++; });
+  const maxC = Math.max(...conts, 1);
+  const grafico = document.getElementById('graficoDias');
+  if (grafico) grafico.innerHTML = `<div class="dash-bar-wrap">${conts.map((c,i)=>`<div class="dash-bar-row"><span class="dash-bar-label">${nomes[i]}</span><div class="dash-bar-track"><div class="dash-bar-fill" style="width:${(c/maxC*100).toFixed(0)}%"></div></div><span class="dash-bar-val">${c}</span></div>`).join('')}</div>`;
+  // Serviços
+  const svcMap = {};
+  pagos.forEach(a => { (a.servicos||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(sv=>{ svcMap[sv]=(svcMap[sv]||0)+1; }); });
+  const rankSvcs = Object.entries(svcMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const dashSvcs = document.getElementById('dashServicos');
+  if (dashSvcs) dashSvcs.innerHTML = rankSvcs.map(([nome,cont],i)=>`<div class="dash-svc-item"><span class="dash-svc-pos">${i+1}</span><span class="dash-svc-nome">${nome}</span><div class="dash-svc-barra"><div class="dash-svc-barra-fill" style="width:${(cont/rankSvcs[0][1]*100).toFixed(0)}%"></div></div><span class="dash-svc-cont">${cont}x</span></div>`).join('');
+  const graficoFat = document.getElementById('graficoFaturamento');
+  if (graficoFat) graficoFat.innerHTML = '<div class="dash-loading" style="font-size:0.75rem">Dados do período carregados acima ↑</div>';
+  const dashHor = document.getElementById('dashHorarios');
+  if (dashHor) {
+    const horMap = {};
+    pagos.forEach(a=>{ if(a.horario) horMap[a.horario]=(horMap[a.horario]||0)+1; });
+    const rank = Object.entries(horMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    dashHor.innerHTML = rank.length ? rank.map(([hora,cont])=>`<div class="dash-hora-item"><span class="dash-hora-tempo">${hora}</span><div class="dash-hora-barra-wrap"><div class="dash-bar-track" style="height:10px"><div class="dash-bar-fill verde" style="width:${(cont/rank[0][1]*100).toFixed(0)}%"></div></div></div><span class="dash-hora-cont">${cont}x</span></div>`).join('') : '<div class="dash-loading">Sem dados</div>';
   }
-  /* Auto-highlight no scroll */
-  (function() {
-    var map = [
-      { id: 'agendar',  page: 'agendar'  },
-      { id: 'servicos', page: 'servicos' },
-    ];
-    window.addEventListener('scroll', function() {
-      var y = window.scrollY + window.innerHeight / 3;
-      var matched = 'inicio';
-      map.forEach(function(s) {
-        var el = document.getElementById(s.id);
-        if (el && el.offsetTop <= y) matched = s.page;
+}
+
+/* ── CRM ── */
+let _crmClientes = {};
+let _crmFiltroAtual = 'todos';
+let _crmClienteAtual = null;
+
+export async function carregarCRM() {
+  document.getElementById('crmGrid').innerHTML = '<div class="crm-loading">⏳ Carregando clientes…</div>';
+  _crmClientes = {};
+  const agendamentos = await buscarTodosAgendamentos().catch(() => []);
+  _crmClientes = agruparPorCliente(agendamentos);
+  const obs = await carregarObservacoes();
+  Object.keys(obs).forEach(k => { if (_crmClientes[k]) _crmClientes[k].obs = obs[k]; });
+  const todos    = Object.values(_crmClientes);
+  const vip      = todos.filter(c => c.agendamentos.length >= CRM_VIP_VISITAS);
+  const inativos = todos.filter(c => diasDesde(c.agendamentos[0]?.data) > CRM_INATIVO_DIAS);
+  const novos    = todos.filter(c => c.agendamentos.length === 1);
+  ['crmStatTotal','crmStatVip','crmStatInativos','crmStatNovos'].forEach((id,i) => {
+    const el = document.getElementById(id); if(el) el.textContent = [todos.length,vip.length,inativos.length,novos.length][i];
+  });
+  renderCRM();
+}
+
+function renderCRM() {
+  const grid   = document.getElementById('crmGrid');
+  const busca  = (document.getElementById('crmSearch')?.value||'').toLowerCase().trim();
+  let lista = Object.entries(_crmClientes).map(([key,c])=>({key,...c}));
+  lista = lista.filter(c => {
+    const v = c.agendamentos.length, d = diasDesde(c.agendamentos[0]?.data), inativo = d > CRM_INATIVO_DIAS;
+    if (_crmFiltroAtual==='vip')     return v >= CRM_VIP_VISITAS;
+    if (_crmFiltroAtual==='regular') return v>=2 && v<CRM_VIP_VISITAS && !inativo;
+    if (_crmFiltroAtual==='inativo') return inativo;
+    return true;
+  });
+  if (busca) lista = lista.filter(c => c.nome.toLowerCase().includes(busca) || c.email.includes(busca) || c.tel.replace(/\D/g,'').includes(busca.replace(/\D/g,'')));
+  lista.sort((a,b) => b.agendamentos.length - a.agendamentos.length);
+  if (!lista.length) { grid.innerHTML = '<div class="crm-empty">Nenhum cliente encontrado.</div>'; return; }
+  const maxV = Math.max(...lista.map(c=>c.agendamentos.length), 1);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  grid.innerHTML = '';
+  lista.forEach(c => {
+    const v = c.agendamentos.length, ult = c.agendamentos[0], d = diasDesde(ult?.data);
+    const inativo = d > CRM_INATIVO_DIAS, vip = v >= CRM_VIP_VISITAS, novo = v === 1;
+    let badges = '';
+    if (vip) badges += '<span class="crm-badge-vip">⭐ VIP</span>'; else if (novo) badges += '<span class="crm-badge-novo">✨ Novo</span>';
+    if (inativo) badges += '<span class="crm-badge-inativo">⚠ Inativo</span>';
+    const top = rankServicos(c.agendamentos).slice(0,3).map(([sv])=>`<span class="service-tag">${esc(sv)}</span>`).join('');
+    const card = document.createElement('div'); card.className = 'crm-card' + (inativo ? ' inativo-card' : '');
+    card.innerHTML = `<div class="crm-card-left"><div class="crm-card-name">${esc(c.nome)} ${badges}</div>
+      <div class="crm-meta"><span class="crm-meta-item">${[c.tel?'📱 '+c.tel:'',c.email?'✉ '+c.email:''].filter(Boolean).join(' · ')||'<em>sem contato</em>'}</span><span class="crm-meta-item">📅 Último: <strong>${ult?.data||'—'}</strong></span></div>
+      <div class="crm-servicos-top">${top}</div>${c.obs?`<div class="crm-obs-preview">📝 ${esc(c.obs)}</div>`:''}</div>
+      <div class="crm-card-right"><span class="crm-visitas-big">${v}</span><span class="crm-visitas-label">visita${v!==1?'s':''}</span><div class="crm-freq-bar"><div class="crm-freq-fill" style="width:${Math.round(v/maxV*100)}%"></div></div></div>`;
+    card.addEventListener('click', () => abrirClienteCRM(c.key));
+    grid.appendChild(card);
+  });
+}
+
+export function setCrmFiltro(f) {
+  _crmFiltroAtual = f;
+  ['Todos','Vip','Regular','Inativo'].forEach(n => { document.getElementById('crmF'+n)?.classList.toggle('active', n.toLowerCase()===f||(f==='todos'&&n==='Todos')); });
+  renderCRM();
+}
+
+function abrirClienteCRM(key) {
+  const c = _crmClientes[key]; if (!c) return;
+  _crmClienteAtual = key;
+  document.getElementById('crmModalNome').textContent = c.nome;
+  const contEl = document.getElementById('crmModalContato'); contEl.innerHTML = '';
+  if (c.tel) { const a=document.createElement('a'); a.href='https://wa.me/55'+c.tel.replace(/\D/g,''); a.target='_blank'; a.textContent='📱 '+c.tel; contEl.appendChild(a); }
+  if (c.email) { const span=document.createElement('span'); span.textContent='✉ '+c.email; contEl.appendChild(span); }
+  const total = c.agendamentos.reduce((s,a)=>s+(parseFloat(a.total)||0),0);
+  const iv = intervaloMedio(c.agendamentos);
+  ['crmKpiVisitas','crmKpiGasto','crmKpiIntervalo'].forEach((id,i) => {
+    const el=document.getElementById(id); if(el) el.textContent=[c.agendamentos.length,'R$'+total.toFixed(0),iv?iv+'d':'—'][i];
+  });
+  const top = rankServicos(c.agendamentos).slice(0,5);
+  document.getElementById('crmModalServicos').innerHTML = top.map(([sv,n])=>`<span class="service-tag">${sv} (${n}x)</span>`).join(' ') || '<span style="color:var(--gray2)">—</span>';
+  document.getElementById('crmModalHistorico').innerHTML = c.agendamentos.map(ag=>`<div class="crm-hist-item"><div><div class="crm-hist-date">${ag.data||'—'}</div><div class="crm-hist-time">${ag.horario||''}</div></div><div><div class="crm-hist-svc">${ag.servicos||'—'}</div>${ag.total?`<div class="crm-hist-total">R$ ${Number(ag.total).toFixed(2)}</div>`:''}</div></div>`).join('');
+  document.getElementById('crmObsArea').value = c.obs || '';
+  document.getElementById('crmModalOverlay').classList.remove('hidden');
+}
+
+export function fecharCrmModal(e) { if (e.target.id==='crmModalOverlay') document.getElementById('crmModalOverlay').classList.add('hidden'); }
+
+export async function salvarObsCRM() {
+  const key = _crmClienteAtual; if (!key) return;
+  const obs = document.getElementById('crmObsArea').value.trim();
+  if (_crmClientes[key]) _crmClientes[key].obs = obs;
+  try { await salvarObservacao(key, obs); showToast('✅ Observação salva!'); } catch (e) { showToast('❌ Erro: '+e.message); }
+  renderCRM();
+}
+
+/* ══════════════════════════════════════════
+   PORTFÓLIO DO BARBEIRO — ADMIN
+══════════════════════════════════════════ */
+
+// renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio
+// são importadas de galeria.js e re-expostas globalmente aqui
+// (stubs para compatibilidade com código que chame diretamente)
+export { renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio };
+
+/* ══════════════════════════════════════════
+   HISTÓRICO DE ATENDIMENTO
+══════════════════════════════════════════ */
+
+let _histAtendBarbeiroId   = null;
+let _histAtendBarbeiroNome = '';
+let _histAtendTodos        = [];   // cache de todos os agendamentos do barbeiro
+
+/* ── Seletor de barbeiro ── */
+export function trocarBarbeiroHistorico() {
+  _histAtendBarbeiroId   = null;
+  _histAtendBarbeiroNome = '';
+  _histAtendTodos        = [];
+
+  document.getElementById('histAtendListStep').style.display = 'none';
+  document.getElementById('histAtendBarbStep').style.display = 'block';
+
+  const grid = document.getElementById('histAtendBarbGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const ativos = (adminSettings.barbeiros || []).filter(b => b.ativo !== false);
+  if (!ativos.length) {
+    grid.innerHTML = '<div class="atend-sem-data">Nenhum barbeiro ativo cadastrado.</div>';
+    return;
+  }
+  ativos.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'atend-barb-card';
+    const fotoHtml = b.foto
+      ? `<img src="${b.foto}" style="width:2rem;height:2rem;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`
+      : `<div class="atend-barb-emoji">${b.emoji || '💈'}</div>`;
+    card.innerHTML = `${fotoHtml}<div class="atend-barb-nome">${b.nome}</div>`;
+    card.onclick = () => selecionarBarbeiroHistorico(b.id, b.nome);
+    grid.appendChild(card);
+  });
+}
+
+async function selecionarBarbeiroHistorico(id, nome) {
+  _histAtendBarbeiroId   = id;
+  _histAtendBarbeiroNome = nome;
+
+  document.getElementById('histAtendBarbStep').style.display  = 'none';
+  document.getElementById('histAtendListStep').style.display  = 'block';
+
+  const label = document.getElementById('histAtendBarbLabel');
+  if (label) label.textContent = '💈 ' + nome;
+
+  const busca = document.getElementById('histAtendBusca');
+  if (busca) busca.value = '';
+
+  const lista = document.getElementById('histAtendLista');
+  if (lista) lista.innerHTML = '<div class="atend-sem-data" style="text-align:center;padding:2rem">⏳ Carregando histórico...</div>';
+
+  const stats = document.getElementById('histAtendStats');
+  if (stats) stats.innerHTML = '';
+
+  try {
+    const todos = await buscarTodosAgendamentos();
+    _histAtendTodos = todos
+      .filter(a => a.barbeiroId === id && a.status !== 'cancelado')
+      .sort((a, b) => {
+        // Ordena por data desc: "DD/MM/YYYY HH:MM" combinado
+        const ta = _histDateToSort(a.data, a.horario);
+        const tb = _histDateToSort(b.data, b.horario);
+        return tb - ta;
       });
-      document.querySelectorAll('.bottom-nav .bn-item').forEach(function(item) {
-        item.classList.toggle('active', item.dataset.page === matched);
-      });
-    });
-  })();
-  /* Bolinha vermelha no Perfil quando logado */
-  (function waitFb() {
-    if (!window._fb) { setTimeout(waitFb, 200); return; }
-    window._fb.onAuthStateChanged(window._fb.auth, function(user) {
-      var dot = document.getElementById('bnPerfilDot');
-      if (dot) dot.classList.toggle('show', !!user);
-    });
-  })();
+  } catch (e) {
+    _histAtendTodos = [];
+    if (lista) lista.innerHTML = `<div class="atend-sem-data" style="color:var(--red)">Erro ao carregar: ${e.message}</div>`;
+    return;
+  }
 
-  /* ═══ CORREÇÕES 2 & 3: Profile Sheet Mobile ═══ */
+  renderHistoricoAtend();
+}
 
-  /* Abre sheet no mobile, modal no desktop */
-  function openProfileSheetOrModal() {
-    if (window.innerWidth <= 768) {
-      openProfileSheet();
-    } else {
-      openUserModal();
+/* Converte "DD/MM/YYYY" + "HH:MM" → timestamp para ordenação */
+function _histDateToSort(dataBR, horario) {
+  if (!dataBR) return 0;
+  const [d, m, y] = dataBR.split('/').map(Number);
+  const [h = 0, min = 0] = (horario || '').split(':').map(Number);
+  return new Date(y, m - 1, d, h, min).getTime();
+}
+
+/* ── Renderiza a lista (com filtro de busca aplicado) ── */
+function renderHistoricoAtend(busca = '') {
+  const lista  = document.getElementById('histAtendLista');
+  const stats  = document.getElementById('histAtendStats');
+  if (!lista) return;
+
+  const termo = busca.trim().toLowerCase();
+  const dados = termo
+    ? _histAtendTodos.filter(a =>
+        (a.cliente   || '').toLowerCase().includes(termo) ||
+        (a.telefone  || '').replace(/\D/g,'').includes(termo.replace(/\D/g,'')) ||
+        (a.servicos  || '').toLowerCase().includes(termo))
+    : _histAtendTodos;
+
+  // Stats
+  if (stats) {
+    const total    = _histAtendTodos.length;
+    const faturado = _histAtendTodos.reduce((s, a) => s + parseFloat(a.total || 0), 0);
+    stats.innerHTML = `
+      <div class="hist-atend-stat"><span class="hist-atend-stat-n">${total}</span><span class="hist-atend-stat-l">Atendimentos</span></div>
+      <div class="hist-atend-stat"><span class="hist-atend-stat-n">R$ ${faturado.toFixed(0)}</span><span class="hist-atend-stat-l">Faturado</span></div>
+      <div class="hist-atend-stat"><span class="hist-atend-stat-n">R$ ${total ? (faturado/total).toFixed(0) : '0'}</span><span class="hist-atend-stat-l">Ticket médio</span></div>`;
+  }
+
+  if (!dados.length) {
+    lista.innerHTML = `<div class="atend-sem-data">${termo ? 'Nenhum resultado para "'+busca+'".' : 'Nenhum atendimento registrado para '+_histAtendBarbeiroNome+'.'}</div>`;
+    return;
+  }
+
+  lista.innerHTML = '';
+  dados.forEach(a => {
+    const svcs = (a.servicos || '').split(', ').map(s => `<span class="service-tag">${s}</span>`).join('');
+    const card = document.createElement('div');
+    card.className = 'hist-atend-card';
+    card.innerHTML = `
+      <div class="hist-atend-datetime">
+        <div class="hist-atend-data">${a.data || '—'}</div>
+        <div class="hist-atend-hora">${a.horario || ''}</div>
+      </div>
+      <div class="hist-atend-info">
+        <div class="hist-atend-cliente">👤 ${a.cliente || '—'}</div>
+        ${a.telefone ? `<div class="hist-atend-tel">📱 ${a.telefone}</div>` : ''}
+        <div class="hist-atend-svcs">${svcs || '<em style="color:var(--gray2)">Sem serviço</em>'}</div>
+      </div>
+      <div class="hist-atend-valor">${a.total ? 'R$ ' + Number(a.total).toFixed(2) : '—'}</div>`;
+    lista.appendChild(card);
+  });
+}
+
+export function filtrarHistoricoAtend() {
+  const busca = document.getElementById('histAtendBusca')?.value || '';
+  renderHistoricoAtend(busca);
+}
+
+/* ══════════════════════════════════════════
+   DIAS BLOQUEADOS POR BARBEIRO
+══════════════════════════════════════════ */
+
+/* ── Carrega do Firestore ── */
+export async function carregarBloqueiosBarb() {
+  if (!window._fb) { renderBloqueiosBarb(); return; }
+  try {
+    const { collection, getDocs, query, orderBy, db } = window._fb;
+    const q = query(collection(db, 'dias_bloqueados'), orderBy('created_at', 'desc'));
+    const snap = await getDocs(q);
+    adminSettings.diasBloqueadosBarbeiro = [];
+    snap.forEach(doc => adminSettings.diasBloqueadosBarbeiro.push({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    // Firestore pode não ter o índice ainda; tenta sem ordenação
+    try {
+      const { collection, getDocs, db } = window._fb;
+      const snap = await getDocs(collection(db, 'dias_bloqueados'));
+      adminSettings.diasBloqueadosBarbeiro = [];
+      snap.forEach(doc => adminSettings.diasBloqueadosBarbeiro.push({ id: doc.id, ...doc.data() }));
+    } catch (_) { /* ignora */ }
+  }
+  renderBloqueiosBarb();
+}
+
+/* ── Renderiza a lista na aba Dias ── */
+export function renderBloqueiosBarb() {
+  const lista  = document.getElementById('listaBloqueiosBarb');
+  const empty  = document.getElementById('listaBloqueiosBarbEmpty');
+  const filtro = document.getElementById('filtroBloqueioBarb');
+  if (!lista) return;
+
+  // Popula o filtro com os barbeiros
+  if (filtro) {
+    const val = filtro.value;
+    filtro.innerHTML = '<option value="">Todos os barbeiros</option>';
+    (adminSettings.barbeiros || []).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id; opt.textContent = b.nome;
+      filtro.appendChild(opt);
+    });
+    filtro.value = val;
+  }
+
+  const filtroVal = filtro?.value || '';
+  const bloqueios = (adminSettings.diasBloqueadosBarbeiro || [])
+    .filter(b => !filtroVal || b.barber_id === filtroVal)
+    .sort((a, b) => (a.date > b.date ? 1 : -1));
+
+  lista.innerHTML = '';
+  if (!bloqueios.length) {
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const dayNames   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  bloqueios.forEach(item => {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === item.barber_id);
+    const barbNome  = barb?.nome || 'Barbeiro';
+    const barbEmoji = barb?.emoji || '💈';
+    // date formato ISO YYYY-MM-DD
+    const [y, m, d] = item.date.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const friendly = dayNames[dt.getDay()] + ', ' + String(d).padStart(2,'0') + ' ' + monthNames[m-1] + ' ' + y;
+
+    const row = document.createElement('div');
+    row.className = 'barb-bloq-item';
+    row.innerHTML = `
+      <div class="barb-bloq-info">
+        <div class="barb-bloq-nome">${barbEmoji} ${barbNome}</div>
+        <div class="barb-bloq-data">🔒 ${friendly}</div>
+        ${item.reason ? `<div class="barb-bloq-motivo">📝 ${item.reason}</div>` : '<div class="barb-bloq-motivo" style="font-style:italic">Sem motivo registrado</div>'}
+      </div>
+      <button class="barb-bloq-del" title="Desbloquear este dia" onclick="removerBloqueioBarb('${item.id}')">✕</button>`;
+    lista.appendChild(row);
+  });
+}
+
+/* ── Abre o modal ── */
+export function openModalBloqueioBarb() {
+  const sel = document.getElementById('bloqueioBarberSelect');
+  if (sel) {
+    sel.innerHTML = '<option value="">Selecione o barbeiro...</option>';
+    (adminSettings.barbeiros || []).filter(b => b.ativo !== false).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id; opt.textContent = (b.emoji || '💈') + ' ' + b.nome;
+      sel.appendChild(opt);
+    });
+    sel.value = '';
+  }
+  const dateStep = document.getElementById('bloqueioDateStep');
+  if (dateStep) dateStep.style.display = 'none';
+  const dateInput = document.getElementById('bloqueioDateInput');
+  if (dateInput) {
+    dateInput.value = '';
+    dateInput.min   = new Date().toISOString().split('T')[0];
+  }
+  const reasonInput = document.getElementById('bloqueioReason');
+  if (reasonInput) reasonInput.value = '';
+  const alertEl = document.getElementById('bloqueioAgendAlert');
+  if (alertEl) alertEl.style.display = 'none';
+  document.getElementById('bloqueioErr')?.classList.remove('show');
+  document.getElementById('overlayBloqueioBarb')?.classList.add('show');
+}
+
+export function closeModalBloqueioBarb() {
+  document.getElementById('overlayBloqueioBarb')?.classList.remove('show');
+}
+
+/* ── Barbeiro selecionado → revela datepicker ── */
+export async function onBarbeiroBloqueioChange() {
+  const barb_id   = document.getElementById('bloqueioBarberSelect')?.value;
+  const dateStep  = document.getElementById('bloqueioDateStep');
+  const alertEl   = document.getElementById('bloqueioAgendAlert');
+  if (!barb_id) {
+    if (dateStep) dateStep.style.display = 'none';
+    return;
+  }
+  if (dateStep) dateStep.style.display = 'block';
+  if (alertEl)  alertEl.style.display  = 'none';
+}
+
+/* ── Data selecionada → verifica agendamentos existentes ── */
+export async function onDataBloqueioChange() {
+  const barb_id  = document.getElementById('bloqueioBarberSelect')?.value;
+  const dateISO  = document.getElementById('bloqueioDateInput')?.value;
+  const alertEl  = document.getElementById('bloqueioAgendAlert');
+  if (!barb_id || !dateISO || !alertEl) return;
+
+  alertEl.style.display = 'none';
+  // Converter ISO → formato Firestore DD/MM/YYYY
+  const [y, m, d] = dateISO.split('-');
+  const dateFS    = `${d}/${m}/${y}`;
+  try {
+    const todos = await buscarAgendamentosDoDia(dateFS);
+    const count = todos.filter(a => a.barbeiroId === barb_id).length;
+    if (count > 0) {
+      alertEl.innerHTML = `<span class="bloqueio-agend-alert-icon">⚠️</span>
+        <span>Já existem <strong>${count} agendamento${count > 1 ? 's' : ''}</strong> para este barbeiro neste dia.
+        Eles <strong>não serão cancelados</strong> automaticamente — você precisará comunicar o cliente manualmente.</span>`;
+      alertEl.style.display = 'flex';
+    }
+  } catch (_) { /* ignora erros de rede */ }
+}
+
+/* ── Confirma o bloqueio ── */
+export async function confirmarBloqueioBarb() {
+  const barb_id = document.getElementById('bloqueioBarberSelect')?.value;
+  const dateISO = document.getElementById('bloqueioDateInput')?.value;
+  const reason  = document.getElementById('bloqueioReason')?.value.trim() || null;
+  const errEl   = document.getElementById('bloqueioErr');
+
+  if (!barb_id) {
+    if (errEl) { errEl.textContent = 'Selecione um barbeiro.'; errEl.classList.add('show'); }
+    return;
+  }
+  if (!dateISO) {
+    if (errEl) { errEl.textContent = 'Selecione uma data.'; errEl.classList.add('show'); }
+    return;
+  }
+  // Não permitir datas passadas
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const [y, m, d] = dateISO.split('-').map(Number);
+  const dataSel = new Date(y, m-1, d);
+  if (dataSel < hoje) {
+    if (errEl) { errEl.textContent = 'Não é possível bloquear datas passadas.'; errEl.classList.add('show'); }
+    return;
+  }
+  // Verificar duplicata
+  const jaExiste = (adminSettings.diasBloqueadosBarbeiro || []).some(
+    b => b.barber_id === barb_id && b.date === dateISO
+  );
+  if (jaExiste) {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === barb_id);
+    if (errEl) { errEl.textContent = `${barb?.nome || 'Este barbeiro'} já está bloqueado nesta data.`; errEl.classList.add('show'); }
+    return;
+  }
+  if (errEl) errEl.classList.remove('show');
+
+  const novoDoc = { barber_id: barb_id, date: dateISO, reason, created_at: new Date().toISOString() };
+
+  // Salva no Firestore
+  if (window._fb) {
+    try {
+      const ref = await window._fb.addDoc(window._fb.collection(window._fb.db, 'dias_bloqueados'), novoDoc);
+      novoDoc.id = ref.id;
+    } catch (e) {
+      showToast('❌ Erro ao salvar: ' + e.message);
+      return;
+    }
+  } else {
+    novoDoc.id = 'local_' + Date.now();
+  }
+
+  if (!adminSettings.diasBloqueadosBarbeiro) adminSettings.diasBloqueadosBarbeiro = [];
+  adminSettings.diasBloqueadosBarbeiro.push(novoDoc);
+
+  const barb = (adminSettings.barbeiros || []).find(b => b.id === barb_id);
+  closeModalBloqueioBarb();
+  renderBloqueiosBarb();
+  showToast(`🔒 ${barb?.nome || 'Barbeiro'} bloqueado em ${d.toString().padStart(2,'0')}/${m.toString().padStart(2,'0')}/${y}!`);
+}
+
+/* ── Remove um bloqueio ── */
+export async function removerBloqueioBarb(id) {
+  if (!confirm('Desbloquear este dia para este barbeiro?')) return;
+  if (window._fb && !id.startsWith('local_')) {
+    try {
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'dias_bloqueados', id));
+    } catch (e) {
+      showToast('❌ Erro ao remover: ' + e.message);
+      return;
     }
   }
-  window.openProfileSheetOrModal = openProfileSheetOrModal;
+  adminSettings.diasBloqueadosBarbeiro = (adminSettings.diasBloqueadosBarbeiro || []).filter(b => b.id !== id);
+  renderBloqueiosBarb();
+  showToast('✓ Dia desbloqueado com sucesso.');
+}
 
-  function openProfileSheet() {
-    renderProfileSheet();
-    var overlay = document.getElementById('profileSheetOverlay');
-    var sheet   = document.getElementById('profileSheet');
-    overlay.style.display = 'block';
-    /* forçar reflow para a transição funcionar */
-    void overlay.offsetWidth;
-    overlay.classList.add('open');
-    sheet.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-  window.openProfileSheet = openProfileSheet;
+/* ── Expõe todos os globais ── */
+window.openAdmin           = openAdmin;
+window.closeAdmin          = closeAdmin;
+window.doAdminLogin        = doAdminLogin;
+window.adminLogout         = adminLogout;
+window.switchAdmTab        = switchAdmTab;
+window.saveAdminSettings   = saveAdminSettings;
+window.toggleShopStatus    = toggleShopStatus;
+window.updateWorkHour      = updateWorkHour;
+window.openAddBlockedDate  = openAddBlockedDate;
+window.closeAddBlockedDate = closeAddBlockedDate;
+window.confirmAddBlockedDate=confirmAddBlockedDate;
+window.removeBlockedDate   = removeBlockedDate;
+window.aplicarDuracaoPadrao= aplicarDuracaoPadrao;
+window.toggleSlot          = toggleSlot;
+window.deleteSlot          = deleteSlot;
+window.openAddSlotModal    = openAddSlotModal;
+window.closeAddSlotModal   = closeAddSlotModal;
+window.confirmAddSlot      = confirmAddSlot;
+window.toggleSvcVis        = toggleSvcVis;
+window.deleteSvc           = deleteSvc;
+window.openAddSvcModal     = openAddSvcModal;
+window.openEditSvcModal    = openEditSvcModal;
+window.closeAddSvcModal    = closeAddSvcModal;
+window.confirmSaveService  = confirmSaveService;
+window.svcFotoSelecionada  = svcFotoSelecionada;
+window.removerFotoSvc      = removerFotoSvc;
+window.abrirModalBarbeiro  = abrirModalBarbeiro;
+window.fecharModalBarbeiro = fecharModalBarbeiro;
+window.atualizarPreviewFoto= atualizarPreviewFoto;
+window.selecionarEmoji     = selecionarEmoji;
+window.toggleDiaBarb       = toggleDiaBarb;
+window.confirmarSalvarBarbeiro = confirmarSalvarBarbeiro;
+window.toggleAtivoBarbeiro = toggleAtivoBarbeiro;
+window.excluirBarbeiro     = excluirBarbeiro;
+window.prevMonthAtend      = prevMonthAtend;
+window.nextMonthAtend      = nextMonthAtend;
+window.trocarBarbeiro      = trocarBarbeiro;
+window.exportarAtendimentosPDF=exportarAtendimentosPDF;
+window.gerarStory          = gerarStory;
+window.baixarStory         = baixarStory;
+window.compartilharStory   = compartilharStory;
+window.fazerBackupJSON     = fazerBackupJSON;
+window.importarBackupJSON  = importarBackupJSON;
+window.restaurarBackupFirestore=restaurarBackupFirestore;
+window.excluirBackup       = excluirBackup;
+window.carregarHistoricoBackup=carregarHistoricoBackup;
+window.carregarSolicitacoes= carregarSolicitacoes;
+window.filtrarSolicitacoes = filtrarSolicitacoes;
+window.responderSolicitacao= responderSolicitacao;
+window.salvarPoliticaReembolso=salvarPoliticaReembolso;
+window.carregarDashboard   = carregarDashboard;
+window.carregarCRM         = carregarCRM;
+window.setCrmFiltro        = setCrmFiltro;
+window.fecharCrmModal      = fecharCrmModal;
+window.salvarObsCRM        = salvarObsCRM;
+window.trocarBarbeiroHistorico  = trocarBarbeiroHistorico;
+window.filtrarHistoricoAtend    = filtrarHistoricoAtend;
 
-  function closeProfileSheet() {
-    var overlay = document.getElementById('profileSheetOverlay');
-    var sheet   = document.getElementById('profileSheet');
-    overlay.classList.remove('open');
-    sheet.classList.remove('open');
-    document.body.style.overflow = '';
-    setTimeout(function() { overlay.style.display = 'none'; }, 350);
-  }
-  window.closeProfileSheet = closeProfileSheet;
-
-  function renderProfileSheet() {
-    var body = document.getElementById('profileSheetBody');
-    if (!body) return;
-    var user = window.fbUser;
-    if (user) {
-      /* Calcula iniciais */
-      var parts    = (user.name || 'U').split(' ');
-      var initials = (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-      var adminBtn = user.isAdmin
-        ? '<button class="profile-sheet-admin-btn" onclick="closeProfileSheet();openAdmin(true)">⚙ Painel Admin</button>'
-        : '';
-      body.innerHTML =
-        '<div class="profile-sheet-user">' +
-          '<div class="profile-sheet-avatar">' + initials + '</div>' +
-          '<div class="profile-sheet-info">' +
-            '<div class="profile-sheet-name">' + escapeHtml(user.name) + '</div>' +
-            '<div class="profile-sheet-email">' + escapeHtml(user.email) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="profile-sheet-divider"></div>' +
-        '<div class="profile-sheet-actions">' +
-          adminBtn +
-          '<button class="profile-sheet-account-btn" onclick="closeProfileSheet();openUserModal()">👤 Minha Conta</button>' +
-          '<button class="profile-sheet-logout-btn" onclick="closeProfileSheet();doLogout()">Sair da conta</button>' +
-        '</div>';
-    } else {
-      body.innerHTML =
-        '<div class="profile-sheet-guest">' +
-          '<div class="profile-sheet-guest-title">Sua Conta</div>' +
-          '<div class="profile-sheet-guest-sub">Entre ou crie uma conta para salvar seu histórico de agendamentos.</div>' +
-        '</div>' +
-        '<div class="profile-sheet-divider"></div>' +
-        '<div class="profile-sheet-actions">' +
-          '<button class="profile-sheet-account-btn" onclick="closeProfileSheet();openUserModal();switchTab(\'login\')">Entrar</button>' +
-          '<button class="profile-sheet-logout-btn" onclick="closeProfileSheet();openUserModal();switchTab(\'register\')">Criar Conta</button>' +
-        '</div>';
+/* ── Marcar atendimento como realizado + incrementa contador ── */
+export async function marcarAtendimentoRealizado(agendId, barbId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  try {
+    if (agendId && window._fb) {
+      await window._fb.setDoc(
+        window._fb.doc(window._fb.db, 'agendamentos', agendId),
+        { realizado: true },
+        { merge: true }
+      );
     }
+    incrementarContadorCortes(barbId);
+    await saveAdminSettings();
+    showToast('✅ Atendimento concluído! Contador atualizado.');
+    if (btn) { btn.textContent = '✓ Realizado'; btn.classList.add('done'); }
+    import('./agendamento.js').then(m => m.renderBarbeiroGrid());
+  } catch(e) {
+    showToast('❌ Erro ao concluir: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Concluir'; }
   }
+}
 
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
-  }
-
-  /* Swipe para fechar */
-  (function() {
-    var sheet     = document.getElementById('profileSheet');
-    var startY    = 0;
-    var dragging  = false;
-    sheet.addEventListener('touchstart', function(e) {
-      startY   = e.touches[0].clientY;
-      dragging = true;
-    }, { passive: true });
-    sheet.addEventListener('touchmove', function(e) {
-      if (!dragging) return;
-      var dy = e.touches[0].clientY - startY;
-      if (dy > 0) sheet.style.transform = 'translateY(' + dy + 'px)';
-    }, { passive: true });
-    sheet.addEventListener('touchend', function(e) {
-      if (!dragging) return;
-      dragging = false;
-      var dy = e.changedTouches[0].clientY - startY;
-      sheet.style.transform = '';
-      if (dy > 80) closeProfileSheet();
-    });
-  })();
-</script>
-
-<!-- ═══ PROFILE SHEET MOBILE (Correções 2 e 3) ═══ -->
-<div class="profile-sheet-overlay" id="profileSheetOverlay" onclick="closeProfileSheet()"></div>
-<div class="profile-sheet" id="profileSheet">
-  <div class="profile-sheet-pill"></div>
-  <div class="profile-sheet-header">
-    <span class="profile-sheet-title">Perfil</span>
-    <button class="profile-sheet-close" onclick="closeProfileSheet()" aria-label="Fechar">✕</button>
-  </div>
-  <div class="profile-sheet-divider"></div>
-  <div id="profileSheetBody"></div>
-</div>
-
-<!-- ═══ JAVASCRIPT (módulos ES6) ═══ -->
-<script type="module">
-  import { initSite } from './js/index.js';
-  import './js/login.js';
-  import './js/agendamento.js';
-  import './js/historico.js';
-  import './js/admin.js';
-  import './js/perfil.js';
-  import './js/galeria.js';
-  initSite();
-</script>
-
-</body>
-</html>
+window.renderPortfolioAdmin     = renderPortfolioAdmin;
+window.adicionarFotoPortfolio   = adicionarFotoPortfolio;
+window.removerFotoPortfolio     = removerFotoPortfolio;
+window.triggerUploadFoto        = triggerUploadFoto;
+window.onPortFileChange         = onPortFileChange;
+window.toggleDestaquePortfolio  = toggleDestaquePortfolio;
+window.atualizarLimitePortfolio = atualizarLimitePortfolio;
+window.abrirEditarTagsFoto      = abrirEditarTagsFoto;
+window.galeAdmDragStart         = galeAdmDragStart;
+window.galeAdmDragOver          = galeAdmDragOver;
+window.galeAdmDrop              = galeAdmDrop;
+window.galeAdmDragEnd           = galeAdmDragEnd;
+window.incrementarContadorCortes = incrementarContadorCortes;
+window.marcarAtendimentoRealizado = marcarAtendimentoRealizado;
+window.carregarBloqueiosBarb    = carregarBloqueiosBarb;
+window.renderBloqueiosBarb      = renderBloqueiosBarb;
+window.openModalBloqueioBarb    = openModalBloqueioBarb;
+window.closeModalBloqueioBarb   = closeModalBloqueioBarb;
+window.onBarbeiroBloqueioChange = onBarbeiroBloqueioChange;
+window.onDataBloqueioChange     = onDataBloqueioChange;
+window.confirmarBloqueioBarb    = confirmarBloqueioBarb;
+window.removerBloqueioBarb      = removerBloqueioBarb;
