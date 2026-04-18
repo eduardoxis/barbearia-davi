@@ -7,7 +7,7 @@
    Barbearia do Davi
 ══════════════════════════════════════════ */
 
-import { adminSettings, showToast } from './global.js';
+import { adminSettings, showToast, addToCartArr, removeFromCartArr, cart } from './global.js';
 
 /* ─── CONSTANTES ─────────────────────────── */
 const MAX_DESTAQUE      = 3;
@@ -599,10 +599,55 @@ export function queroEsseCorte() {
     localStorage.setItem('gale_referencias', JSON.stringify(existing.slice(-50)));
   } catch (_) {}
 
+  // Detecta serviço pelas tags da foto e pré-preenche o carrinho
+  const svcId = _mapTagsParaServico(foto.tags || []);
+  _preencherCarrinhoComServico(svcId);
+
   fecharLightboxGaleria();
   fecharGaleria();
-  _selecionarBarbeiroAgendamento(_lbBarbId);
-  showToast('💈 Barbeiro selecionado! Mostre a referência na barbearia.');
+
+  // Vai direto para data/hora, pulando a seleção manual de serviço
+  if (typeof window.selecionarBarbeiroComServico === 'function') {
+    window.selecionarBarbeiroComServico(_lbBarbId);
+    const svc = adminSettings.services?.find(s => s.id === svcId);
+    const nomeSvc = svc ? svc.name : 'serviço';
+    showToast(`💈 ${nomeSvc} pré-selecionado! Agora escolha a data.`);
+  } else {
+    // Fallback caso a função ainda não esteja pronta
+    _selecionarBarbeiroAgendamento(_lbBarbId);
+    showToast('💈 Barbeiro selecionado! Mostre a referência na barbearia.');
+  }
+}
+
+/** Mapeia tags da foto para o id do serviço mais compatível */
+function _mapTagsParaServico(tags) {
+  const mapa = {
+    'degradê': 'degrade', 'degrade': 'degrade', 'fade': 'degrade', 'skin': 'degrade',
+    'clássico': 'corte',  'classico': 'corte',
+    'infantil': 'infantil',
+    'máquina': 'maquina', 'maquina': 'maquina',
+    'barba': 'barba',     'navalhado': 'barba',
+    'combo': 'combo',
+    'sobrancelha': 'sobrancelha',
+    'hot': 'hot',
+  };
+  for (const tag of tags) {
+    const chave = tag.toLowerCase().replace(/^#/, '');
+    if (mapa[chave]) return mapa[chave];
+  }
+  // Fallback: primeiro serviço disponível (ex: Corte Clássico)
+  return adminSettings.services?.[0]?.id || 'corte';
+}
+
+/** Limpa o carrinho e adiciona somente o serviço detectado */
+function _preencherCarrinhoComServico(svcId) {
+  // Snapshot dos ids antes de remover (removeFromCartArr recria o array)
+  const idsAtuais = cart.map(c => c.id);
+  idsAtuais.forEach(id => removeFromCartArr(id));
+  const svc = adminSettings.services?.find(s => s.id === svcId);
+  if (svc) addToCartArr({ ...svc });
+  // Atualiza UI do carrinho se index.js já estiver pronto
+  if (typeof window.updateCartUI === 'function') window.updateCartUI();
 }
 
 function _selecionarBarbeiroAgendamento(barbId) {
