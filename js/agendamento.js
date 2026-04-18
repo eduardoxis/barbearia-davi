@@ -31,32 +31,65 @@ export function renderBarbeiroGrid() {
     return;
   }
   grid.innerHTML = ativos.map(b => {
-    const sel     = booking.barbeiro?.id === b.id;
+    const sel      = booking.barbeiro?.id === b.id;
     const fotoHtml = b.foto
       ? `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.innerHTML='${b.emoji||'💈'}'">`
       : (b.emoji || '💈');
     const dias  = (b.diasAtendimento || []).map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(' · ');
     const slots = gerarHorariosBarbeiro(b);
-    const temGal = b.portfolio && b.portfolio.length > 0;
+    const fotos = b.portfolio || [];
+    const temGal = fotos.length > 0;
+
+    /* ── Prévia de fotos no card ── */
+    let fotoStripHtml = '';
+    if (temGal) {
+      // Pega até 3 fotos: primeiro os destaques, depois as demais
+      const destaques = fotos.filter(f => f.destaque);
+      const resto     = fotos.filter(f => !f.destaque);
+      const preview   = [...destaques, ...resto].slice(0, 3);
+      const qtdExtra  = fotos.length - preview.length;
+
+      const thumbsHtml = preview.map((f, i) => {
+        const isUltimo = i === preview.length - 1 && qtdExtra > 0;
+        return `<div class="barb-strip-thumb">
+          <img src="${f.url}" loading="lazy" onerror="this.parentElement.classList.add('barb-strip-err')">
+          ${isUltimo ? `<div class="barb-strip-mais">+${qtdExtra}</div>` : ''}
+        </div>`;
+      }).join('');
+
+      fotoStripHtml = `
+        <div class="barb-fotos-strip" data-barb-id="${b.id}">
+          <div class="barb-strip-grid">${thumbsHtml}</div>
+          <div class="barb-strip-overlay" data-barb-id="${b.id}">
+            <span class="barb-strip-icone">📸</span>
+            <span class="barb-strip-txt">Ver galeria · ${fotos.length} foto${fotos.length !== 1 ? 's' : ''}</span>
+            <span class="barb-strip-seta">→</span>
+          </div>
+        </div>`;
+    }
+
+    const cortesHtml = (b.totalCortes && b.totalCortes > 0)
+      ? `<div class="barb-cortes-count">✂️ ${b.totalCortes} corte${b.totalCortes !== 1 ? 's' : ''} realizados</div>`
+      : '';
+
     return `<div class="barbeiro-card${sel ? ' selecionado' : ''}" onclick="selecionarBarbeiro('${b.id}')">
       ${sel ? '<div class="barbeiro-badge-sel">✓ Selecionado</div>' : ''}
       <div class="barbeiro-foto">${fotoHtml}</div>
       <div class="barbeiro-nome">${b.nome}</div>
       <div class="barbeiro-esp">${b.especialidade || 'Barbeiro profissional'}</div>
-      ${renderDestaquesThumbs(b)}
-      ${renderContadorCortes(b)}
+      ${cortesHtml}
+      ${fotoStripHtml}
       <div class="barbeiro-horario">⏱ ${b.horarioInicio || '08:00'} – ${b.horarioFim || '18:00'}</div>
       <div style="font-size:0.6rem;color:var(--gray2);margin-top:0.2rem">${slots.length} horários · ${dias}</div>
-      ${temGal ? `<button class="barb-galeria-btn" data-barb-id="${b.id}">📸 Ver galeria (${b.portfolio.length})</button>` : ''}
       ${sel ? '<div class="barbeiro-check-circle">✓</div>' : ''}
     </div>`;
   }).join('');
 
-  // Delegação de eventos — usa a função importada diretamente (não depende de window.xxx)
-  grid.querySelectorAll('[data-barb-id]').forEach(btn => {
-    btn.addEventListener('click', e => {
+  /* ── Delegação: clique no strip/overlay abre galeria sem selecionar barbeiro ── */
+  grid.querySelectorAll('[data-barb-id]').forEach(el => {
+    el.addEventListener('click', e => {
       e.stopPropagation();
-      const id = btn.dataset.barbId;
+      const id = el.dataset.barbId;
       if (id) abrirGaleriaBarbeiro(id);
     });
   });
