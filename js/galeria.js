@@ -392,22 +392,36 @@ export function abrirGaleriaBarbeiro(id) {
   _lbBarbId = id;
   _tagFiltroAtivo = null;
 
-  /* ── Avatar + info ── */
+  /* ── Avatar + info (header redesenhado) ── */
   const header = document.getElementById('galeHeader');
   if (header) {
     const fotoHtml = b.foto
       ? `<img src="${b.foto}" class="gale-avatar-img" alt="${b.nome}" onerror="this.style.display='none'">`
       : `<span class="gale-avatar-emoji">${b.emoji || '💈'}</span>`;
-    const cortes = b.totalCortes ? `<div class="gale-cortes-badge">✂️ ${b.totalCortes} cortes</div>` : '';
-    const nota   = _calcNotaMedia(b);
+    const cortes  = b.totalCortes ? `<div class="gale-cortes-badge">✂️ ${b.totalCortes} cortes</div>` : '';
+    const nota    = _calcNotaMedia(b);
     const estrelas = nota ? `<div class="gale-nota-badge">${_renderEstrelas(nota)} <span>${nota.toFixed(1)}</span></div>` : '';
+    const totalFotos = (b.portfolio || []).length;
+    const fotosInfo  = totalFotos ? `<div class="gale-fotos-badge">📸 ${totalFotos} foto${totalFotos !== 1 ? 's' : ''}</div>` : '';
+
+    /* Hero de fundo: usa a primeira foto de destaque ou a primeira do portfólio */
+    const heroFoto = (b.portfolio || []).find(f => f.destaque)?.url || b.portfolio?.[0]?.url || '';
+    const heroBg   = heroFoto
+      ? `style="--gale-hero-bg: url('${heroFoto}')"`
+      : '';
+
     header.innerHTML = `
-      <div class="gale-avatar">${fotoHtml}</div>
-      <div class="gale-info">
-        <div class="gale-nome">${b.nome}</div>
-        <div class="gale-esp">${b.especialidade || 'Barbeiro profissional'}</div>
-        ${b.bio ? `<div class="gale-bio">${b.bio}</div>` : ''}
-        <div class="gale-badges">${cortes}${estrelas}</div>
+      <div class="gale-header-hero" ${heroBg}>
+        <div class="gale-header-hero-blur"></div>
+        <div class="gale-header-content">
+          <div class="gale-avatar">${fotoHtml}</div>
+          <div class="gale-info">
+            <div class="gale-nome">${b.nome}</div>
+            <div class="gale-esp">${b.especialidade || 'Barbeiro profissional'}</div>
+            ${b.bio ? `<div class="gale-bio">${b.bio}</div>` : ''}
+            <div class="gale-badges">${cortes}${estrelas}${fotosInfo}</div>
+          </div>
+        </div>
       </div>`;
   }
 
@@ -463,9 +477,11 @@ function _renderFotosGaleria(b, tag) {
 
   grid.innerHTML = fotos.map((p, i) => {
     const destaquePin = p.destaque ? '<div class="gale-thumb-pin">⭐</div>' : '';
-    const tagsHtml = (p.tags || []).map(t => `<span class="gale-thumb-tag">${t}</span>`).join('');
+    const tagsHtml    = (p.tags || []).map(t => `<span class="gale-thumb-tag">${t}</span>`).join('');
+    // Primeira foto OU destaques recebem destaque de tamanho maior no grid
+    const isHero = i === 0 && fotos.length >= 3;
     return `
-    <div class="gale-thumb" onclick="abrirLightboxGaleria(${i})" style="animation-delay:${(i % 9) * 0.05}s">
+    <div class="gale-thumb${isHero ? ' gale-thumb-hero' : ''}" onclick="abrirLightboxGaleria(${i})" style="animation-delay:${(i % 9) * 0.05}s">
       ${destaquePin}
       <img src="${p.url}" alt="Corte ${i+1}" loading="lazy"
            onerror="this.parentElement.classList.add('broken')">
