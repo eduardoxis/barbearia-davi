@@ -119,6 +119,23 @@ export function selecionarBarbeiro(id) {
   setTimeout(() => goBookStep(1), 600);
 }
 
+/**
+ * Versão especial chamada pelo "Quero esse corte" da galeria.
+ * O carrinho já foi pré-preenchido com o serviço detectado pelas tags,
+ * então pulamos a step 1 (serviços) e vamos direto para a step 2 (data/hora).
+ */
+export function selecionarBarbeiroComServico(id) {
+  const b = buscarBarbeiros().find(x => x.id === id);
+  if (!b) return;
+  booking.barbeiro = b;
+  booking.date = ''; booking.time = '';
+  renderBarbeiroGrid();
+  const hint = document.getElementById('step0Hint');
+  if (hint) { hint.textContent = '✓ ' + b.nome + ' selecionado! Avançando...'; hint.style.color = '#6FCF97'; }
+  // Pula direto para data/hora (step 2) — serviço já está no carrinho
+  setTimeout(() => goBookStep(2), 600);
+}
+
 /* ── Navega entre steps ── */
 export function goBookStep(n) {
   if (n > 0 && !booking.barbeiro) { showToast('⚠ Selecione um barbeiro primeiro!'); return; }
@@ -523,7 +540,8 @@ window.fecharPortfolio             = fecharPortfolio;
 window.selecionarBarbeiroDoPortfolio = selecionarBarbeiroDoPortfolio;
 window.abrirLightbox               = abrirLightbox;
 window.fecharLightbox              = fecharLightbox;
-window.selecionarBarbeiro     = selecionarBarbeiro;
+window.selecionarBarbeiro          = selecionarBarbeiro;
+window.selecionarBarbeiroComServico = selecionarBarbeiroComServico;
 window.goBookStep             = goBookStep;
 window.prevMonth              = prevMonth;
 window.nextMonth              = nextMonth;
