@@ -737,8 +737,56 @@
         <div class="barb-bloq-lista" id="listaBloqueiosBarb"></div>
         <div id="listaBloqueiosBarbEmpty" class="barb-bloq-empty">Nenhum dia bloqueado para barbeiros.</div>
       </div>
-      <div class="adm-panel" id="admTab-horarios"><div class="slots-manage-grid" id="adminSlotsGrid"></div></div>
-      <div class="adm-panel" id="admTab-servicos"><div id="adminServicesList"></div></div>
+      <div class="adm-panel" id="admTab-horarios">
+
+        <!-- Cabeçalho com ações -->
+        <div class="dias-section-header" style="margin-bottom:1rem">
+          <div class="dias-section-titulo">⏰ Horários Disponíveis</div>
+          <div class="dias-section-acoes">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.9rem" onclick="openAddSlotModal()">+ Adicionar Horário</button>
+          </div>
+        </div>
+
+        <!-- Controle de duração padrão -->
+        <div class="slot-duracao-wrap">
+          <div class="slot-duracao-info">
+            <span class="slot-duracao-label">⏱ Duração padrão por atendimento:</span>
+            <span class="slot-duracao-atual" id="labelDuracaoAtual">1h (60 min)</span>
+          </div>
+          <div class="slot-duracao-controls">
+            <select class="form-input" id="selectDuracaoPadrao" style="flex:1;background:var(--card2);font-size:0.8rem">
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60" selected>60 min (1h)</option>
+              <option value="90">90 min (1h30)</option>
+              <option value="120">120 min (2h)</option>
+            </select>
+            <button class="btn-ghost" style="font-size:0.75rem;padding:0.35rem 0.8rem;white-space:nowrap" onclick="aplicarDuracaoPadrao()">🔄 Recalcular slots</button>
+          </div>
+          <p class="slot-duracao-hint">Ao recalcular, os horários serão gerados automaticamente com base nos dias e horários de funcionamento.</p>
+        </div>
+
+        <!-- Grid de slots -->
+        <div class="slots-manage-grid" id="adminSlotsGrid"></div>
+      </div>
+      <div class="adm-panel" id="admTab-servicos">
+
+        <!-- Cabeçalho com ações -->
+        <div class="dias-section-header" style="margin-bottom:1rem">
+          <div class="dias-section-titulo">✂ Serviços</div>
+          <div class="dias-section-acoes">
+            <input class="form-input" id="svcSearchInput" type="text" placeholder="🔍 Buscar serviço..." oninput="filtrarServicosAdmin()"
+              style="background:var(--card2);font-size:0.8rem;padding:0.35rem 0.7rem;width:180px">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.9rem" onclick="openAddSvcModal()">+ Novo Serviço</button>
+          </div>
+        </div>
+
+        <!-- Contagem -->
+        <div class="svc-count-bar" id="svcCountBar"></div>
+
+        <!-- Lista de serviços -->
+        <div id="adminServicesList"></div>
+      </div>
       <div class="adm-panel" id="admTab-atendimentos">
         <!-- PASSO 1: Seleção de barbeiro -->
         <div id="atendBarbeiroStep">
