@@ -7,73 +7,103 @@
    CARD DO BARBEIRO — destaques + contador
 ───────────────────────────────────────── */
 
-/* Row de thumbnails destaque dentro do card */
-.barb-destaques-row {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  margin: 0.6rem auto 0.4rem;
-  padding: 0 0.4rem;
+/* ── Contador de cortes ── */
+.barb-cortes-count {
+  font-size: 0.65rem;
+  color: var(--gray);
+  margin: 0.3rem 0 0.1rem;
+  letter-spacing: 0.02em;
 }
 
-.barb-dest-thumb {
-  width: 46px;
-  height: 46px;
-  border-radius: 5px;
+/* ═══════════════════════════════════════
+   STRIP DE FOTOS NO CARD DO BARBEIRO
+═══════════════════════════════════════ */
+.barb-fotos-strip {
+  position: relative;
+  width: 100%;
+  margin: 0.75rem 0 0.5rem;
+  border-radius: 8px;
   overflow: hidden;
-  border: 2px solid var(--border);
-  transition: transform 0.2s, border-color 0.2s;
   cursor: pointer;
-  animation: thumbIn 0.3s ease both;
+  border: 1.5px solid var(--border);
+  transition: border-color 0.22s;
+}
+.barbeiro-card:hover .barb-fotos-strip,
+.barbeiro-card.selecionado .barb-fotos-strip {
+  border-color: var(--red);
+}
+
+/* Grid interno: 3 colunas de fotos iguais */
+.barb-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  aspect-ratio: 3/1.3;
+}
+
+.barb-strip-thumb {
+  position: relative;
+  overflow: hidden;
+  background: var(--card2);
+}
+.barb-strip-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.3s;
+}
+.barb-fotos-strip:hover .barb-strip-thumb img {
+  transform: scale(1.07);
+}
+.barb-strip-err { display: none; }
+
+/* Badge "+N fotos" na última miniatura */
+.barb-strip-mais {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.62);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Overlay escuro com texto "Ver galeria →" */
+.barb-strip-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.barb-fotos-strip:hover .barb-strip-overlay {
+  opacity: 1;
+}
+.barb-strip-icone { font-size: 0.9rem; }
+.barb-strip-txt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex: 1;
+  text-align: center;
+}
+.barb-strip-seta {
+  font-size: 0.85rem;
+  color: var(--red);
+  font-weight: 900;
 }
 
 @keyframes thumbIn {
   from { opacity: 0; transform: scale(0.7); }
   to   { opacity: 1; transform: scale(1);   }
-}
-
-.barbeiro-card:hover .barb-dest-thumb,
-.barbeiro-card.selecionado .barb-dest-thumb {
-  border-color: var(--red);
-  transform: scale(1.06);
-}
-
-.barb-dest-thumb img {
-  width: 100%; height: 100%;
-  object-fit: cover; display: block;
-}
-
-.barb-cortes-count {
-  font-size: 0.65rem;
-  color: var(--gray);
-  margin-top: 0.3rem;
-  letter-spacing: 0.02em;
-}
-
-/* Botão "Ver galeria" no card */
-.barb-galeria-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.6rem;
-  padding: 0.35rem 0.9rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border: 1.5px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--white);
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  justify-content: center;
-}
-.barb-galeria-btn:hover {
-  border-color: var(--red);
-  color: var(--red);
-  background: rgba(224,32,32,0.06);
 }
 
 /* ─────────────────────────────────────────
@@ -123,28 +153,61 @@
 }
 
 .gale-close-btn {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.85rem;
+  z-index: 30;
   display: flex;
-  justify-content: flex-end;
-  padding: 0.8rem 1rem 0;
-  background: var(--bg);
 }
 .gale-close-btn button {
-  width: 34px; height: 34px;
+  width: 36px; height: 36px;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: var(--card2);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
   color: var(--white);
   font-size: 1rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.18s;
 }
-.gale-close-btn button:hover { border-color: var(--red); color: var(--red); }
+.gale-close-btn button:hover { border-color: var(--red); color: var(--red); background: rgba(0,0,0,0.75); }
 
 /* Header com avatar + info */
+/* ── Header Hero do modal ── */
+.gale-header-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  padding: 0;
+}
+/* Fundo desfocado com a primeira foto */
+.gale-header-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--gale-hero-bg);
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px) brightness(0.35) saturate(0.6);
+  transform: scale(1.15);
+  z-index: 0;
+}
+.gale-header-hero-blur {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(13,13,13,0.25) 0%, rgba(13,13,13,0.85) 100%);
+  z-index: 1;
+}
+.gale-header-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.4rem 1.4rem 1.2rem;
+}
+
 .gale-header {
   display: flex;
   gap: 1rem;
@@ -153,14 +216,15 @@
 }
 
 .gale-avatar {
-  width: 66px; height: 66px;
+  width: 76px; height: 76px;
   border-radius: 50%;
-  border: 2.5px solid var(--red);
+  border: 3px solid var(--red);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--card2);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
+  box-shadow: 0 0 0 4px rgba(224,32,32,0.18), 0 4px 16px rgba(0,0,0,0.4);
 }
 .gale-avatar-img  { width: 100%; height: 100%; object-fit: cover; }
 .gale-avatar-emoji { font-size: 1.8rem; }
@@ -168,8 +232,9 @@
 .gale-info { flex: 1; min-width: 0; }
 .gale-nome {
   font-family: 'Oswald', sans-serif;
-  font-size: 1.2rem; font-weight: 700;
+  font-size: 1.45rem; font-weight: 700;
   color: var(--white); letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
 .gale-esp { font-size: 0.72rem; color: var(--red); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.1rem; }
 .gale-bio { font-size: 0.78rem; color: var(--gray); line-height: 1.5; margin-top: 0.3rem; }
@@ -192,12 +257,20 @@
   border: 1px solid rgba(255,200,0,0.25);
   display: flex; align-items: center; gap: 0.25rem;
 }
+.gale-fotos-badge {
+  font-size: 0.65rem; font-weight: 700;
+  background: rgba(255,255,255,0.08);
+  color: var(--gray);
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
 
 /* Tags filtro */
 .gale-tags-filtro {
   display: flex;
   gap: 0.4rem;
-  padding: 0.5rem 1.2rem;
+  padding: 0.75rem 1.2rem 0.3rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -228,7 +301,6 @@
   gap: 3px;
   padding: 0.4rem 0;
 }
-@media (min-width: 440px) { .gale-grid { grid-template-columns: repeat(3, 1fr); } }
 
 .gale-thumb {
   aspect-ratio: 1;
@@ -238,6 +310,14 @@
   background: var(--card2);
   animation: thumbIn 0.3s ease both;
 }
+
+/* Primeira foto ocupa 2 colunas e 2 linhas (hero) */
+.gale-thumb.gale-thumb-hero {
+  grid-column: span 2;
+  grid-row: span 2;
+  aspect-ratio: unset;
+}
+
 .gale-thumb:hover .gale-thumb-hover { opacity: 1; }
 .gale-thumb.broken { opacity: 0.25; }
 .gale-thumb img {
