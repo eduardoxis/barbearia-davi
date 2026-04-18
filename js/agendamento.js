@@ -186,12 +186,29 @@ export function renderSlots() {
   if (!slots.length) {
     const emp = document.createElement('p'); emp.className = 'slots-empty'; emp.textContent = 'Sem horários.'; grid.appendChild(emp); return;
   }
+  const hoje = new Date();
+  const dataSelecionada = booking.date; // formato 'DD/MM/YYYY'
+  const d = hoje.getDate().toString().padStart(2,'0');
+  const mo = (hoje.getMonth()+1).toString().padStart(2,'0');
+  const hojeStr = d + '/' + mo + '/' + hoje.getFullYear();
+  const isHoje = dataSelecionada === hojeStr;
+  const horaAtual = hoje.getHours() * 60 + hoje.getMinutes();
+
   slots.forEach(slot => {
     const el = document.createElement('div');
     const taken = ocupados.includes(slot);
-    el.className = 'slot' + (taken ? ' taken' : '');
+
+    // Se for hoje, bloquear horários que já passaram
+    let passado = false;
+    if (isHoje) {
+      const [h, m] = slot.split(':').map(Number);
+      const slotMinutos = h * 60 + m;
+      passado = slotMinutos <= horaAtual;
+    }
+
+    el.className = 'slot' + (taken || passado ? ' taken' : '');
     el.textContent = slot;
-    if (!taken) el.onclick = () => selectSlot(el, slot);
+    if (!taken && !passado) el.onclick = () => selectSlot(el, slot);
     if (booking.time === slot) el.classList.add('selected');
     grid.appendChild(el);
   });
