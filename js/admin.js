@@ -354,11 +354,34 @@ export function confirmAddSlot() {
 }
 
 /* ── Serviços ── */
-function renderAdminServices() {
+function renderAdminServices(filtro = '') {
   const list = document.getElementById('adminServicesList');
   if (!list) return;
   list.innerHTML = '';
-  adminSettings.services.forEach(svc => {
+
+  const termo = filtro.trim().toLowerCase();
+  const todos  = adminSettings.services;
+  const visiveis = todos.filter(s => !termo || s.name.toLowerCase().includes(termo) || (s.desc||'').toLowerCase().includes(termo));
+
+  // Atualiza barra de contagem
+  const countBar = document.getElementById('svcCountBar');
+  if (countBar) {
+    const ativos   = todos.filter(s => !s.hidden).length;
+    const ocultos  = todos.filter(s => s.hidden).length;
+    countBar.innerHTML =
+      `<span class="svc-count-item">Total: <strong>${todos.length}</strong></span>` +
+      `<span class="svc-count-sep">·</span>` +
+      `<span class="svc-count-item svc-count-ativo">Visíveis: <strong>${ativos}</strong></span>` +
+      (ocultos ? `<span class="svc-count-sep">·</span><span class="svc-count-item svc-count-oculto">Ocultos: <strong>${ocultos}</strong></span>` : '') +
+      (termo ? `<span class="svc-count-sep">·</span><span class="svc-count-item">Encontrados: <strong>${visiveis.length}</strong></span>` : '');
+  }
+
+  if (!visiveis.length) {
+    list.innerHTML = `<div class="atend-sem-data">${termo ? 'Nenhum serviço encontrado para +filtro+.' : 'Nenhum serviço cadastrado.'}</div>`;
+    updateAdminStats(); return;
+  }
+
+  visiveis.forEach(svc => {
     const row = document.createElement('div');
     row.className = 'svc-editor-card' + (svc.hidden ? ' hidden-svc' : '');
     const iconHtml = svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))
@@ -367,7 +390,7 @@ function renderAdminServices() {
       : `<div class="svc-ed-icon">${svc.icon || '✂️'}</div>`;
     row.innerHTML = `${iconHtml}
       <div class="svc-ed-info">
-        <div class="svc-ed-name">${svc.name}</div>
+        <div class="svc-ed-name">${svc.name}${svc.hidden ? ' <span class="svc-badge-oculto">oculto</span>' : ''}</div>
         <div class="svc-ed-desc">${svc.desc || '—'}</div>
         <div class="svc-ed-meta">
           <span class="svc-ed-tag svc-ed-price">R$ ${svc.price}</span>
@@ -377,11 +400,16 @@ function renderAdminServices() {
       <div class="svc-ed-actions">
         <button class="svc-ed-btn" onclick="openEditSvcModal('${svc.id}')">✏ Editar</button>
         <button class="svc-ed-btn" onclick="toggleSvcVis('${svc.id}')">${svc.hidden?'👁 Mostrar':'🙈 Ocultar'}</button>
-        <button class="svc-ed-btn" onclick="deleteSvc('${svc.id}')">✕</button>
+        <button class="svc-ed-btn svc-ed-btn-del" onclick="deleteSvc('${svc.id}')">🗑 Excluir</button>
       </div>`;
     list.appendChild(row);
   });
   updateAdminStats();
+}
+
+export function filtrarServicosAdmin() {
+  const termo = document.getElementById('svcSearchInput')?.value || '';
+  renderAdminServices(termo);
 }
 
 export function toggleSvcVis(id) {
@@ -1799,6 +1827,7 @@ window.openAddSlotModal    = openAddSlotModal;
 window.closeAddSlotModal   = closeAddSlotModal;
 window.confirmAddSlot      = confirmAddSlot;
 window.toggleSvcVis        = toggleSvcVis;
+window.filtrarServicosAdmin   = filtrarServicosAdmin;
 window.deleteSvc           = deleteSvc;
 window.openAddSvcModal     = openAddSvcModal;
 window.openEditSvcModal    = openEditSvcModal;
