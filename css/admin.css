@@ -808,3 +808,86 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
   border-radius: 3px;
 }
 .port-adm-add { display: flex; flex-direction: column; gap: 0; }
+
+/* ══════════════════════════════════════════
+   CRUD — Horários e Serviços
+══════════════════════════════════════════ */
+
+/* Barra de contagem de serviços */
+.svc-count-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.72rem;
+  color: var(--gray);
+  flex-wrap: wrap;
+}
+.svc-count-sep { color: var(--border); }
+.svc-count-ativo { color: #6FCF97; }
+.svc-count-oculto { color: var(--red); }
+.svc-count-item strong { color: var(--text); }
+
+/* Badge "oculto" inline no nome do serviço */
+.svc-badge-oculto {
+  display: inline-block;
+  background: rgba(224,32,32,0.15);
+  color: var(--red);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: 2px;
+  border: 1px solid rgba(224,32,32,0.25);
+  vertical-align: middle;
+  margin-left: 0.4rem;
+}
+
+/* Botão excluir serviço com cor diferenciada */
+.svc-ed-btn-del:hover {
+  border-color: var(--red) !important;
+  background: rgba(224,32,32,0.08) !important;
+  color: var(--red) !important;
+}
+
+/* Controle de duração padrão na aba horários */
+.slot-duracao-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.slot-duracao-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.slot-duracao-label {
+  font-size: 0.78rem;
+  color: var(--gray);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.slot-duracao-atual {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--red);
+}
+.slot-duracao-controls {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.slot-duracao-hint {
+  font-size: 0.65rem;
+  color: var(--gray2);
+  margin: 0;
+  font-style: italic;
+}
