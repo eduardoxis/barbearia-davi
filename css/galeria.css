@@ -560,7 +560,7 @@
 }
 .gale-av-stars-input { display: flex; gap: 0.3rem; margin-bottom: 0.5rem; }
 .gale-av-star-btn {
-  font-size: 1.4rem; color: var(--border);
+  font-size: 1.4rem; color: rgba(255,255,255,0.75);
   background: none; border: none;
   cursor: pointer; padding: 0;
   transition: color 0.15s, transform 0.12s;
