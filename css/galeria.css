@@ -378,11 +378,10 @@
 
 /* Footer do modal */
 .gale-footer {
-  position: sticky;
-  bottom: 0;
   background: var(--bg);
   border-top: 1px solid var(--border);
   padding: 0.9rem 1.2rem;
+  margin-top: 1rem;
 }
 
 .gale-agendar-btn {
