@@ -25,6 +25,24 @@ export async function fazerLogin(email, pass) {
     return { role: 'admin' };
   }
 
+  // Verifica se é um barbeiro cadastrado (antes do Firebase para priorizar)
+  const { adminSettings } = await import('../js/global.js');
+  const barbMatch = (adminSettings.barbeiros || []).find(
+    b => b.email && b.senha && b.email === email && b.senha === pass && b.ativo !== false
+  );
+  if (barbMatch) {
+    window.fbUser = {
+      uid:        'barb_' + barbMatch.id,
+      email,
+      name:       barbMatch.nome,
+      isBarbeiro: true,
+      barbeiroId: barbMatch.id,
+    };
+    window._barbeiroPainel = barbMatch;
+    updateNavUserFb();
+    return { role: 'barbeiro', barbeiro: barbMatch };
+  }
+
   // Firebase (se configurado)
   if (window._fb && window._fb.auth.app?.options?.apiKey !== 'COLE_SUA_API_KEY_AQUI') {
     try {
