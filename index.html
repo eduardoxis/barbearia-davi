@@ -966,6 +966,16 @@
         <select class="form-input" id="barbAtivo" style="background:var(--card2)"><option value="true">✅ Ativo</option><option value="false">❌ Inativo</option></select>
       </div>
 
+      <!-- Acesso ao Painel do Barbeiro -->
+      <div style="margin-bottom:1rem;padding:0.8rem;background:rgba(224,32,32,0.04);border:1px solid var(--border-red);border-radius:2px">
+        <div class="form-label" style="margin-bottom:0.6rem;display:flex;align-items:center;gap:0.4rem">🔑 Acesso ao Painel do Barbeiro</div>
+        <div style="font-size:0.72rem;color:var(--gray2);margin-bottom:0.7rem;line-height:1.5">Defina e-mail e senha para que o barbeiro acesse o próprio painel de agenda.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+          <div class="form-group"><label class="form-label">E-mail de acesso</label><input class="form-input" id="barbEmail" type="email" placeholder="barbeiro@email.com"></div>
+          <div class="form-group"><label class="form-label">Senha de acesso</label><input class="form-input" id="barbSenha" type="password" placeholder="Mínimo 4 caracteres"></div>
+        </div>
+      </div>
+
       <!-- Portfólio -->
       <div id="portAdminWrap" style="display:none">
         <div class="port-adm-titulo">📸 Galeria de Cortes</div>
