@@ -163,6 +163,19 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 .atend-sem-data{text-align:center;padding:3rem 1.5rem;color:var(--gray);font-size:0.85rem;background:var(--card);border:1px solid var(--border);border-radius:3px}
 
 /* ── Atendimento: seleção de barbeiro ── */
+/* ── Atendimentos — barra de passos ── */
+.atend-steps-bar{display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;padding:0.9rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:3px}
+.atend-step-pill{display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.8rem;border-radius:2px;border:1px solid var(--red);background:rgba(224,32,32,0.08);transition:all 0.2s}
+.atend-step-pill.inactive{border-color:var(--border);background:transparent;opacity:0.45}
+.atend-step-pill.done{border-color:#27ae60;background:rgba(39,174,96,0.1)}
+.atend-pill-num{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--red);line-height:1}
+.atend-step-pill.inactive .atend-pill-num{color:var(--gray)}
+.atend-step-pill.done .atend-pill-num{color:#27ae60}
+.atend-pill-num::before{content:'0'}
+.atend-pill-txt{font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--white)}
+.atend-step-pill.inactive .atend-pill-txt{color:var(--gray)}
+.atend-step-pill.done .atend-pill-txt{color:#27ae60}
+.atend-step-arrow{color:var(--gray2);font-size:1rem}
 .atend-step-titulo{font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray);margin-bottom:1rem}
 .atend-barbeiros-grid{display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem}
 .atend-barb-card{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.1rem 1.4rem;display:flex;flex-direction:column;align-items:center;gap:0.5rem;cursor:pointer;transition:border-color 0.18s,background 0.18s;min-width:100px}
