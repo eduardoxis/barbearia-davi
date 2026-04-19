@@ -791,12 +791,50 @@
         <div id="adminServicesList"></div>
       </div>
       <div class="adm-panel" id="admTab-atendimentos">
+
+        <!-- Indicador de passos -->
+        <div class="atend-steps-bar">
+          <div class="atend-step-pill" id="atendPill1">
+            <span class="atend-pill-num">1</span>
+            <span class="atend-pill-txt">Barbeiro</span>
+          </div>
+          <div class="atend-step-arrow">›</div>
+          <div class="atend-step-pill inactive" id="atendPill2">
+            <span class="atend-pill-num">2</span>
+            <span class="atend-pill-txt">Data</span>
+          </div>
+          <div class="atend-step-arrow">›</div>
+          <div class="atend-step-pill inactive" id="atendPill3">
+            <span class="atend-pill-num">3</span>
+            <span class="atend-pill-txt">Atendimentos</span>
+          </div>
+        </div>
+
         <!-- PASSO 1: Seleção de barbeiro -->
         <div id="atendBarbeiroStep">
-          <div class="atend-step-titulo">Selecione o barbeiro</div>
+          <div class="atend-step-titulo">Selecione o barbeiro para ver a agenda</div>
           <div class="atend-barbeiros-grid" id="atendBarbeirosGrid"></div>
         </div>
+
         <!-- PASSO 2+3: Calendário e lista -->
+        <div id="atendCalStep" style="display:none">
+          <div class="atend-barbeiro-header">
+            <div class="atend-barbeiro-selecionado" id="atendBarbeiroNomeLabel"></div>
+            <button class="atend-trocar-btn" onclick="trocarBarbeiro()">↩ Trocar barbeiro</button>
+          </div>
+          <div class="atend-layout">
+            <div class="atend-cal-wrap">
+              <div class="calendar-header">
+                <button class="cal-nav" onclick="prevMonthAtend()">‹</button>
+                <span class="cal-month" id="atendCalLabel"></span>
+                <button class="cal-nav" onclick="nextMonthAtend()">›</button>
+              </div>
+              <div class="cal-grid" id="atendCalGrid"></div>
+            </div>
+            <div><div class="atend-data-titulo" id="atendDataTitulo">← Selecione uma data no calendário</div><div id="atendLista"></div></div>
+          </div>
+        </div>
+      </div>
         <div id="atendCalStep" style="display:none">
           <div class="atend-barbeiro-header">
             <div class="atend-barbeiro-selecionado" id="atendBarbeiroNomeLabel"></div>
