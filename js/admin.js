@@ -768,8 +768,12 @@ function selecionarBarbeiro(id, nome) {
   document.getElementById('atendCalStep').style.display      = 'block';
   const label = document.getElementById('atendBarbeiroNomeLabel');
   if (label) label.textContent = '💈 ' + nome;
-  document.getElementById('atendDataTitulo').textContent = 'Selecione uma data';
+  document.getElementById('atendDataTitulo').textContent = '← Selecione uma data no calendário';
   document.getElementById('atendLista').innerHTML = '';
+  // Ativa passo 2
+  document.getElementById('atendPill1')?.classList.add('done');
+  document.getElementById('atendPill2')?.classList.remove('inactive');
+  document.getElementById('atendPill3')?.classList.add('inactive');
   renderAtendCal();
 }
 
@@ -779,6 +783,10 @@ export function trocarBarbeiro() {
   atendData         = '';
   document.getElementById('atendCalStep').style.display      = 'none';
   document.getElementById('atendBarbeiroStep').style.display = 'block';
+  // Reseta pills
+  document.getElementById('atendPill1')?.classList.remove('done');
+  document.getElementById('atendPill2')?.classList.add('inactive');
+  document.getElementById('atendPill3')?.classList.add('inactive');
   renderAtendBarbeiros();
 }
 
@@ -799,7 +807,15 @@ function renderAtendCal() {
     el.className = 'cal-day' + (ehHoje ? ' today' : '');
     el.textContent = d; el.style.cursor = 'pointer';
     if (atendData === ds) el.classList.add('selected');
-    el.onclick = () => { document.querySelectorAll('#atendCalGrid .cal-day').forEach(d=>d.classList.remove('selected')); el.classList.add('selected'); atendData = ds; carregarAtendimentosDoDia(ds); };
+    el.onclick = () => {
+      document.querySelectorAll('#atendCalGrid .cal-day').forEach(d=>d.classList.remove('selected'));
+      el.classList.add('selected');
+      atendData = ds;
+      // Ativa passo 3
+      document.getElementById('atendPill2')?.classList.add('done');
+      document.getElementById('atendPill3')?.classList.remove('inactive');
+      carregarAtendimentosDoDia(ds);
+    };
     grid.appendChild(el);
   }
 }
