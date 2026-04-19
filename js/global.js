@@ -174,6 +174,12 @@ export function updateNavUserFb() {
       const da = document.getElementById('drawerAdminBtn');
       if (da) da.classList.add('show');
     }
+    if (window.fbUser.isBarbeiro) {
+      const db = document.getElementById('drawerBarbeiroBtn');
+      if (db) db.classList.add('show');
+      // Persiste sessão do barbeiro no localStorage
+      try { localStorage.setItem('bbdavi_barbeiro', JSON.stringify(window.fbUser)); } catch (_) {}
+    }
   } else {
     btn.textContent = '👤 Entrar';
     btn.classList.remove('logged');
@@ -183,6 +189,8 @@ export function updateNavUserFb() {
     if (guestInfo) guestInfo.style.display = 'block';
     const da = document.getElementById('drawerAdminBtn');
     if (da) da.classList.remove('show');
+    const db2 = document.getElementById('drawerBarbeiroBtn');
+    if (db2) db2.classList.remove('show');
     hideAdminNavBtn();
   }
 }
