@@ -313,7 +313,51 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
 
 /* Semana */
 .semana-grid { display: flex; flex-direction: column; gap: 0.4rem; }
-.semana-day-header {
+
+/* Calendário */
+.barb-cal-wrap { max-width: 420px; }
+.barb-cal-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1rem; }
+.barb-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 0.3rem;
+}
+.barb-cal-label {
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gray2);
+  text-transform: uppercase;
+  padding: 0.3rem 0;
+}
+.barb-cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--light);
+  transition: all 0.15s;
+  position: relative;
+}
+.barb-cal-day:hover:not(.empty) { background: var(--card2); }
+.barb-cal-day.empty { cursor: default; pointer-events: none; }
+.barb-cal-day.hoje { color: var(--red); font-weight: 700; }
+.barb-cal-day.selecionado { background: var(--red) !important; color: #fff !important; font-weight: 700; }
+.barb-cal-day.tem-agend::after {
+  content: '';
+  position: absolute;
+  bottom: 2px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  background: #6FCF97;
+  border-radius: 50%;
+}
+.barb-cal-day.selecionado.tem-agend::after { background: #fff; }.semana-day-header {
   font-family: 'Oswald', sans-serif;
   font-size: 0.82rem;
   font-weight: 700;
@@ -370,10 +414,11 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   </div>
 
   <!-- ── Tabs ── -->
-  <div class="barb-tabs">
-    <button class="barb-tab active" id="tabHoje"   onclick="barb_switchTab('hoje')">📅 Hoje</button>
-    <button class="barb-tab"        id="tabAmanha" onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
-    <button class="barb-tab"        id="tabSemana" onclick="barb_switchTab('semana')">📆 Semana</button>
+  <div class="barb-tabs" style="grid-template-columns:repeat(4,1fr)">
+    <button class="barb-tab active" id="tabHoje"      onclick="barb_switchTab('hoje')">📅 Hoje</button>
+    <button class="barb-tab"        id="tabAmanha"    onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
+    <button class="barb-tab"        id="tabSemana"    onclick="barb_switchTab('semana')">📆 Semana</button>
+    <button class="barb-tab"        id="tabCalendario" onclick="barb_switchTab('calendario')">🗓 Calendário</button>
   </div>
 
   <!-- ── Painel: Hoje ── -->
@@ -410,6 +455,24 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   <!-- ── Painel: Semana ── -->
   <div class="barb-panel" id="panel-semana">
     <div class="semana-grid" id="listaSemana"></div>
+  </div>
+
+  <!-- ── Painel: Calendário ── -->
+  <div class="barb-panel" id="panel-calendario">
+    <div class="barb-cal-wrap">
+      <!-- Nav do calendário -->
+      <div class="barb-cal-header">
+        <button class="barb-nav-btn" id="calBarbPrev">‹</button>
+        <div class="barb-nav-data-label" id="calBarbLabel" style="text-align:center">—</div>
+        <button class="barb-nav-btn" id="calBarbNext">›</button>
+      </div>
+      <!-- Grid do calendário -->
+      <div class="barb-cal-grid" id="calBarbGrid"></div>
+      <!-- Agendamentos do dia selecionado -->
+      <div id="calBarbDayWrap" style="margin-top:1.2rem">
+        <div class="barb-empty"><div class="barb-empty-icon">📅</div><div class="barb-empty-txt">Clique em um dia para ver os agendamentos</div></div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /painelApp -->
