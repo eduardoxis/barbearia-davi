@@ -142,6 +142,19 @@ export async function initSite() {
         const { fillLoggedFields } = await import('./login.js');
         fillLoggedFields();
       } else {
+        // Antes de limpar, verifica se há sessão de barbeiro salva
+        try {
+          const cached = localStorage.getItem('bbdavi_barbeiro');
+          if (cached) {
+            const barbUser = JSON.parse(cached);
+            if (barbUser?.isBarbeiro) {
+              // Mantém a sessão do barbeiro intacta — não limpa
+              window.fbUser = barbUser;
+              updateNavUserFb();
+              return;
+            }
+          }
+        } catch (_) {}
         window.fbUser = null;
         updateNavUserFb();
         const { clearLoggedFields } = await import('./login.js');
