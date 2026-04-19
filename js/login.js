@@ -63,11 +63,10 @@ export async function doLogin() {
   try {
     const res = await fazerLogin(email, pass);
     updateNavUserFb();
-    // Barbeiro vai para o próprio painel
+    // Barbeiro: apenas mostra o botão "Meu Painel" no drawer, sem redirecionar
     if (res.role === 'barbeiro') {
       closeUserModal();
-      showToast('💈 Bem-vindo, ' + res.barbeiro.nome + '!');
-      setTimeout(() => { window.location.href = 'pages/painel.html'; }, 700);
+      showToast('💈 Bem-vindo, ' + res.barbeiro.nome + '! Clique em "Meu Painel" para ver sua agenda.');
       return;
     }
     fillLoggedFields();
