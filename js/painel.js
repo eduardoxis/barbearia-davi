@@ -83,7 +83,8 @@ async function init() {
   });
 
   // 7. Logout
-  document.getElementById('btnLogout')?.addEventListener('click', _logout);
+  document.getElementById('btnLogout')?.addEventListener('click', _fecharPainel);
+  document.getElementById('btnSairConta')?.addEventListener('click', _sairDaConta);
 
   // 8. Atualiza a cada 60s (novos agendamentos em tempo real)
   setInterval(_carregarEAtualizar, 60_000);
@@ -335,10 +336,20 @@ window.marcarConcluido = async function(agendId) {
 };
 
 /* ═══════════════════════════════════════
-   SAIR — volta pro site mas MANTÉM sessão
-   (para deslogar de vez, usar "Sair da conta" no drawer)
+   ✕ FECHAR — volta pro site, sessão MANTIDA
+   (igual ao X do painel admin)
 ═══════════════════════════════════════ */
-function _logout() {
+function _fecharPainel() {
+  window.location.href = '../index.html';
+}
+
+/* ═══════════════════════════════════════
+   SAIR DA CONTA — desloga completamente
+═══════════════════════════════════════ */
+function _sairDaConta() {
+  try { localStorage.removeItem('bbdavi_barbeiro'); } catch (_) {}
+  window.fbUser = null;
+  window._barbeiroPainel = null;
   window.location.href = '../index.html';
 }
 
