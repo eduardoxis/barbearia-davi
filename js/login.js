@@ -14,6 +14,11 @@ let codeTimerInt = null;
 
 /* ── Abre/fecha modal ── */
 export function openUserModal() {
+  // Barbeiro logado: vai direto para o painel em vez de abrir o modal de cliente
+  if (window.fbUser?.isBarbeiro) {
+    window.location.href = 'pages/painel.html';
+    return;
+  }
   document.getElementById('userModal').classList.add('show');
   if (window.fbUser) showLoggedView();
   else showLoginView();
@@ -33,6 +38,14 @@ export function showLoggedView() {
   document.getElementById('modalLoginRegister').style.display = 'none';
   document.getElementById('loggedInView').style.display = 'block';
   if (!window.fbUser) return;
+
+  // Barbeiro não deve ver o histórico de cliente — redireciona direto
+  if (window.fbUser.isBarbeiro) {
+    closeUserModal();
+    window.location.href = 'pages/painel.html';
+    return;
+  }
+
   const parts = window.fbUser.name.split(' ');
   const initials = (parts[0][0] + (parts.length > 1 ? parts[parts.length-1][0] : '')).toUpperCase();
   document.getElementById('userAvatarModal').textContent = initials;
