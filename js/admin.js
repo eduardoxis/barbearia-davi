@@ -665,6 +665,11 @@ export function abrirModalBarbeiro(id) {
   document.getElementById('barbHorarioFim').value    = barb?.horarioFim || '18:00';
   document.getElementById('barbIntervalo').value     = String(barb?.intervalo || 60);
   document.getElementById('barbAtivo').value = String(barb?.ativo !== false);
+  // Acesso ao painel
+  const barbEmailEl = document.getElementById('barbEmail');
+  const barbSenhaEl = document.getElementById('barbSenha');
+  if (barbEmailEl) barbEmailEl.value = barb?.email || '';
+  if (barbSenhaEl) barbSenhaEl.value = barb?.senha || '';
   // Bio
   const bioEl = document.getElementById('barbBio');
   if (bioEl) bioEl.value = barb?.bio || '';
@@ -715,6 +720,8 @@ export async function confirmarSalvarBarbeiro() {
     intervalo:       parseInt(document.getElementById('barbIntervalo')?.value || '60'),
     ativo:           document.getElementById('barbAtivo')?.value === 'true',
     takenSlots:      existente?.takenSlots || [],
+    email:           document.getElementById('barbEmail')?.value.trim() || existente?.email || '',
+    senha:           document.getElementById('barbSenha')?.value.trim() || existente?.senha || '',
   };
   if (!adminSettings.barbeiros) adminSettings.barbeiros = [];
   const idx = adminSettings.barbeiros.findIndex(b => b.id === id);
