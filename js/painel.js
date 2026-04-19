@@ -198,8 +198,118 @@ function _renderPainelSemana() {
 }
 
 function _renderTab(tab) {
-  if (tab === 'amanha') _renderPainelAmanha();
-  if (tab === 'semana') _renderPainelSemana();
+  if (tab === 'amanha')    _renderPainelAmanha();
+  if (tab === 'semana')    _renderPainelSemana();
+  if (tab === 'calendario') {
+    _renderCalendarioBarbeiro();
+    // Registra os botões de nav só uma vez
+    if (!_calNavRegistrado) {
+      document.getElementById('calBarbPrev')?.addEventListener('click', () => {
+        _calMes--; if (_calMes < 0) { _calMes = 11; _calAno--; } _renderCalendarioBarbeiro();
+      });
+      document.getElementById('calBarbNext')?.addEventListener('click', () => {
+        _calMes++; if (_calMes > 11) { _calMes = 0; _calAno++; } _renderCalendarioBarbeiro();
+      });
+      _calNavRegistrado = true;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════
+   CALENDÁRIO DO BARBEIRO
+══════════════════════════════════════════ */
+const _MESES      = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const _DIAS_CURTOS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+let _calMes          = new Date().getMonth();
+let _calAno          = new Date().getFullYear();
+let _calDiaSel       = null;
+let _calNavRegistrado = false;
+
+function _renderCalendarioBarbeiro() {
+  const label = document.getElementById('calBarbLabel');
+  const grid  = document.getElementById('calBarbGrid');
+  if (!label || !grid) return;
+
+  label.textContent = _MESES[_calMes].toUpperCase() + ' · ' + _calAno;
+  grid.innerHTML = '';
+
+  // Cabeçalhos dos dias
+  _DIAS_CURTOS.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'barb-cal-label';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const primeiro   = new Date(_calAno, _calMes, 1).getDay();
+  const diasNoMes  = new Date(_calAno, _calMes + 1, 0).getDate();
+  const hoje       = new Date(); hoje.setHours(0,0,0,0);
+
+  // Células vazias
+  for (let i = 0; i < primeiro; i++) {
+    const el = document.createElement('div');
+    el.className = 'barb-cal-day empty';
+    grid.appendChild(el);
+  }
+
+  // Dias do mês
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dt  = new Date(_calAno, _calMes, d);
+    const dd  = String(d).padStart(2,'0');
+    const mm  = String(_calMes + 1).padStart(2,'0');
+    const br  = `${dd}/${mm}/${_calAno}`;
+    const iso = `${_calAno}-${mm}-${dd}`;
+
+    const temAg = _agendamentos.some(a => {
+      const ad = a.data || '';
+      return ad === br || ad === iso;
+    });
+
+    const el = document.createElement('div');
+    el.className = 'barb-cal-day'
+      + (dt.toDateString() === hoje.toDateString() ? ' hoje' : '')
+      + (temAg ? ' tem-agend' : '')
+      + (_calDiaSel === br ? ' selecionado' : '');
+    el.textContent = d;
+    el.onclick = () => {
+      _calDiaSel = br;
+      _renderCalendarioBarbeiro();
+      _renderCalDia(br);
+    };
+    grid.appendChild(el);
+  }
+
+  // Se já havia um dia selecionado, renderiza a lista dele
+  if (_calDiaSel) _renderCalDia(_calDiaSel);
+}
+
+function _renderCalDia(data) {
+  const wrap = document.getElementById('calBarbDayWrap');
+  if (!wrap) return;
+
+  const lista = _agNaData(data);
+  const [d, m, y] = data.split('/');
+  const dt  = new Date(+y, +m - 1, +d);
+  const nomeDia = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][dt.getDay()];
+
+  wrap.innerHTML = `
+    <div style="font-family:'Oswald',sans-serif;font-size:0.82rem;font-weight:700;
+      letter-spacing:0.1em;text-transform:uppercase;color:var(--gray);
+      margin-bottom:0.7rem;border-bottom:1px solid var(--border);padding-bottom:0.4rem;
+      display:flex;justify-content:space-between;align-items:center">
+      <span>${nomeDia}, ${data}</span>
+      <span style="color:var(--red)">${lista.length} agendamento${lista.length !== 1 ? 's' : ''}</span>
+    </div>`;
+
+  if (!lista.length) {
+    wrap.innerHTML += `<div class="barb-empty">
+      <div class="barb-empty-icon">📅</div>
+      <div class="barb-empty-txt">Nenhum agendamento neste dia</div>
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML += `<div class="barb-agend-list">${lista.map(_htmlCard).join('')}</div>`;
 }
 
 /* ─── Próximo destaque ── */
