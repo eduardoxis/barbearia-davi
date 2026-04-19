@@ -68,6 +68,14 @@ export function renderPortfolioAdmin(barbId) {
   if (!wrap) return;
   wrap.style.display = 'block';
 
+  // Popula o select de serviços obrigatório
+  const svcSel = document.getElementById('portNovaServico');
+  if (svcSel && adminSettings.services?.length) {
+    const atual = svcSel.value;
+    svcSel.innerHTML = '<option value="">✂️ Selecione o serviço desta foto *</option>' +
+      adminSettings.services.map(s => `<option value="${s.id}" ${s.id===atual?'selected':''}>${s.icon||'✂️'} ${s.name}</option>`).join('');
+  }
+
   const barb   = getBarbeiro(barbId);
   const fotos  = barb?.portfolio || [];
   const limite = getLimite(barb);
@@ -182,14 +190,21 @@ export async function onPortFileChange(input) {
 
 /* ── Adicionar por URL (mantém compatibilidade) ── */
 export function adicionarFotoPortfolio() {
-  const barbId = document.getElementById('barbIdEditando')?.value;
-  const urlEl  = document.getElementById('portNovaUrl');
-  const capEl  = document.getElementById('portNovaCaption');
-  const errEl  = document.getElementById('portAdmErr');
-  const url    = urlEl?.value.trim();
+  const barbId  = document.getElementById('barbIdEditando')?.value;
+  const urlEl   = document.getElementById('portNovaUrl');
+  const capEl   = document.getElementById('portNovaCaption');
+  const svcEl   = document.getElementById('portNovaServico');
+  const errEl   = document.getElementById('portAdmErr');
+  const url     = urlEl?.value.trim();
+  const svcId   = svcEl?.value;
 
   if (!url) {
     if (errEl) { errEl.textContent = 'Insira a URL da imagem.'; errEl.classList.add('show'); }
+    return;
+  }
+  if (!svcId) {
+    if (errEl) { errEl.textContent = '⚠️ Selecione o serviço desta foto antes de adicionar.'; errEl.classList.add('show'); }
+    if (svcEl) { svcEl.style.borderColor = 'var(--red)'; setTimeout(() => svcEl.style.borderColor = '', 2000); }
     return;
   }
   if (errEl) errEl.classList.remove('show');
@@ -203,14 +218,22 @@ export function adicionarFotoPortfolio() {
     showToast(`⚠️ Limite de ${limite} fotos atingido!`); return;
   }
 
+  // Busca o serviço para salvar o tag automaticamente
+  const svc = adminSettings.services?.find(s => s.id === svcId);
+  const tagServico = svc ? `#${svc.name.toLowerCase().replace(/\s+/g,'-')}` : '';
+
   barb.portfolio.push({
     url, caption: capEl?.value.trim() || '',
-    destaque: false, tags: [], ordem: barb.portfolio.length,
+    destaque: false,
+    tags: tagServico ? [tagServico] : [],
+    servicoId: svcId,
+    ordem: barb.portfolio.length,
   });
   if (urlEl) urlEl.value = '';
   if (capEl) capEl.value = '';
+  if (svcEl) svcEl.value = '';
   renderPortfolioAdmin(barbId);
-  showToast('📸 Foto adicionada ao portfólio!');
+  showToast('📸 Foto adicionada com serviço: ' + (svc?.name || svcId));
 }
 
 /* ── Remover foto ── */
