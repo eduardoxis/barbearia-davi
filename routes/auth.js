@@ -20,10 +20,7 @@ export function saveLocalUsers(users) {
 export async function fazerLogin(email, pass) {
   if (!email || !pass) throw new Error('Preencha e-mail e senha.');
 
-  // Admin hardcoded (redireciona para painel)
-  if (email === 'davibarber@gmail.com' && pass === 'davi4452') {
-    return { role: 'admin' };
-  }
+  
 
   // Verifica se é um barbeiro cadastrado — busca do Firestore para garantir dados atualizados
   try {
