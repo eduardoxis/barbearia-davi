@@ -45,6 +45,8 @@ export const adminSettings = {
       intervalo: 60,
       takenSlots: [],
       ativo: true,
+      email: '',   // e-mail de acesso ao painel do barbeiro
+      senha: '',   // senha de acesso ao painel do barbeiro
     }
   ],
   services: [
