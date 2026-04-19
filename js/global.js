@@ -249,3 +249,22 @@ window.showToast    = showToast;
 
 /* Inicia o loop automático assim que o módulo é carregado */
 startAutoShopStatus();
+
+/* ── Reidrata sessão do barbeiro do localStorage ao carregar a página ── */
+(function rehydrateBarbeiro() {
+  try {
+    const cached = localStorage.getItem('bbdavi_barbeiro');
+    if (cached) {
+      const user = JSON.parse(cached);
+      if (user?.isBarbeiro && user?.barbeiroId) {
+        window.fbUser = user;
+        // Aguarda DOM estar pronto para atualizar a nav
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateNavUserFb);
+        } else {
+          updateNavUserFb();
+        }
+      }
+    }
+  } catch (_) {}
+})();
