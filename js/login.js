@@ -63,6 +63,13 @@ export async function doLogin() {
   try {
     const res = await fazerLogin(email, pass);
     updateNavUserFb();
+    // Barbeiro vai para o próprio painel
+    if (res.role === 'barbeiro') {
+      closeUserModal();
+      showToast('💈 Bem-vindo, ' + res.barbeiro.nome + '!');
+      setTimeout(() => { window.location.href = 'pages/painel.html'; }, 700);
+      return;
+    }
     fillLoggedFields();
     closeUserModal();
     showToast('✓ Bem-vindo, ' + window.fbUser?.name?.split(' ')[0] + '!');
