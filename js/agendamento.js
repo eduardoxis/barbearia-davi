@@ -166,7 +166,7 @@ export function goBookStep(n) {
   }
 
   if (n === 0) renderBarbeiroGrid();
-  if (n === 2) renderCalendar();
+  if (n === 2) { renderCalendar(); _irParaProximoDiaDisponivel(); }
   if (n === 3) { fillReview(); resetTermoCheckbox(); }
   if (n === 4) fillPayment();
   document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth' });
@@ -218,6 +218,55 @@ export function renderCalendar() {
 
 export function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
 export function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+
+/* ── Avança automaticamente para o próximo dia disponível ── */
+function _irParaProximoDiaDisponivel() {
+  // Se já há uma data selecionada e ainda é válida, não mexe
+  if (booking.date) return;
+
+  const b = booking.barbeiro;
+  const diasTrabalho = b ? (b.diasAtendimento || []) : adminSettings.workDays;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // Busca nos próximos 60 dias
+  for (let offset = 0; offset < 60; offset++) {
+    const dt = new Date(hoje);
+    dt.setDate(hoje.getDate() + offset);
+    const dow = dt.getDay();
+    if (!diasTrabalho.includes(dow)) continue;
+
+    const d   = dt.getDate().toString().padStart(2,'0');
+    const m   = (dt.getMonth()+1).toString().padStart(2,'0');
+    const y   = dt.getFullYear();
+    const ds  = `${d}/${m}/${y}`;
+    const iso = `${y}-${m}-${d}`;
+
+    const isBlocked   = adminSettings.blockedDates.some(bk => bk.date === ds);
+    const isBarbBlk   = b
+      ? (adminSettings.diasBloqueadosBarbeiro || []).some(bk => bk.barber_id === b.id && bk.date === iso)
+      : false;
+
+    if (!isBlocked && !isBarbBlk) {
+      // Navega o calendário para o mês correto se necessário
+      if (dt.getMonth() !== calMonth || dt.getFullYear() !== calYear) {
+        calMonth = dt.getMonth();
+        calYear  = dt.getFullYear();
+        renderCalendar();
+      }
+      // Destaca visualmente o próximo dia disponível (sem selecionar automaticamente)
+      setTimeout(() => {
+        const cells = document.querySelectorAll('#calGrid .cal-day:not(.empty):not(.past)');
+        cells.forEach(cell => {
+          if (parseInt(cell.textContent) === dt.getDate()) {
+            cell.classList.add('next-available');
+            cell.title = 'Próximo dia disponível';
+          }
+        });
+      }, 50);
+      break;
+    }
+  }
+}
 
 function selectDate(el, ds) {
   document.querySelectorAll('#calGrid .cal-day').forEach(d => d.classList.remove('selected'));
