@@ -99,6 +99,8 @@ export async function fazerCadastro({ name, email, phone, pass, pass2 }) {
 export async function fazerLogout() {
   if (window._fb?.auth?.currentUser) await window._fb.signOut(window._fb.auth);
   window.fbUser = null;
+  window._barbeiroPainel = null;
+  try { localStorage.removeItem('bbdavi_barbeiro'); } catch (_) {}
   updateNavUserFb();
   showToast('Você saiu da conta.');
 }
