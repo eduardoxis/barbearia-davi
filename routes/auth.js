@@ -20,7 +20,10 @@ export function saveLocalUsers(users) {
 export async function fazerLogin(email, pass) {
   if (!email || !pass) throw new Error('Preencha e-mail e senha.');
 
-  
+  // Admin hardcoded (redireciona para painel)
+  if (email === 'davibarber@gmail.com' && pass === 'davi4452') {
+    return { role: 'admin' };
+  }
 
   // Verifica se é um barbeiro cadastrado — busca do Firestore para garantir dados atualizados
   try {
@@ -109,6 +112,8 @@ export async function fazerLogout() {
   window.fbUser = null;
   window._barbeiroPainel = null;
   try { localStorage.removeItem('bbdavi_barbeiro'); } catch (_) {}
+  // Para o listener de notificações
+  if (typeof window._pararNotificacoes === 'function') window._pararNotificacoes();
   updateNavUserFb();
   showToast('Você saiu da conta.');
 }
