@@ -73,21 +73,35 @@ body {
   align-items: center;
   gap: 0.7rem;
 }
-.btn-logout {
+.btn-voltar {
   background: none;
   border: 1px solid var(--border);
   color: var(--gray);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
   border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Inter', sans-serif;
+  letter-spacing: 0.06em;
 }
-.btn-logout:hover { border-color: var(--red); color: var(--red); }
+.btn-voltar:hover { border-color: var(--white); color: var(--white); }
+
+.btn-sair-conta {
+  background: none;
+  border: none;
+  color: var(--gray2);
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s;
+}
+.btn-sair-conta:hover { color: var(--red); }
 
 /* ── Layout principal ────────────────── */
 #painelApp {
@@ -430,8 +444,8 @@ body {
 <header class="painel-topbar">
   <div class="topbar-logo">✂ Barbearia <span>Davi</span></div>
   <div class="topbar-right">
-    <a href="../index.html" style="font-size:0.7rem;color:var(--gray);text-decoration:none;letter-spacing:0.06em;text-transform:uppercase">← Site</a>
-    <button class="btn-logout" id="btnLogout">Sair</button>
+    <button class="btn-sair-conta" id="btnSairConta" title="Sair da conta">Sair da conta</button>
+    <button class="btn-voltar" id="btnLogout">✕ Fechar</button>
   </div>
 </header>
 
