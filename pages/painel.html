@@ -314,6 +314,33 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
 /* Semana */
 .semana-grid { display: flex; flex-direction: column; gap: 0.4rem; }
 
+/* Minha Agenda */
+.agenda-config-wrap { max-width: 520px; display: flex; flex-direction: column; gap: 0; }
+.agenda-section { padding: 1.2rem 0; border-bottom: 1px solid var(--border); }
+.agenda-section:last-of-type { border-bottom: none; }
+.agenda-section-title { font-family: 'Oswald', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--white); margin-bottom: 0.2rem; }
+.agenda-section-sub { font-size: 0.72rem; color: var(--gray2); margin-bottom: 0.9rem; }
+.agenda-dias-grid { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.agenda-dia-btn { background: var(--card); border: 1px solid var(--border); color: var(--gray); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.5rem 0.9rem; border-radius: 2px; cursor: pointer; transition: all 0.18s; font-family: 'Inter', sans-serif; }
+.agenda-dia-btn:hover { border-color: var(--red); color: var(--white); }
+.agenda-dia-btn.on { background: rgba(224,32,32,0.12); border-color: var(--red); color: var(--white); }
+.agenda-horario-row { display: flex; align-items: center; gap: 1rem; }
+.agenda-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.agenda-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray2); }
+.agenda-input { background: var(--card2); border: 1px solid var(--border); color: var(--white); font-size: 0.9rem; padding: 0.5rem 0.75rem; border-radius: 2px; font-family: 'Inter', sans-serif; transition: border-color 0.2s; outline: none; }
+.agenda-input:focus { border-color: var(--red); }
+.agenda-field-sep { color: var(--gray); font-size: 0.78rem; margin-top: 1.2rem; }
+.agenda-intervalo-grid { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.agenda-int-btn { background: var(--card); border: 1px solid var(--border); color: var(--gray); font-size: 0.75rem; font-weight: 700; padding: 0.5rem 1rem; border-radius: 2px; cursor: pointer; transition: all 0.18s; font-family: 'Inter', sans-serif; }
+.agenda-int-btn:hover { border-color: var(--red); color: var(--white); }
+.agenda-int-btn.on { background: rgba(224,32,32,0.12); border-color: var(--red); color: var(--white); }
+.agenda-slots-preview { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.agenda-slot-pill { background: var(--card2); border: 1px solid var(--border); color: var(--gray); font-size: 0.68rem; font-weight: 600; padding: 0.25rem 0.55rem; border-radius: 2px; font-family: 'Inter', sans-serif; }
+.agenda-save-btn { margin-top: 1.5rem; width: 100%; padding: 0.85rem; background: var(--red); color: #fff; border: none; font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-radius: 2px; transition: background 0.2s; }
+.agenda-save-btn:hover { background: #c41a1a; }
+.agenda-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.agenda-save-msg { margin-top: 0.6rem; font-size: 0.75rem; text-align: center; color: #27ae60; min-height: 1.2rem; }
+
 /* Calendário */
 .barb-cal-wrap { max-width: 420px; }
 .barb-cal-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1rem; }
@@ -414,11 +441,12 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   </div>
 
   <!-- ── Tabs ── -->
-  <div class="barb-tabs" style="grid-template-columns:repeat(4,1fr)">
+  <div class="barb-tabs" style="grid-template-columns:repeat(5,1fr)">
     <button class="barb-tab active" id="tabHoje"      onclick="barb_switchTab('hoje')">📅 Hoje</button>
     <button class="barb-tab"        id="tabAmanha"    onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
     <button class="barb-tab"        id="tabSemana"    onclick="barb_switchTab('semana')">📆 Semana</button>
     <button class="barb-tab"        id="tabCalendario" onclick="barb_switchTab('calendario')">🗓 Calendário</button>
+    <button class="barb-tab"        id="tabAgenda"    onclick="barb_switchTab('agenda')">⚙️ Minha Agenda</button>
   </div>
 
   <!-- ── Painel: Hoje ── -->
@@ -452,8 +480,70 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
     <div class="barb-agend-list" id="listaAmanha"></div>
   </div>
 
-  <!-- ── Painel: Semana ── -->
-  <div class="barb-panel" id="panel-semana">
+  <!-- ── Painel: Minha Agenda ── -->
+  <div class="barb-panel" id="panel-agenda">
+    <div class="agenda-config-wrap">
+
+      <!-- Dias da semana -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">📅 Dias de atendimento</div>
+        <div class="agenda-section-sub">Selecione os dias em que você trabalha</div>
+        <div class="agenda-dias-grid" id="agendaDiasGrid">
+          <button class="agenda-dia-btn" data-dia="0">Dom</button>
+          <button class="agenda-dia-btn" data-dia="1">Seg</button>
+          <button class="agenda-dia-btn" data-dia="2">Ter</button>
+          <button class="agenda-dia-btn" data-dia="3">Qua</button>
+          <button class="agenda-dia-btn" data-dia="4">Qui</button>
+          <button class="agenda-dia-btn" data-dia="5">Sex</button>
+          <button class="agenda-dia-btn" data-dia="6">Sáb</button>
+        </div>
+      </div>
+
+      <!-- Horário -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">⏰ Horário de funcionamento</div>
+        <div class="agenda-section-sub">Defina o início e fim do seu atendimento</div>
+        <div class="agenda-horario-row">
+          <div class="agenda-field">
+            <label class="agenda-label">Início</label>
+            <input class="agenda-input" type="time" id="agendaInicio" value="08:00">
+          </div>
+          <div class="agenda-field-sep">até</div>
+          <div class="agenda-field">
+            <label class="agenda-label">Fim</label>
+            <input class="agenda-input" type="time" id="agendaFim" value="18:00">
+          </div>
+        </div>
+      </div>
+
+      <!-- Intervalo entre cortes -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">✂️ Duração por atendimento</div>
+        <div class="agenda-section-sub">Tempo reservado para cada cliente</div>
+        <div class="agenda-intervalo-grid" id="agendaIntervaloGrid">
+          <button class="agenda-int-btn" data-min="30">30 min</button>
+          <button class="agenda-int-btn" data-min="45">45 min</button>
+          <button class="agenda-int-btn" data-min="60">1 hora</button>
+          <button class="agenda-int-btn" data-min="90">1h30</button>
+          <button class="agenda-int-btn" data-min="120">2 horas</button>
+        </div>
+      </div>
+
+      <!-- Preview de horários gerados -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">📋 Horários gerados</div>
+        <div class="agenda-section-sub">Prévia dos slots disponíveis para agendamento</div>
+        <div class="agenda-slots-preview" id="agendaSlotsPreview"></div>
+      </div>
+
+      <!-- Botão salvar -->
+      <button class="agenda-save-btn" id="agendaSaveBtn" onclick="salvarMinhaAgenda()">
+        💾 SALVAR MINHA AGENDA
+      </button>
+      <div class="agenda-save-msg" id="agendaSaveMsg"></div>
+
+    </div>
+  </div>
     <div class="semana-grid" id="listaSemana"></div>
   </div>
 
