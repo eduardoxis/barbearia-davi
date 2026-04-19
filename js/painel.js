@@ -202,7 +202,6 @@ function _renderTab(tab) {
   if (tab === 'semana')    _renderPainelSemana();
   if (tab === 'calendario') {
     _renderCalendarioBarbeiro();
-    // Registra os botões de nav só uma vez
     if (!_calNavRegistrado) {
       document.getElementById('calBarbPrev')?.addEventListener('click', () => {
         _calMes--; if (_calMes < 0) { _calMes = 11; _calAno--; } _renderCalendarioBarbeiro();
@@ -213,7 +212,141 @@ function _renderTab(tab) {
       _calNavRegistrado = true;
     }
   }
+  if (tab === 'agenda') _renderMinhaAgenda();
 }
+
+/* ══════════════════════════════════════════
+   MINHA AGENDA — configuração pelo barbeiro
+══════════════════════════════════════════ */
+let _agendaIntervalo = 60;
+
+function _renderMinhaAgenda() {
+  if (!_barbeiro) return;
+
+  // Dias
+  const diasAtivos = _barbeiro.diasAtendimento || [1,2,3,4,5,6];
+  document.querySelectorAll('#agendaDiasGrid .agenda-dia-btn').forEach(btn => {
+    btn.classList.toggle('on', diasAtivos.includes(parseInt(btn.dataset.dia)));
+    btn.onclick = () => { btn.classList.toggle('on'); _atualizarPreviewSlots(); };
+  });
+
+  // Horários
+  const inicio = document.getElementById('agendaInicio');
+  const fim    = document.getElementById('agendaFim');
+  if (inicio) { inicio.value = _barbeiro.horarioInicio || '08:00'; inicio.oninput = _atualizarPreviewSlots; }
+  if (fim)    { fim.value    = _barbeiro.horarioFim    || '18:00'; fim.oninput    = _atualizarPreviewSlots; }
+
+  // Intervalo
+  _agendaIntervalo = _barbeiro.intervalo || 60;
+  document.querySelectorAll('#agendaIntervaloGrid .agenda-int-btn').forEach(btn => {
+    const min = parseInt(btn.dataset.min);
+    btn.classList.toggle('on', min === _agendaIntervalo);
+    btn.onclick = () => {
+      document.querySelectorAll('#agendaIntervaloGrid .agenda-int-btn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      _agendaIntervalo = min;
+      _atualizarPreviewSlots();
+    };
+  });
+
+  _atualizarPreviewSlots();
+}
+
+function _atualizarPreviewSlots() {
+  const inicio = document.getElementById('agendaInicio')?.value || '08:00';
+  const fim    = document.getElementById('agendaFim')?.value    || '18:00';
+  const slots  = _gerarSlots(inicio, fim, _agendaIntervalo);
+  const wrap   = document.getElementById('agendaSlotsPreview');
+  if (!wrap) return;
+  if (!slots.length) {
+    wrap.innerHTML = '<span style="font-size:0.75rem;color:var(--gray)">Nenhum horário gerado. Verifique início/fim.</span>';
+    return;
+  }
+  wrap.innerHTML = slots.map(s => `<span class="agenda-slot-pill">${s}</span>`).join('');
+}
+
+function _gerarSlots(inicio, fim, intervalo) {
+  const slots = [];
+  const [hi, mi] = inicio.split(':').map(Number);
+  const [hf, mf] = fim.split(':').map(Number);
+  let mins = hi * 60 + mi;
+  const fimMins = hf * 60 + mf;
+  while (mins + intervalo <= fimMins) {
+    const h = String(Math.floor(mins / 60)).padStart(2, '0');
+    const m = String(mins % 60).padStart(2, '0');
+    slots.push(`${h}:${m}`);
+    mins += intervalo;
+  }
+  return slots;
+}
+
+window.salvarMinhaAgenda = async function() {
+  const btn = document.getElementById('agendaSaveBtn');
+  const msg = document.getElementById('agendaSaveMsg');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ SALVANDO…'; }
+  if (msg) msg.textContent = '';
+
+  const diasAtivos = [...document.querySelectorAll('#agendaDiasGrid .agenda-dia-btn.on')]
+    .map(b => parseInt(b.dataset.dia));
+  const inicio = document.getElementById('agendaInicio')?.value || '08:00';
+  const fim    = document.getElementById('agendaFim')?.value    || '18:00';
+
+  if (!diasAtivos.length) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '⚠️ Selecione ao menos um dia de atendimento.'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💾 SALVAR MINHA AGENDA'; }
+    return;
+  }
+
+  try {
+    // Busca settings atuais para não sobrescrever outros campos
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
+    const settings = snap.exists() ? snap.data() : {};
+    const barbeiros = settings.barbeiros || [];
+    const idx = barbeiros.findIndex(b => b.id === _barbeiro.id);
+
+    if (idx < 0) throw new Error('Barbeiro não encontrado.');
+
+    barbeiros[idx] = {
+      ...barbeiros[idx],
+      diasAtendimento: diasAtivos,
+      horarioInicio:   inicio,
+      horarioFim:      fim,
+      intervalo:       _agendaIntervalo,
+    };
+
+    // Salva de volta no Firestore
+    await window._fb.setDoc(
+      window._fb.doc(window._fb.db, 'settings', 'admin'),
+      { ...settings, barbeiros },
+      { merge: true }
+    );
+
+    // Atualiza local
+    _barbeiro.diasAtendimento = diasAtivos;
+    _barbeiro.horarioInicio   = inicio;
+    _barbeiro.horarioFim      = fim;
+    _barbeiro.intervalo       = _agendaIntervalo;
+
+    // Atualiza localStorage
+    try {
+      const cached = JSON.parse(localStorage.getItem('bbdavi_barbeiro') || '{}');
+      cached.diasAtendimento = diasAtivos;
+      cached.horarioInicio   = inicio;
+      cached.horarioFim      = fim;
+      cached.intervalo       = _agendaIntervalo;
+      localStorage.setItem('bbdavi_barbeiro', JSON.stringify(cached));
+    } catch(_) {}
+
+    if (msg) { msg.style.color = '#27ae60'; msg.textContent = '✅ Agenda salva com sucesso!'; }
+    _mostrarToast('✅ Agenda atualizada!');
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+  } catch(e) {
+    console.error(e);
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '⚠️ Erro ao salvar. Tente novamente.'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 SALVAR MINHA AGENDA'; }
+  }
+};
 
 /* ══════════════════════════════════════════
    CALENDÁRIO DO BARBEIRO
