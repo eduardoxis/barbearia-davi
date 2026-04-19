@@ -570,6 +570,19 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
 <div id="painelToast"></div>
 
 <script type="module" src="../js/painel.js"></script>
+<script type="module">
+  import { mostrarBannerNotificacoes } from '../js/notificacoes.js';
+  // Mostra banner após 2s — barbeiroId será lido do localStorage
+  setTimeout(() => {
+    if (localStorage.getItem('notif_recusada')) return;
+    try {
+      const u = JSON.parse(localStorage.getItem('bbdavi_barbeiro') || '{}');
+      if (u?.barbeiroId) {
+        mostrarBannerNotificacoes({ role: 'barbeiro', barbeiroId: u.barbeiroId });
+      }
+    } catch (_) {}
+  }, 2000);
+</script>
 <script>
   function barb_switchTab(tab) {
     document.querySelectorAll('.barb-tab').forEach(t => t.classList.remove('active'));
