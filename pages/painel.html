@@ -12,7 +12,8 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, signInAnonymously }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
@@ -30,9 +31,44 @@
   const db      = getFirestore(app);
   const storage = getStorage(app);
   window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
-  // Autenticação anônima para liberar writes no Firestore — expõe promise para aguardar
-  window._fbAuthReady = new Promise(resolve => {
-    signInAnonymously(auth).then(resolve).catch(resolve);
+
+  // Autenticação do barbeiro no Firebase para liberar writes no Firestore.
+  // Usa as credenciais salvas na sessão durante o login (email/senha do barbeiro),
+  // criando a conta Firebase Auth automaticamente na primeira vez.
+  // Fallback: signInAnonymously (requer ativar "Autenticação Anônima" no Firebase Console).
+  window._fbAuthReady = new Promise(async (resolve) => {
+    // 1) Sessão já autenticada
+    if (auth.currentUser) { resolve(); return; }
+
+    // 2) Tenta autenticar com credenciais salvas no login do barbeiro
+    try {
+      const raw = sessionStorage.getItem('_bbcred');
+      if (raw) {
+        const { e, p } = JSON.parse(decodeURIComponent(escape(atob(raw))));
+        if (e && p) {
+          try {
+            await signInWithEmailAndPassword(auth, e, p);
+            resolve(); return;
+          } catch (err1) {
+            // Conta ainda não existe → cria automaticamente
+            if (
+              err1.code === 'auth/user-not-found' ||
+              err1.code === 'auth/invalid-credential' ||
+              err1.code === 'auth/invalid-login-credentials'
+            ) {
+              try {
+                await createUserWithEmailAndPassword(auth, e, p);
+                resolve(); return;
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3) Fallback: autenticação anônima
+    try { await signInAnonymously(auth); } catch (_) {}
+    resolve();
   });
 </script>
 
