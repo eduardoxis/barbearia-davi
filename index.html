@@ -962,23 +962,25 @@
     <div class="modal-barb-body">
       <input type="hidden" id="barbIdEditando">
       <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Foto ou Emoji</label>
+        <label class="form-label" style="text-align:center;display:block">Foto ou Emoji</label>
         <input type="hidden" id="barbFotoUrl">
+        <div style="display:flex;flex-direction:column;align-items:center">
         <div class="svc-foto-upload" id="barbFotoUploadArea" onclick="document.getElementById('barbFotoFile').click()">
           <div class="svc-foto-placeholder" id="barbFotoPlaceholder">
             <span class="svc-foto-icon">📷</span>
-            <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
+            <span class="svc-foto-txt">Clique para<br>escolher foto</span>
           </div>
           <img id="barb-foto-preview" class="svc-foto-img" style="display:none" alt="Foto do barbeiro">
           <div class="svc-foto-loading" id="barbFotoLoading" style="display:none">
             <div class="svc-foto-loading-spinner"></div>
-            Enviando foto...
+            Enviando...
           </div>
         </div>
         <input type="file" id="barbFotoFile" accept="image/jpeg,image/png" style="display:none" onchange="onBarbFotoChange(this)">
         <div class="svc-foto-acoes" id="barbFotoAcoes" style="display:none">
-          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('barbFotoFile').click()">🔄 Trocar foto</button>
+          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('barbFotoFile').click()">🔄 Trocar</button>
           <button type="button" class="svc-foto-btn-remove" onclick="removerFotoBarbeiro()">✕ Remover</button>
+        </div>
         </div>
         <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
           <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
