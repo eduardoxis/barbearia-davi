@@ -464,19 +464,6 @@ async function verificarConfirmacao() {
         });
       } catch (e) { console.warn('Erro ao salvar agendamento:', e); }
 
-      // Notifica barbeiro via WhatsApp (fire-and-forget — nunca trava o fluxo)
-      fetch('/api/whatsapp-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cliente:  booking.client,
-          data:     booking.date,
-          horario:  booking.time,
-          servicos: cart.map(c => c.icon + ' ' + c.name).join(', '),
-          total:    cart.reduce((s, c) => s + c.price, 0),
-          barbeiro: booking.barbeiro?.nome || '',
-        }),
-      }).catch(() => {});
 
       setTimeout(() => {
         ov.remove();
