@@ -45,6 +45,29 @@ export async function fazerLogin(email, pass) {
             barbeiroId: barbMatch.id,
           };
           window._barbeiroPainel = barbMatch;
+
+          // Salva credenciais na sessão para o painel usar no Firestore Auth
+          try {
+            sessionStorage.setItem('_bbcred', btoa(unescape(encodeURIComponent(JSON.stringify({ e: email, p: pass })))));
+          } catch (_) {}
+
+          // Tenta criar/entrar na conta Firebase Auth para que as regras do Firestore funcionem
+          if (window._fb?.signInWithEmailAndPassword) {
+            try {
+              await window._fb.signInWithEmailAndPassword(window._fb.auth, email, pass);
+            } catch (authErr) {
+              if (
+                authErr.code === 'auth/user-not-found' ||
+                authErr.code === 'auth/invalid-credential' ||
+                authErr.code === 'auth/invalid-login-credentials'
+              ) {
+                try {
+                  await window._fb.createUserWithEmailAndPassword(window._fb.auth, email, pass);
+                } catch (_) {}
+              }
+            }
+          }
+
           updateNavUserFb();
           return { role: 'barbeiro', barbeiro: barbMatch };
         }
