@@ -860,25 +860,7 @@ async function carregarAtendimentosDoDia(data) {
       const btnReal = jaRealizado
         ? '<button class="atend-btn-realizado done" disabled>✓ Realizado</button>'
         : `<button class="atend-btn-realizado" onclick="marcarAtendimentoRealizado('${reserva.id || ''}','${atendBarbeiroId}',this)">✓ Concluir</button>`;
-      // Botão WhatsApp para o cliente
-      const _tel = (reserva.telefone || reserva.whatsapp || '').replace(/\D/g, '');
-      const _telIntl = _tel ? (_tel.startsWith('55') ? _tel : '55' + _tel) : '';
-      const _msgConfirm = encodeURIComponent(
-        'Olá ' + (reserva.cliente || '') + '! 👋\n' +
-        'Seu agendamento na *Barbearia do Davi* está confirmado para ' +
-        (reserva.data || '') + ' às ' + (reserva.horario || '') + '.\n' +
-        'Te esperamos! ✂️'
-      );
-      const _msgPos = encodeURIComponent(
-        'Olá ' + (reserva.cliente || '') + '! Obrigado pela visita! 😊\n' +
-        'Como foi seu atendimento? Ficou satisfeito? ✂️'
-      );
-      const btnWapp = _telIntl
-        ? (jaRealizado
-            ? `<a href="https://wa.me/${_telIntl}?text=${_msgPos}" target="_blank" class="atend-btn-wapp">💬 Pós-atendimento</a>`
-            : `<a href="https://wa.me/${_telIntl}?text=${_msgConfirm}" target="_blank" class="atend-btn-wapp">💬 Confirmar</a>`)
-        : '';
-      card.innerHTML = base + '<span class="atend-badge ' + (jaRealizado ? 'realizado' : 'reservado') + '">' + (jaRealizado ? '✅ Realizado' : '🟠 Reservado') + '</span></div><div class="atend-info"><div class="atend-cliente-nome">👤 '+(reserva.cliente||'—')+'</div><div class="atend-cliente-tel">📱 '+(reserva.telefone||reserva.whatsapp||'—')+'</div><div class="atend-servicos">'+svcs+'</div><div class="atend-total">R$ '+(reserva.total||'—')+'</div>' + btnReal + btnWapp + '</div>';
+      card.innerHTML = base + '<span class="atend-badge ' + (jaRealizado ? 'realizado' : 'reservado') + '">' + (jaRealizado ? '✅ Realizado' : '🟠 Reservado') + '</span></div><div class="atend-info"><div class="atend-cliente-nome">👤 '+(reserva.cliente||'—')+'</div><div class="atend-cliente-tel">📱 '+(reserva.telefone||reserva.whatsapp||'—')+'</div><div class="atend-servicos">'+svcs+'</div><div class="atend-total">R$ '+(reserva.total||'—')+'</div>' + btnReal + '</div>';
     } else {
       card.className = 'card-atendimento livre';
       card.innerHTML = base + '<span class="atend-badge livre">🟢 Livre</span></div><div class="atend-info"><div class="atend-livre-msg">Disponível</div></div>';
