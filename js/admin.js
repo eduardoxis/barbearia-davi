@@ -685,6 +685,56 @@ export function abrirModalBarbeiro(id) {
   document.getElementById('overlayModalBarbeiro').classList.add('show');
 }
 export function fecharModalBarbeiro() { document.getElementById('overlayModalBarbeiro').classList.remove('show'); }
+export async function onBarbFotoChange(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  const urlInput = document.getElementById('barbFotoUrl');
+  const prev     = document.getElementById('barb-foto-preview');
+  if (prev) prev.innerHTML = '<span style="font-size:0.7rem;color:var(--gray)">⏳</span>';
+
+  try {
+    // Redimensiona para max 400px (foto de perfil)
+    const base64 = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 400;
+          let { width: w, height: h } = img;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else        { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Upload para Firebase Storage
+    const fb  = window._fb;
+    const barbId = document.getElementById('barbIdEditando')?.value || ('barb_' + Date.now());
+    const path = `barbeiros/${barbId}/foto.jpg`;
+    const blob = await (await fetch(base64)).blob();
+    const ref  = fb.storageRef(fb.storage, path);
+    await fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' });
+    const url  = await fb.getDownloadURL(ref);
+
+    if (urlInput) urlInput.value = url;
+    atualizarPreviewFoto(url);
+    showToast('✅ Foto enviada com sucesso!');
+  } catch (err) {
+    showToast('❌ Erro ao enviar foto: ' + err.message);
+    atualizarPreviewFoto(document.getElementById('barbFotoUrl')?.value || '');
+  }
+}
+
 export function atualizarPreviewFoto(url) {
   const prev = document.getElementById('barb-foto-preview');
   if (!prev) return;
@@ -1862,6 +1912,7 @@ window.abrirModalBarbeiro  = abrirModalBarbeiro;
 window.fecharModalBarbeiro = fecharModalBarbeiro;
 window.atualizarPreviewFoto= atualizarPreviewFoto;
 window.selecionarEmoji     = selecionarEmoji;
+window.onBarbFotoChange    = onBarbFotoChange;
 window.toggleDiaBarb       = toggleDiaBarb;
 window.confirmarSalvarBarbeiro = confirmarSalvarBarbeiro;
 window.toggleAtivoBarbeiro = toggleAtivoBarbeiro;
