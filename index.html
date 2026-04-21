@@ -962,11 +962,15 @@
     <div class="modal-barb-body">
       <input type="hidden" id="barbIdEditando">
       <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Foto (URL) ou Emoji</label>
+        <label class="form-label">Foto ou Emoji</label>
         <div class="foto-preview-wrap">
-          <div class="foto-preview" id="barb-foto-preview">💈</div>
-          <div style="flex:1"><input class="form-input" id="barbFotoUrl" type="text" placeholder="https://... ou deixe vazio" oninput="atualizarPreviewFoto(this.value)"></div>
+          <div class="foto-preview" id="barb-foto-preview" style="cursor:pointer" onclick="document.getElementById('barbFotoFile').click()" title="Clique para enviar foto">💈</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:0.4rem">
+            <input class="form-input" id="barbFotoUrl" type="text" placeholder="https://... ou clique na foto para enviar" oninput="atualizarPreviewFoto(this.value)">
+            <button type="button" onclick="document.getElementById('barbFotoFile').click()" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:3px;padding:0.3rem 0.7rem;font-size:0.75rem;cursor:pointer;text-align:left">📷 Enviar foto do celular/computador</button>
+          </div>
         </div>
+        <input type="file" id="barbFotoFile" accept="image/*" style="display:none" onchange="onBarbFotoChange(this)">
         <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
           <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
           <button onclick="selecionarEmoji(this,'✂️')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">✂️</button>
@@ -1452,19 +1456,7 @@
   import './js/admin.js';
   import './js/perfil.js';
   import './js/galeria.js';
-  import { mostrarBannerNotificacoes, pararNotificacoes } from './js/notificacoes.js';
   initSite();
-
-  // Mostra banner para admin após 3s (não interrompe o carregamento)
-  setTimeout(() => {
-    // Só mostra para admin logado, e se não recusou antes
-    if (window.fbUser?.isAdmin && !localStorage.getItem('notif_recusada')) {
-      mostrarBannerNotificacoes({ role: 'admin' });
-    }
-  }, 3000);
-
-  // Expõe para usar no logout
-  window._pararNotificacoes = pararNotificacoes;
 </script>
 
 
