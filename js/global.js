@@ -177,6 +177,9 @@ export function updateNavUserFb() {
     if (window.fbUser.isBarbeiro) {
       const db = document.getElementById('drawerBarbeiroBtn');
       if (db) db.classList.add('show');
+      // Mostra botão "Painel Barbeiro" na nav desktop
+      const nb = document.getElementById('navBarbeiroBtn');
+      if (nb) nb.style.display = 'flex';
       // Persiste sessão do barbeiro no localStorage
       try { localStorage.setItem('bbdavi_barbeiro', JSON.stringify(window.fbUser)); } catch (_) {}
     }
@@ -191,6 +194,8 @@ export function updateNavUserFb() {
     if (da) da.classList.remove('show');
     const db2 = document.getElementById('drawerBarbeiroBtn');
     if (db2) db2.classList.remove('show');
+    const nb2 = document.getElementById('navBarbeiroBtn');
+    if (nb2) nb2.style.display = 'none';
     hideAdminNavBtn();
   }
 }
