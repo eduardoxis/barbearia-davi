@@ -505,7 +505,29 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 .svc-foto-btn-troca:hover { border-color: var(--red); color: var(--red); }
 .svc-foto-btn-remove:hover { border-color: rgba(224,32,32,0.5); color: #ff6b6b; }
 
-/* Foto na lista de serviços (svc-editor-card) */
+/* ── Foto do barbeiro — circular (sobrescreve svc-foto-upload genérico) ── */
+#barbFotoUploadArea {
+  width: 130px;
+  height: 130px;
+  min-height: unset;
+  border-radius: 50%;
+  margin: 0 auto 0.5rem;
+  border-width: 2.5px;
+}
+#barbFotoUploadArea:hover { background: rgba(224,32,32,0.06); }
+#barbFotoUploadArea .svc-foto-placeholder { gap: 0.3rem; }
+#barbFotoUploadArea .svc-foto-icon { font-size: 1.6rem; }
+#barbFotoUploadArea .svc-foto-txt  { font-size: 0.62rem; }
+#barbFotoUploadArea .svc-foto-txt small { display: none; }
+#barb-foto-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+#barbFotoAcoes { justify-content: center; }
 .svc-ed-icon-img {
   width: 48px;
   height: 48px;
