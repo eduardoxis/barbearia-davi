@@ -15,6 +15,8 @@
   import { getAuth }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
   const firebaseConfig = {
     apiKey: "AIzaSyDK0bmVX9tTMCLw7fSDBrW-E8D3SK63DaY",
     authDomain: "barbearia-davi.firebaseapp.com",
@@ -23,10 +25,11 @@
     messagingSenderId: "327274722401",
     appId: "1:327274722401:web:f2ddac69ff5d4161716620"
   };
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
-  window._fb = { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
+  const app     = initializeApp(firebaseConfig);
+  const auth    = getAuth(app);
+  const db      = getFirestore(app);
+  const storage = getStorage(app);
+  window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
 </script>
 
 <link rel="stylesheet" href="../css/global.css">
@@ -484,7 +487,44 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   <div class="barb-panel" id="panel-agenda">
     <div class="agenda-config-wrap">
 
-      <!-- Dias da semana -->
+      <!-- ── Minha Foto ── -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">📷 Minha Foto</div>
+        <div class="agenda-section-sub">Atualize sua foto de perfil exibida no agendamento</div>
+        <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
+          <!-- Avatar preview -->
+          <div id="painelFotoAvatar" style="
+            width:72px;height:72px;border-radius:50%;
+            background:var(--card2);border:2px solid var(--border);
+            display:flex;align-items:center;justify-content:center;
+            font-size:2rem;overflow:hidden;flex-shrink:0;position:relative;
+          ">
+            <span id="painelFotoEmoji">💈</span>
+            <img id="painelFotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0">
+            <div id="painelFotoLoading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;font-size:0.7rem;color:var(--gray)">⏳</div>
+          </div>
+          <!-- Botões -->
+          <div style="display:flex;flex-direction:column;gap:0.5rem">
+            <label style="
+              background:var(--red);color:#fff;
+              font-size:0.7rem;font-weight:700;letter-spacing:0.1em;
+              text-transform:uppercase;padding:0.5rem 1rem;
+              border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;
+              display:inline-block;
+            ">
+              📁 ESCOLHER FOTO
+              <input type="file" accept="image/jpeg,image/png" style="display:none" onchange="painelUploadFoto(this)">
+            </label>
+            <button onclick="painelRemoverFoto()" style="
+              background:transparent;border:1px solid var(--border);color:var(--gray);
+              font-size:0.68rem;font-weight:700;letter-spacing:0.08em;
+              text-transform:uppercase;padding:0.4rem 0.8rem;
+              border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;
+            ">✕ REMOVER</button>
+          </div>
+        </div>
+        <div id="painelFotoMsg" style="font-size:0.72rem;margin-top:0.5rem;min-height:1rem"></div>
+      </div>
       <div class="agenda-section">
         <div class="agenda-section-title">📅 Dias de atendimento</div>
         <div class="agenda-section-sub">Selecione os dias em que você trabalha</div>
