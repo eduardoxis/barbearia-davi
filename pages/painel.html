@@ -30,8 +30,10 @@
   const db      = getFirestore(app);
   const storage = getStorage(app);
   window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
-  // Autenticação anônima para liberar writes no Firestore
-  signInAnonymously(auth).catch(() => {});
+  // Autenticação anônima para liberar writes no Firestore — expõe promise para aguardar
+  window._fbAuthReady = new Promise(resolve => {
+    signInAnonymously(auth).then(resolve).catch(resolve);
+  });
 </script>
 
 <link rel="stylesheet" href="../css/global.css">
