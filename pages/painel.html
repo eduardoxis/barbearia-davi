@@ -12,7 +12,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getAuth, signInAnonymously }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
@@ -30,6 +30,8 @@
   const db      = getFirestore(app);
   const storage = getStorage(app);
   window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
+  // Autenticação anônima para liberar writes no Firestore
+  signInAnonymously(auth).catch(() => {});
 </script>
 
 <link rel="stylesheet" href="../css/global.css">
@@ -584,16 +586,19 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
 
     </div>
   </div>
+
+  <!-- ── Painel: Semana ── -->
+  <div class="barb-panel" id="panel-semana">
     <div class="semana-grid" id="listaSemana"></div>
   </div>
 
   <!-- ── Painel: Calendário ── -->
   <div class="barb-panel" id="panel-calendario">
-    <div class="barb-cal-wrap">
+    <div class="barb-cal-wrap" style="max-width:420px;margin:0 auto">
       <!-- Nav do calendário -->
-      <div class="barb-cal-header">
+      <div class="barb-cal-header" style="display:flex;align-items:center;justify-content:space-between;gap:0.7rem;margin-bottom:1rem">
         <button class="barb-nav-btn" id="calBarbPrev">‹</button>
-        <div class="barb-nav-data-label" id="calBarbLabel" style="text-align:center">—</div>
+        <div class="barb-nav-data-label" id="calBarbLabel" style="text-align:center;flex:1">—</div>
         <button class="barb-nav-btn" id="calBarbNext">›</button>
       </div>
       <!-- Grid do calendário -->
