@@ -112,8 +112,6 @@ export async function fazerLogout() {
   window.fbUser = null;
   window._barbeiroPainel = null;
   try { localStorage.removeItem('bbdavi_barbeiro'); } catch (_) {}
-  // Para o listener de notificações
-  if (typeof window._pararNotificacoes === 'function') window._pararNotificacoes();
   updateNavUserFb();
   showToast('Você saiu da conta.');
 }
