@@ -690,9 +690,14 @@ export async function onBarbFotoChange(input) {
   if (!file) return;
   input.value = '';
 
-  const urlInput = document.getElementById('barbFotoUrl');
-  const prev     = document.getElementById('barb-foto-preview');
-  if (prev) prev.innerHTML = '<span style="font-size:0.7rem;color:var(--gray)">⏳</span>';
+  // Mostra loading
+  const placeholder = document.getElementById('barbFotoPlaceholder');
+  const loading     = document.getElementById('barbFotoLoading');
+  const preview     = document.getElementById('barb-foto-preview');
+  const acoes       = document.getElementById('barbFotoAcoes');
+  if (placeholder) placeholder.style.display = 'none';
+  if (loading)     loading.style.display      = 'flex';
+  if (preview)     preview.style.display      = 'none';
 
   try {
     // Redimensiona para max 400px (foto de perfil)
@@ -718,27 +723,59 @@ export async function onBarbFotoChange(input) {
     });
 
     // Upload para Firebase Storage
-    const fb  = window._fb;
+    const fb     = window._fb;
     const barbId = document.getElementById('barbIdEditando')?.value || ('barb_' + Date.now());
-    const path = `barbeiros/${barbId}/foto.jpg`;
-    const blob = await (await fetch(base64)).blob();
-    const ref  = fb.storageRef(fb.storage, path);
+    const path   = `barbeiros/${barbId}/foto.jpg`;
+    const blob   = await (await fetch(base64)).blob();
+    const ref    = fb.storageRef(fb.storage, path);
     await fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' });
-    const url  = await fb.getDownloadURL(ref);
+    const url    = await fb.getDownloadURL(ref);
 
+    const urlInput = document.getElementById('barbFotoUrl');
     if (urlInput) urlInput.value = url;
-    atualizarPreviewFoto(url);
+
+    // Mostra preview
+    if (loading)     loading.style.display  = 'none';
+    if (preview)   { preview.src = url; preview.style.display = 'block'; }
+    if (acoes)       acoes.style.display    = 'flex';
     showToast('✅ Foto enviada com sucesso!');
   } catch (err) {
+    if (loading)     loading.style.display     = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
     showToast('❌ Erro ao enviar foto: ' + err.message);
-    atualizarPreviewFoto(document.getElementById('barbFotoUrl')?.value || '');
   }
 }
 
-export function atualizarPreviewFoto(url) {
+export function removerFotoBarbeiro() {
+  const urlInput   = document.getElementById('barbFotoUrl');
+  const preview    = document.getElementById('barb-foto-preview');
+  const placeholder = document.getElementById('barbFotoPlaceholder');
+  const acoes      = document.getElementById('barbFotoAcoes');
+  if (urlInput)    urlInput.value         = '';
+  if (preview)   { preview.src = ''; preview.style.display = 'none'; }
+  if (placeholder) placeholder.style.display = 'flex';
+  if (acoes)       acoes.style.display    = 'none';
+  // Volta o emoji selecionado no preview circular (emojis abaixo)
   const prev = document.getElementById('barb-foto-preview');
-  if (!prev) return;
-  prev.innerHTML = url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${_barbEmojiSelecionado}'">` : _barbEmojiSelecionado;
+  if (prev) prev.textContent = _barbEmojiSelecionado;
+}
+
+export function atualizarPreviewFoto(url) {
+  const preview     = document.getElementById('barb-foto-preview');
+  const placeholder = document.getElementById('barbFotoPlaceholder');
+  const acoes       = document.getElementById('barbFotoAcoes');
+  if (!preview) return;
+  if (url) {
+    preview.src          = url;
+    preview.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    if (acoes)       acoes.style.display        = 'flex';
+  } else {
+    preview.src          = '';
+    preview.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
+    if (acoes)       acoes.style.display        = 'none';
+  }
 }
 export function selecionarEmoji(btn, emoji) {
   _barbEmojiSelecionado = emoji;
@@ -1913,6 +1950,7 @@ window.fecharModalBarbeiro = fecharModalBarbeiro;
 window.atualizarPreviewFoto= atualizarPreviewFoto;
 window.selecionarEmoji     = selecionarEmoji;
 window.onBarbFotoChange    = onBarbFotoChange;
+window.removerFotoBarbeiro = removerFotoBarbeiro;
 window.toggleDiaBarb       = toggleDiaBarb;
 window.confirmarSalvarBarbeiro = confirmarSalvarBarbeiro;
 window.toggleAtivoBarbeiro = toggleAtivoBarbeiro;
