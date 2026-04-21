@@ -722,14 +722,31 @@ export async function onBarbFotoChange(input) {
       reader.readAsDataURL(file);
     });
 
-    // Upload para Firebase Storage
+    // Tenta upload para Firebase Storage com timeout de 15s
     const fb     = window._fb;
     const barbId = document.getElementById('barbIdEditando')?.value || ('barb_' + Date.now());
-    const path   = `barbeiros/${barbId}/foto.jpg`;
-    const blob   = await (await fetch(base64)).blob();
-    const ref    = fb.storageRef(fb.storage, path);
-    await fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' });
-    const url    = await fb.getDownloadURL(ref);
+    let url = base64; // fallback base64
+    let uploadOk = false;
+
+    if (fb?.storage) {
+      try {
+        const path   = `barbeiros/${barbId}/foto.jpg`;
+        const blob   = await (await fetch(base64)).blob();
+        const ref    = fb.storageRef(fb.storage, path);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 15000)
+        );
+        await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeoutPromise]);
+        url      = await fb.getDownloadURL(ref);
+        uploadOk = true;
+      } catch (storageErr) {
+        console.warn('Firebase Storage falhou, usando base64:', storageErr.code || storageErr.message);
+      }
+    }
+
+    if (!uploadOk) {
+      console.info('Foto salva como base64 no Firestore.');
+    }
 
     const urlInput = document.getElementById('barbFotoUrl');
     if (urlInput) urlInput.value = url;
