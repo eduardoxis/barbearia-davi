@@ -78,7 +78,11 @@ export function updateCartUI() {
       items.innerHTML = cart.map(c => `
         <div class="cart-item">
           <div>
-            <div class="cart-item-name">${c.icon} ${c.name}</div>
+            <div class="cart-item-name">${
+              (c.icon && (c.icon.startsWith('http') || c.icon.startsWith('data:')))
+                ? `<img src="${c.icon}" style="width:20px;height:20px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">`
+                : (c.icon ? c.icon + ' ' : '')
+            }${c.name}</div>
             <div style="font-size:0.68rem;color:var(--gray)">⏱ ${c.time}</div>
           </div>
           <div style="display:flex;align-items:center;gap:0.5rem">
