@@ -1,9 +1,3 @@
 {
-  "version": 2,
-  "crons": [
-    {
-      "path": "/api/lembrete-cron",
-      "schedule": "0 11 * * *"
-    }
-  ]
+  "version": 2
 }
