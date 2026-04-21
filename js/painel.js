@@ -46,8 +46,7 @@ function _diasDaSemana() {
 async function init() {
   let t = 0;
   while (!window._fb && t++ < 40) await new Promise(r => setTimeout(r, 100));
-  // Aguarda a autenticação anônima completar antes de qualquer write no Firestore
-  if (window._fbAuthReady) await window._fbAuthReady;
+  // Auth anônima roda em background — NÃO bloqueia o carregamento da UI
   await _carregarSettings();
   _barbeiro = await _identificarBarbeiro();
   if (!_barbeiro) { _mostrarErroAcesso(); return; }
@@ -67,6 +66,13 @@ async function init() {
 
   window._painelAtualizar = _carregarEAtualizar;
   window._painelRenderTab = _renderTab;
+
+  // Renderiza a aba que já estava ativa quando init terminou
+  const tabAtiva = document.querySelector('.barb-tab.active');
+  if (tabAtiva) {
+    const id = tabAtiva.id.replace('tab', '').toLowerCase();
+    if (id !== 'hoje') _renderTab(id);
+  }
 }
 
 async function _carregarSettings() {
@@ -305,6 +311,9 @@ window.salvarMinhaAgenda = async function() {
   }
 
   try {
+    // Garante que autenticação anônima completou antes do write
+    if (window._fbAuthReady) await window._fbAuthReady;
+
     // Busca settings atuais para não sobrescrever outros campos
     const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
     const settings = snap.exists() ? snap.data() : {};
@@ -627,6 +636,7 @@ window.painelUploadFoto = async function(input) {
     }
 
     // Salva no Firestore dentro de settings/admin > barbeiros[idx].foto
+    if (window._fbAuthReady) await window._fbAuthReady;
     const snap      = await fb.getDoc(fb.doc(fb.db, 'settings', 'admin'));
     const settings  = snap.exists() ? snap.data() : {};
     const barbeiros = settings.barbeiros || [];
@@ -657,6 +667,7 @@ window.painelRemoverFoto = async function() {
   const msgEl = document.getElementById('painelFotoMsg');
   try {
     const fb      = window._fb;
+    if (window._fbAuthReady) await window._fbAuthReady;
     const snap    = await fb.getDoc(fb.doc(fb.db, 'settings', 'admin'));
     const settings = snap.exists() ? snap.data() : {};
     const barbeiros = settings.barbeiros || [];
