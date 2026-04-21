@@ -48,7 +48,7 @@ export async function fazerLogin(email, pass) {
 
           // Salva credenciais na sessão para o painel usar no Firestore Auth
           try {
-            sessionStorage.setItem('_bbcred', btoa(unescape(encodeURIComponent(JSON.stringify({ e: email, p: pass })))));
+            localStorage.setItem('_bbcred', btoa(unescape(encodeURIComponent(JSON.stringify({ e: email, p: pass, t: Date.now() })))));  // temp, removido no logout
           } catch (_) {}
 
           // Tenta criar/entrar na conta Firebase Auth para que as regras do Firestore funcionem
@@ -134,7 +134,7 @@ export async function fazerLogout() {
   if (window._fb?.auth?.currentUser) await window._fb.signOut(window._fb.auth);
   window.fbUser = null;
   window._barbeiroPainel = null;
-  try { localStorage.removeItem('bbdavi_barbeiro'); } catch (_) {}
+  try { localStorage.removeItem('bbdavi_barbeiro'); localStorage.removeItem('_bbcred'); } catch (_) {}
   updateNavUserFb();
   showToast('Você saiu da conta.');
 }
