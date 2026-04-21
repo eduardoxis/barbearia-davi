@@ -46,6 +46,8 @@ function _diasDaSemana() {
 async function init() {
   let t = 0;
   while (!window._fb && t++ < 40) await new Promise(r => setTimeout(r, 100));
+  // Aguarda a autenticação anônima completar antes de qualquer write no Firestore
+  if (window._fbAuthReady) await window._fbAuthReady;
   await _carregarSettings();
   _barbeiro = await _identificarBarbeiro();
   if (!_barbeiro) { _mostrarErroAcesso(); return; }
