@@ -223,6 +223,11 @@ let _agendaIntervalo = 60;
 function _renderMinhaAgenda() {
   if (!_barbeiro) return;
 
+  // Foto atual
+  const emoji = document.getElementById('painelFotoEmoji');
+  if (emoji && _barbeiro.emoji) emoji.textContent = _barbeiro.emoji;
+  _painelAtualizarAvatarUI(_barbeiro.foto || '');
+
   // Dias
   const diasAtivos = _barbeiro.diasAtendimento || [1,2,3,4,5,6];
   document.querySelectorAll('#agendaDiasGrid .agenda-dia-btn').forEach(btn => {
@@ -547,6 +552,125 @@ function _mostrarToast(msg) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+/* ═══════════════════════════════════════
+   FOTO DO BARBEIRO — painel
+═══════════════════════════════════════ */
+function _painelAtualizarAvatarUI(url) {
+  const emoji  = document.getElementById('painelFotoEmoji');
+  const img    = document.getElementById('painelFotoImg');
+  if (!img) return;
+  if (url && url.startsWith('http') || (url && url.startsWith('data:'))) {
+    img.src = url;
+    img.style.display = 'block';
+    if (emoji) emoji.style.display = 'none';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+    if (emoji) emoji.style.display = '';
+    if (emoji && _barbeiro?.emoji) emoji.textContent = _barbeiro.emoji;
+  }
+}
+
+window.painelUploadFoto = async function(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  const loading = document.getElementById('painelFotoLoading');
+  const msgEl   = document.getElementById('painelFotoMsg');
+  if (loading) loading.style.display = 'flex';
+  if (msgEl)   { msgEl.style.color = 'var(--gray)'; msgEl.textContent = 'Enviando…'; }
+
+  try {
+    // Redimensiona para max 400px
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 400;
+          let { width: w, height: h } = img;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else        { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => reject(new Error('Falha ao ler imagem'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+      reader.readAsDataURL(file);
+    });
+
+    // Tenta Firebase Storage com timeout; fallback base64
+    const fb = window._fb;
+    let url  = base64;
+
+    if (fb?.storage) {
+      try {
+        const path    = `barbeiros/${_barbeiro.id}/foto.jpg`;
+        const blob    = await (await fetch(base64)).blob();
+        const ref     = fb.storageRef(fb.storage, path);
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000));
+        await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeout]);
+        url = await fb.getDownloadURL(ref);
+      } catch (storageErr) {
+        console.warn('Storage falhou, usando base64:', storageErr.message);
+      }
+    }
+
+    // Salva no Firestore dentro de settings/admin > barbeiros[idx].foto
+    const snap      = await fb.getDoc(fb.doc(fb.db, 'settings', 'admin'));
+    const settings  = snap.exists() ? snap.data() : {};
+    const barbeiros = settings.barbeiros || [];
+    const idx       = barbeiros.findIndex(b => b.id === _barbeiro.id);
+    if (idx < 0) throw new Error('Barbeiro não encontrado.');
+
+    barbeiros[idx] = { ...barbeiros[idx], foto: url };
+    await fb.setDoc(fb.doc(fb.db, 'settings', 'admin'), { ...settings, barbeiros }, { merge: true });
+
+    // Atualiza local
+    _barbeiro.foto = url;
+    _painelAtualizarAvatarUI(url);
+
+    if (loading) loading.style.display = 'none';
+    if (msgEl)   { msgEl.style.color = '#27ae60'; msgEl.textContent = '✅ Foto atualizada com sucesso!'; }
+    _mostrarToast('✅ Foto atualizada!');
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 4000);
+  } catch (err) {
+    if (loading) loading.style.display = 'none';
+    if (msgEl)   { msgEl.style.color = 'var(--red)'; msgEl.textContent = '⚠️ ' + err.message; }
+    _mostrarToast('❌ Erro ao enviar foto');
+    console.error(err);
+  }
+};
+
+window.painelRemoverFoto = async function() {
+  if (!_barbeiro) return;
+  const msgEl = document.getElementById('painelFotoMsg');
+  try {
+    const fb      = window._fb;
+    const snap    = await fb.getDoc(fb.doc(fb.db, 'settings', 'admin'));
+    const settings = snap.exists() ? snap.data() : {};
+    const barbeiros = settings.barbeiros || [];
+    const idx = barbeiros.findIndex(b => b.id === _barbeiro.id);
+    if (idx >= 0) {
+      barbeiros[idx] = { ...barbeiros[idx], foto: '' };
+      await fb.setDoc(fb.doc(fb.db, 'settings', 'admin'), { ...settings, barbeiros }, { merge: true });
+    }
+    _barbeiro.foto = '';
+    _painelAtualizarAvatarUI('');
+    if (msgEl) { msgEl.style.color = 'var(--gray)'; msgEl.textContent = 'Foto removida.'; }
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  } catch (err) {
+    if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = '⚠️ Erro ao remover.'; }
+  }
+};
 
 if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
 else init();
