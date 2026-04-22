@@ -273,3 +273,35 @@ startAutoShopStatus();
     }
   } catch (_) {}
 })();
+
+/* ══════════════════════════════════════════
+   TEMA CLARO / ESCURO
+══════════════════════════════════════════ */
+const THEME_KEY = 'bbdavi_theme';
+
+function _applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+
+  // Botão nav
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+
+  // Switch do drawer
+  const chk = document.getElementById('drawerThemeCheck');
+  if (chk) chk.checked = theme === 'light';
+}
+
+export function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next    = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  _applyTheme(next);
+}
+
+// Aplica tema salvo ao carregar (antes do primeiro paint)
+(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  _applyTheme(saved);
+})();
+
+window.toggleTheme = toggleTheme;
