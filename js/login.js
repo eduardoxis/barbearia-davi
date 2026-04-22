@@ -51,30 +51,29 @@ function showBarbeiroView() {
   const inicial = nome.charAt(0).toUpperCase();
 
   bv.style.cssText = 'padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center';
-  bv.innerHTML = [
-    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(111,207,151,0.15);',
-    'border:2px solid #6FCF97;display:flex;align-items:center;justify-content:center;',
-    'font-size:1.5rem;font-weight:700;color:#6FCF97;font-family:Bebas Neue,sans-serif">' + inicial + '</div>',
-    '<div>',
-    '<div style="font-family:Oswald,sans-serif;font-size:1rem;font-weight:700;color:var(--white);',
-    'letter-spacing:0.05em;text-transform:uppercase">' + nome + '</div>',
-    '<div style="font-size:0.72rem;color:var(--gray);margin-top:0.2rem">' + email + '</div>',
-    '<div style="font-size:0.65rem;color:#6FCF97;margin-top:0.15rem;letter-spacing:0.08em">💈 BARBEIRO</div>',
-    '</div>',
-    '<div style="display:flex;flex-direction:column;gap:0.6rem;width:100%;max-width:240px">',
-    '<button onclick="closeUserModal();window.location.href='pages/painel.html'"',
-    ' style="width:100%;padding:0.65rem;background:#6FCF97;color:#0D0D0D;border:none;',
-    'border-radius:3px;font-weight:700;font-size:0.78rem;letter-spacing:0.1em;',
-    'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">',
-    '💈 MEU PAINEL</button>',
-    '<button onclick="closeUserModal();fbLogout()"',
-    ' style="width:100%;padding:0.65rem;background:transparent;',
-    'border:1px solid var(--border);color:var(--gray);border-radius:3px;',
-    'font-weight:700;font-size:0.78rem;letter-spacing:0.1em;',
-    'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">',
-    'SAIR DA CONTA ✕</button>',
-    '</div>'
-  ].join('');
+  bv.innerHTML =
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(111,207,151,0.15);' +
+    'border:2px solid #6FCF97;display:flex;align-items:center;justify-content:center;' +
+    'font-size:1.5rem;font-weight:700;color:#6FCF97;font-family:Bebas Neue,sans-serif">' + inicial + '</div>' +
+    '<div>' +
+      '<div style="font-family:Oswald,sans-serif;font-size:1rem;font-weight:700;color:var(--white);' +
+      'letter-spacing:0.05em;text-transform:uppercase">' + nome + '</div>' +
+      '<div style="font-size:0.72rem;color:var(--gray);margin-top:0.2rem">' + email + '</div>' +
+      '<div style="font-size:0.65rem;color:#6FCF97;margin-top:0.15rem;letter-spacing:0.08em">💈 BARBEIRO</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:0.6rem;width:100%;max-width:240px">' +
+      '<button onclick="closeUserModal();window.location.href=\'pages/painel.html\'"' +
+      ' style="width:100%;padding:0.65rem;background:#6FCF97;color:#0D0D0D;border:none;' +
+      'border-radius:3px;font-weight:700;font-size:0.78rem;letter-spacing:0.1em;' +
+      'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">' +
+      '💈 MEU PAINEL</button>' +
+      '<button onclick="closeUserModal();fbLogout()"' +
+      ' style="width:100%;padding:0.65rem;background:transparent;' +
+      'border:1px solid var(--border);color:var(--gray);border-radius:3px;' +
+      'font-weight:700;font-size:0.78rem;letter-spacing:0.1em;' +
+      'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">' +
+      'SAIR DA CONTA ✕</button>' +
+    '</div>';
 }
 
 function showLoginView() {
