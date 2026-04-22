@@ -974,6 +974,343 @@ async function carregarAtendimentosDoDia(data) {
     }
     lista.appendChild(card);
   });
+
+  // Mostra botão de impressão agora que a lista foi carregada
+  const imprimirWrap = document.getElementById('atendImprimirWrap');
+  if (imprimirWrap) imprimirWrap.style.display = agendamentos.length ? 'block' : 'none';
+}
+
+/* ── Imprime agenda do dia em PDF ── */
+export function imprimirAgendaDoDia() {
+  try {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { showToast('⚠ jsPDF não carregado.'); return; }
+
+    const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W      = 210;
+    const pad    = 14;
+    const hoje   = new Date();
+    const nomeArq = `agenda-${atendData.replace(/\//g,'-')}.pdf`;
+
+    // ── Fundo e cabeçalho ──
+    doc.setFillColor(10, 10, 10);
+    doc.rect(0, 0, W, 297, 'F');
+    doc.setFillColor(224, 32, 32);
+    doc.rect(0, 0, W, 36, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(255, 255, 255);
+    doc.text('BARBEARIA DO DAVI', pad, 15);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(255, 200, 200);
+    doc.text('Vila Guará · Luziânia – GO  |  @davi_barber10', pad, 22);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('AGENDA DO DIA — ' + atendData, pad, 31);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200, 200, 200);
+    doc.text('Impresso em ' + hoje.toLocaleString('pt-BR') + '  |  ' + atendBarbeiroNome, W - pad, 31, { align: 'right' });
+
+    // ── Cards de horários ──
+    const lista = document.getElementById('atendLista');
+    const cards = lista ? lista.querySelectorAll('.card-atendimento') : [];
+    let y = 46;
+    const durLabel = (() => {
+      const dur = adminSettings.duracaoPadrao || 60;
+      return dur >= 60 ? (dur === 60 ? '1h' : (dur/60).toFixed(1).replace('.0','')+'h') : dur+'min';
+    })();
+
+    if (!cards.length) {
+      doc.setFontSize(11);
+      doc.setTextColor(160, 160, 160);
+      doc.text('Nenhum atendimento encontrado para este dia.', pad, y + 10);
+    }
+
+    cards.forEach(card => {
+      if (y > 270) {
+        doc.addPage();
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, W, 297, 'F');
+        y = 14;
+      }
+
+      const horaEl    = card.querySelector('.atend-hora');
+      const clienteEl = card.querySelector('.atend-cliente-nome');
+      const telEl     = card.querySelector('.atend-cliente-tel');
+      const svcsEl    = card.querySelector('.atend-servicos');
+      const totalEl   = card.querySelector('.atend-total');
+
+      const hora    = horaEl?.textContent                         || '—';
+      const cliente = clienteEl?.textContent?.replace('👤 ', '') || '';
+      const tel     = telEl?.textContent?.replace('📱 ', '')     || '';
+      const svcs    = svcsEl?.textContent                         || '';
+      const total   = totalEl?.textContent                        || '';
+
+      const isRealizado  = card.classList.contains('realizado');
+      const isReservado  = card.classList.contains('reservado');
+      const isBloqueado  = card.classList.contains('bloqueado');
+
+      let corBorda;
+      if (isRealizado)      corBorda = [39, 174, 96];
+      else if (isReservado) corBorda = [255, 165, 0];
+      else if (isBloqueado) corBorda = [224, 32, 32];
+      else                  corBorda = [60, 120, 60];
+
+      const altCard = cliente ? 28 : 18;
+
+      doc.setFillColor(26, 26, 26);
+      doc.roundedRect(pad, y, W - pad * 2, altCard, 1.5, 1.5, 'F');
+      doc.setFillColor(...corBorda);
+      doc.rect(pad, y, 3, altCard, 'F');
+
+      // Hora
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text(hora, pad + 6, y + 8);
+
+      // Duração
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(150, 150, 150);
+      doc.text('⏱ ' + durLabel, pad + 6, y + 14);
+
+      // Status badge
+      const badgeTxt = isRealizado ? 'REALIZADO' : isReservado ? 'RESERVADO' : isBloqueado ? 'BLOQUEADO' : 'LIVRE';
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...corBorda);
+      doc.text(badgeTxt, pad + 32, y + 8);
+
+      if (cliente) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(230, 230, 230);
+        doc.text(cliente, pad + 32, y + 15);
+
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(160, 160, 160);
+        if (tel) doc.text(tel, pad + 32, y + 21);
+
+        if (svcs) {
+          doc.setFontSize(7);
+          doc.setTextColor(180, 180, 180);
+          doc.text(svcs.replace(/[^\w\s,À-ú\-]/g, '').trim().slice(0, 70), W - pad - 40, y + 15);
+        }
+
+        if (total) {
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(224, 32, 32);
+          doc.text(total, W - pad - 4, y + 22, { align: 'right' });
+        }
+      }
+
+      y += altCard + 3;
+    });
+
+    // ── Rodapé ──
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Barbearia do Davi · Documento gerado automaticamente pelo sistema', W / 2, 291, { align: 'center' });
+
+    doc.save(nomeArq);
+    showToast('📄 PDF da agenda gerado!');
+  } catch (e) {
+    console.error('Erro ao imprimir agenda:', e);
+    showToast('❌ Erro ao gerar PDF.');
+  }
+}
+
+/* ══════════════════════════════════════════
+   IMPRESSÃO DA AGENDA DO DIA (PDF)
+══════════════════════════════════════════ */
+
+export async function imprimirAgendaDoDia() {
+  if (!atendData) { showToast('⚠ Selecione uma data primeiro.'); return; }
+
+  showToast('⏳ Gerando PDF...');
+
+  const todos = await buscarAgendamentosDoDia(atendData);
+  const agendamentos = atendBarbeiroId
+    ? todos.filter(a => a.barbeiroId === atendBarbeiroId)
+    : todos;
+
+  let slots = adminSettings.slots || [];
+  if (atendBarbeiroId) {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === atendBarbeiroId);
+    if (barb?.slots?.length) slots = barb.slots;
+  }
+  slots = [...slots].sort();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, pad = 15;
+
+  // ── Fundo e cabeçalho ──
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 297, 'F');
+
+  doc.setFillColor(224, 32, 32);
+  doc.rect(0, 0, W, 36, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('BARBEARIA DO DAVI', pad, 14);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(255, 200, 200);
+  doc.text('Vila Guará · Luziânia – GO  |  @davi_barber10', pad, 21);
+
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AGENDA DO DIA — ' + atendData, pad, 30);
+
+  if (atendBarbeiroNome) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(255, 230, 230);
+    doc.text('Barbeiro: ' + atendBarbeiroNome, W - pad, 30, { align: 'right' });
+  }
+
+  // ── Totais rápidos ──
+  const reservados = agendamentos.filter(a => a.status !== 'cancelado');
+  const realizados = agendamentos.filter(a => a.realizado === true);
+  const totalFaturado = agendamentos.reduce((s, a) => s + parseFloat(a.total || 0), 0);
+  const dur = adminSettings.duracaoPadrao || 60;
+  const durLabel = dur >= 60 ? (dur === 60 ? '1h' : (dur / 60).toFixed(1).replace('.0', '') + 'h') : dur + 'min';
+
+  let y = 44;
+  const statsData = [
+    ['📅 Total de slots', slots.length],
+    ['🟠 Reservados', reservados.length],
+    ['✅ Realizados', realizados.length],
+    ['🟢 Livres', slots.length - reservados.length],
+    ['💰 Faturado', 'R$ ' + totalFaturado.toFixed(2).replace('.', ',')],
+  ];
+  const colW = (W - pad * 2) / statsData.length;
+  statsData.forEach(([label, val], i) => {
+    const x = pad + i * colW;
+    doc.setFillColor(26, 26, 26);
+    doc.roundedRect(x, y, colW - 2, 16, 1, 1, 'F');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(String(val), x + (colW - 2) / 2, y + 7, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(label, x + (colW - 2) / 2, y + 13, { align: 'center' });
+  });
+
+  y += 22;
+
+  // ── Cabeçalho da tabela ──
+  doc.setFillColor(40, 40, 40);
+  doc.rect(pad, y, W - pad * 2, 8, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(200, 200, 200);
+  doc.text('HORÁRIO', pad + 3, y + 5.5);
+  doc.text('STATUS', pad + 22, y + 5.5);
+  doc.text('CLIENTE', pad + 50, y + 5.5);
+  doc.text('SERVIÇOS', pad + 90, y + 5.5);
+  doc.text('TOTAL', W - pad - 3, y + 5.5, { align: 'right' });
+  y += 10;
+
+  // ── Linhas da tabela ──
+  slots.forEach((horario, idx) => {
+    if (y > 275) {
+      doc.addPage();
+      doc.setFillColor(10, 10, 10);
+      doc.rect(0, 0, 210, 297, 'F');
+      y = 15;
+    }
+
+    const reserva = agendamentos.find(a => a.horario === horario && a.status !== 'cancelado');
+    const bloqueado = adminSettings.takenSlots.includes(horario) && !reserva;
+    const rowH = 10;
+
+    // Cor de fundo alternada
+    const bg = idx % 2 === 0 ? [22, 22, 22] : [28, 28, 28];
+    doc.setFillColor(...bg);
+    doc.rect(pad, y, W - pad * 2, rowH, 'F');
+
+    // Borda de status à esquerda
+    if (reserva?.realizado) {
+      doc.setFillColor(34, 139, 34);
+    } else if (reserva) {
+      doc.setFillColor(224, 140, 32);
+    } else if (bloqueado) {
+      doc.setFillColor(180, 32, 32);
+    } else {
+      doc.setFillColor(50, 168, 82);
+    }
+    doc.rect(pad, y, 2, rowH, 'F');
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(horario, pad + 4, y + 6.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+
+    if (reserva?.realizado) {
+      doc.setTextColor(34, 200, 34);
+      doc.text('✓ Realizado', pad + 22, y + 6.5);
+    } else if (reserva) {
+      doc.setTextColor(255, 180, 50);
+      doc.text('Reservado', pad + 22, y + 6.5);
+    } else if (bloqueado) {
+      doc.setTextColor(255, 80, 80);
+      doc.text('Bloqueado', pad + 22, y + 6.5);
+    } else {
+      doc.setTextColor(80, 200, 80);
+      doc.text('Livre', pad + 22, y + 6.5);
+    }
+
+    if (reserva) {
+      doc.setTextColor(230, 230, 230);
+      const nomeClip = (reserva.cliente || '—').slice(0, 20);
+      doc.text(nomeClip, pad + 50, y + 6.5);
+
+      const svcsClip = (reserva.servicos || '—').replace(/[^\x00-\x7F]/g, '').trim().slice(0, 35);
+      doc.setTextColor(180, 180, 180);
+      doc.text(svcsClip, pad + 90, y + 6.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(224, 32, 32);
+      doc.text('R$ ' + (reserva.total || '0'), W - pad - 3, y + 6.5, { align: 'right' });
+    }
+
+    y += rowH + 1;
+  });
+
+  // ── Rodapé ──
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  doc.text(
+    'Gerado em ' + new Date().toLocaleString('pt-BR') + '  ·  Barbearia do Davi',
+    W / 2, 292, { align: 'center' }
+  );
+
+  const nomeArq = 'agenda-' + atendData.replace(/\//g, '-') + (atendBarbeiroNome ? '-' + atendBarbeiroNome.toLowerCase().replace(/\s+/g, '_') : '') + '.pdf';
+  doc.save(nomeArq);
+  showToast('📄 PDF gerado: ' + nomeArq);
 }
 
 /* ══════════════════════════════════════════
@@ -1978,6 +2315,7 @@ window.excluirBarbeiro     = excluirBarbeiro;
 window.prevMonthAtend      = prevMonthAtend;
 window.nextMonthAtend      = nextMonthAtend;
 window.trocarBarbeiro      = trocarBarbeiro;
+window.imprimirAgendaDoDia = imprimirAgendaDoDia;
 window.exportarAtendimentosPDF=exportarAtendimentosPDF;
 window.gerarStory          = gerarStory;
 window.baixarStory         = baixarStory;
@@ -2043,3 +2381,4 @@ window.onBarbeiroBloqueioChange = onBarbeiroBloqueioChange;
 window.onDataBloqueioChange     = onDataBloqueioChange;
 window.confirmarBloqueioBarb    = confirmarBloqueioBarb;
 window.removerBloqueioBarb      = removerBloqueioBarb;
+window.imprimirAgendaDoDia     = imprimirAgendaDoDia;
