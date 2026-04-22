@@ -48,7 +48,7 @@ export async function fazerLogin(email, pass) {
 
           // Salva credenciais na sessão para o painel usar no Firestore Auth
           try {
-            localStorage.setItem('_bbcred', btoa(unescape(encodeURIComponent(JSON.stringify({ e: email, p: pass, t: Date.now() })))));  // temp, removido no logout
+            sessionStorage.setItem('_bbcred', btoa(unescape(encodeURIComponent(JSON.stringify({ e: email, p: pass })))));
           } catch (_) {}
 
           // Tenta criar/entrar na conta Firebase Auth para que as regras do Firestore funcionem
