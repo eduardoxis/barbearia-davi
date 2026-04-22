@@ -574,6 +574,42 @@ export function shareWhatsApp() {
   });
 }
 
+/* ── Google Calendar ── */
+export function adicionarGoogleCalendar() {
+  try {
+    // Converte DD/MM/YYYY → YYYYMMDD
+    const [dd, mm, yyyy] = booking.date.split('/');
+    const dataISO = `${yyyy}${mm}${dd}`;
+
+    // Converte HH:MM → HHMMSS e calcula fim (+1h por padrão)
+    const [hh, min] = (booking.time || '09:00').split(':').map(Number);
+    const duracaoMin = 60; // duração padrão em minutos
+    const fimTotalMin = hh * 60 + min + duracaoMin;
+    const fimHH  = Math.floor(fimTotalMin / 60).toString().padStart(2, '0');
+    const fimMin = (fimTotalMin % 60).toString().padStart(2, '0');
+
+    const startStr = `${dataISO}T${hh.toString().padStart(2,'0')}${min.toString().padStart(2,'0')}00`;
+    const endStr   = `${dataISO}T${fimHH}${fimMin}00`;
+
+    const titulo   = `✂ Barbearia do Davi – ${cart.map(c => c.name).join(', ')}`;
+    const detalhes = `Barbeiro: ${booking.barbeiro?.nome || 'Davi'}\nServiços: ${cart.map(c => c.name).join(', ')}\nTotal: R$ ${cart.reduce((s, c) => s + c.price, 0)}\n\nAgendado pelo site da Barbearia do Davi.`;
+    const local    = 'Vila Guará, Luziânia – GO';
+
+    const params = new URLSearchParams({
+      action:   'TEMPLATE',
+      text:     titulo,
+      dates:    `${startStr}/${endStr}`,
+      details:  detalhes,
+      location: local,
+    });
+
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+  } catch (e) {
+    showToast('Erro ao abrir o Google Calendar.');
+    console.error(e);
+  }
+}
+
 /* ── Resetar booking ── */
 export function resetBooking() {
   const { setCart } = window._globalState || {};
@@ -616,5 +652,6 @@ window.verificarTermoAceito   = verificarTermoAceito;
 window.irParaPagamentoComTermo = irParaPagamentoComTermo;
 window.generatePDF            = generatePDF;
 window.shareWhatsApp          = shareWhatsApp;
+window.adicionarGoogleCalendar = adicionarGoogleCalendar;
 window.resetBooking           = resetBooking;
 window.iniciarPagamentoCakto  = iniciarPagamentoCakto;
