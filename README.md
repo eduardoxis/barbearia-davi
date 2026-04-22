@@ -1,101 +1,66 @@
 # 💈 Barbearia do Davi
 
-<p align="center">
-  <img src="https://img.shields.io/badge/status-online-brightgreen?style=for-the-badge">
-  <img src="https://img.shields.io/badge/version-1.0-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/node.js-serverless-green?style=for-the-badge">
-  <img src="https://img.shields.io/badge/deploy-vercel-black?style=for-the-badge">
-</p>
-
-<p align="center">
-  <b>Sistema completo de barbearia com agendamento, pagamentos e interface animada</b>
-</p>
-
----
-
-## ✨ Sobre o Projeto
-
-O **Barbearia do Davi** é uma aplicação web moderna desenvolvida para gerenciar agendamentos, clientes e pagamentos de forma simples, rápida e eficiente.
-
-O sistema utiliza uma arquitetura **serverless com Node.js**, oferecendo alta performance e escalabilidade, além de uma interface com **animações suaves** para melhorar a experiência do usuário.
-
----
-
-## 🎬 Interface e Animações
-
-<p align="center">
-  <img src="https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif" width="500">
-</p>
-
-A interface foi projetada com foco em usabilidade e inclui:
-
-- ✨ Animações de entrada (fade + slide)
-- 🖱️ Efeitos hover interativos
-- 📦 Cards com transições suaves
-- 📱 Experiência fluida em dispositivos móveis
+Sistema completo para gerenciamento de barbearia com agendamentos, pagamentos e painel administrativo.  
+Agora com suporte para **animações modernas na interface** para melhorar a experiência do usuário.
 
 ---
 
 ## 🚀 Funcionalidades
 
 ### 👤 Área do Cliente
-- 📅 Agendamento online de serviços
-- 💈 Visualização de serviços disponíveis
-- 🛒 Carrinho de compras
-- 🎟️ Aplicação de cupons
-- 🔐 Sistema de login e cadastro
-- 🔄 Remarcação de horários
-
----
+- Agendamento de horários
+- Visualização de serviços
+- Carrinho de serviços
+- Aplicação de cupons
+- Login e cadastro
+- Remarcação de horários
 
 ### 🧑‍💼 Área Administrativa
-- 📊 Dashboard administrativo
-- 📋 Gerenciamento de agendamentos
-- 👥 Controle de clientes
-- 📌 Acompanhamento de pedidos em tempo real
-
----
+- Painel admin completo
+- Controle de agendamentos
+- Gestão de clientes
+- Sidebar administrativa
+- Monitoramento de pedidos
 
 ### 💳 Pagamentos
-- Integração com gateway **Cakto**
-- 🧾 Criação de checkout automático
-- 🔎 Verificação de status de pagamento
-- 🔔 Webhook para atualização em tempo real
-
----
+- Integração com gateway (Cakto)
+- Criação de checkout
+- Verificação de status
+- Webhook automático
 
 ### 🔔 Automação
-- Sistema de lembretes (estrutura pronta)
-- Integração futura com **WhatsApp (Twilio)**
+- Estrutura de lembretes
+- Preparado para WhatsApp (Twilio)
 
 ---
 
-## 🎨 Sistema de Animações
+## ✨ Animações (Novo)
 
-| Tipo        | Descrição                                |
-|------------|------------------------------------------|
-| Fade In     | Elementos aparecem suavemente            |
-| Slide Up    | Componentes sobem ao entrar na tela      |
-| Hover       | Interações visuais ao passar o mouse     |
-| Scale       | Efeito de zoom leve                      |
+O projeto agora suporta animações modernas para melhorar a usabilidade:
+
+- 🎬 Entrada suave de elementos (fade + slide)
+- 🖱️ Efeitos hover em botões e cards
+- 📦 Animação em cards de serviços
+- 📱 Compatível com mobile
+- ⚡ Performance otimizada
 
 ---
 
-## ⚙️ Implementação das Animações
+## 🛠️ Tecnologias
 
-### 🎨 CSS
-```css
-.card {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: all 0.6s ease;
-}
+### Frontend
+- HTML5
+- CSS3
+- JavaScript
 
-.card.show {
-  opacity: 1;
-  transform: translateY(0);
-}
+### Backend
+- Node.js
+- Vercel Functions (Serverless)
 
-.card:hover {
-  transform: translateY(-10px) scale(1.03);
-}
+### Integrações
+- API Cakto
+- Webhooks
+
+---
+
+## 📁 Estrutura do Projeto
