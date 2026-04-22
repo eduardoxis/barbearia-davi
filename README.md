@@ -1,53 +1,92 @@
 # 💈 Barbearia do Davi
 
-Sistema completo para gerenciamento de uma barbearia, incluindo agendamentos, painel administrativo, integração com pagamentos e automações.
+<p align="center">
+  <img src="https://img.shields.io/badge/status-online-brightgreen?style=for-the-badge">
+  <img src="https://img.shields.io/badge/version-1.0-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/node.js-enabled-green?style=for-the-badge">
+</p>
+
+<p align="center">
+  <b>🚀 Sistema moderno de barbearia com animações e automações</b>
+</p>
+
+---
+
+## ✨ Preview das Animações
+
+<p align="center">
+  <img src="https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif" width="500">
+</p>
+
+✔ Entrada suave de elementos  
+✔ Hover moderno  
+✔ Cards animados  
+✔ Interface profissional  
 
 ---
 
 ## 🚀 Funcionalidades
 
 ### 👤 Cliente
-- Agendamento de horários
-- Visualização de serviços
-- Aplicação de cupons
-- Carrinho de serviços
-- Login e cadastro
-- Remarcação de horários
+- 📅 Agendamento online
+- 💈 Visualização de serviços
+- 🛒 Carrinho
+- 🎟️ Cupons
+- 🔐 Login / Cadastro
+- 🔄 Remarcação
+
+---
 
 ### 🧑‍💼 Admin
-- Painel administrativo
-- Controle de agendamentos
-- Gestão de clientes
-- Sidebar administrativa
-- Monitoramento de status dos pedidos
+- 📊 Painel administrativo
+- 📋 Controle de agendamentos
+- 👥 Gestão de clientes
+- 📌 Monitoramento de pedidos
+
+---
 
 ### 💳 Pagamentos
-- Integração com gateway (Cakto)
-- Criação de checkout
-- Verificação de status de pagamento
-- Webhook para atualização automática
-
-### 🔔 Automação (base pronta)
-- Estrutura para envio de lembretes
-- Preparado para integração com WhatsApp (ex: Twilio)
+- Integração com **Cakto**
+- Checkout automático
+- Verificação de status
+- Webhook em tempo real
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
-
-### Frontend
-- HTML5
-- CSS3
-- JavaScript
-
-### Backend
-- Node.js
-- Vercel Functions
-
-### Integrações
-- API de pagamento (Cakto)
-- Webhooks
+### 🔔 Automação
+- Lembretes automáticos
+- Preparado para WhatsApp (Twilio)
 
 ---
 
-## 📁 Estrutura do Projeto
+## 🎬 Sistema de Animações
+
+### 🔥 Tipos implementados
+
+| Tipo | Descrição |
+|------|--------|
+| Fade In | Elementos aparecem suavemente |
+| Slide Up | Cards sobem ao entrar na tela |
+| Hover | Botões e cards com efeito |
+| Scale | Zoom leve ao interagir |
+
+---
+
+## ⚙️ Código de Animação
+
+### 🎨 CSS
+```css
+.card {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.6s ease;
+}
+
+.card.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card:hover {
+  transform: translateY(-10px) scale(1.03);
+}
