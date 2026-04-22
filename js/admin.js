@@ -858,7 +858,10 @@ function renderAtendBarbeiros() {
   ativos.forEach(b => {
     const card = document.createElement('div');
     card.className = 'atend-barb-card' + (atendBarbeiroId === b.id ? ' selecionado' : '');
-    card.innerHTML = `<div class="atend-barb-emoji">${b.foto || b.emoji || '💈'}</div><div class="atend-barb-nome">${b.nome}</div>`;
+    const fotoHtml = b.foto
+      ? `<img src="${b.foto}" alt="${b.nome}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${b.emoji||'💈'}'">` 
+      : (b.emoji || '💈');
+    card.innerHTML = `<div class="atend-barb-emoji">${fotoHtml}</div><div class="atend-barb-nome">${b.nome}</div>`;
     card.onclick = () => selecionarBarbeiro(b.id, b.nome);
     grid.appendChild(card);
   });
