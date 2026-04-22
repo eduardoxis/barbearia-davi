@@ -37,3 +37,13 @@
 .btn-hist-reagendar:hover{background:var(--red-dark)}
 .hist-vazio{text-align:center;padding:1.5rem;color:var(--gray2);font-size:0.8rem;background:var(--card2);border-radius:2px}
 .hist-loading{text-align:center;padding:1.5rem;color:var(--gray);font-size:0.8rem}
+
+/* ══════════════════════════════════════════
+   MODO CLARO — overrides login
+══════════════════════════════════════════ */
+[data-theme="light"] .hist-card { background: #f9f9f9; border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .hist-card:hover { border-color: rgba(224,32,32,0.2); }
+[data-theme="light"] .hist-data { color: #111; }
+[data-theme="light"] .hist-aba { background: #f0f0f0; color: #666; }
+[data-theme="light"] .hist-aba.ativa { background: var(--red); color: #fff; }
+[data-theme="light"] .hist-vazio { background: #f5f5f5; }
