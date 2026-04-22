@@ -22,61 +22,59 @@ export function openUserModal() {
 
 export function closeUserModal() {
   document.getElementById('userModal').classList.remove('show');
+  // Esconde a view do barbeiro ao fechar
+  const bv = document.getElementById('barbeiroModalView');
+  if (bv) bv.style.display = 'none';
 }
-
-/* ── View do barbeiro logado ── */
+/* ── View do barbeiro logado (mini-modal com Meu Painel + Sair) ── */
 function showBarbeiroView() {
   const modal = document.getElementById('userModal');
   if (!modal) return;
 
-  // Reutiliza o modal com conteúdo customizado para barbeiro
+  // Oculta as views de cliente
   const loginReg = document.getElementById('modalLoginRegister');
   const loggedIn  = document.getElementById('loggedInView');
   if (loginReg) loginReg.style.display = 'none';
   if (loggedIn)  loggedIn.style.display = 'none';
 
-  // Remove view anterior de barbeiro se existir
+  // Cria/reutiliza a view do barbeiro dentro do .modal
   let bv = document.getElementById('barbeiroModalView');
   if (!bv) {
     bv = document.createElement('div');
     bv.id = 'barbeiroModalView';
-    bv.style.cssText = 'padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center';
     const box = modal.querySelector('.modal') || modal.firstElementChild;
-    if (box) box.appendChild(bv); else modal.appendChild(bv);
+    if (box) box.appendChild(bv);
   }
 
-  const nome = window.fbUser?.name || 'Barbeiro';
-  const email = window.fbUser?.email || '';
+  const nome    = window.fbUser ? window.fbUser.name  : 'Barbeiro';
+  const email   = window.fbUser ? window.fbUser.email : '';
   const inicial = nome.charAt(0).toUpperCase();
-  bv.innerHTML = \`
-    <div style="width:56px;height:56px;border-radius:50%;background:rgba(111,207,151,0.15);
-      border:2px solid #6FCF97;display:flex;align-items:center;justify-content:center;
-      font-size:1.5rem;font-weight:700;color:#6FCF97;font-family:'Bebas Neue',sans-serif">
-      \${inicial}
-    </div>
-    <div>
-      <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;
-        color:var(--white);letter-spacing:0.05em;text-transform:uppercase">\${nome}</div>
-      <div style="font-size:0.72rem;color:var(--gray);margin-top:0.2rem">\${email}</div>
-      <div style="font-size:0.65rem;color:#6FCF97;margin-top:0.15rem;letter-spacing:0.08em">💈 BARBEIRO</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:0.6rem;width:100%;max-width:240px">
-      <button onclick="closeUserModal();window.location.href='pages/painel.html'"
-        style="width:100%;padding:0.65rem;background:#6FCF97;color:#0D0D0D;border:none;
-        border-radius:3px;font-weight:700;font-size:0.78rem;letter-spacing:0.1em;
-        text-transform:uppercase;cursor:pointer;font-family:'Inter',sans-serif">
-        💈 MEU PAINEL
-      </button>
-      <button onclick="closeUserModal();fbLogout()"
-        style="width:100%;padding:0.65rem;background:transparent;
-        border:1px solid var(--border);color:var(--gray);border-radius:3px;
-        font-weight:700;font-size:0.78rem;letter-spacing:0.1em;
-        text-transform:uppercase;cursor:pointer;font-family:'Inter',sans-serif">
-        SAIR DA CONTA ✕
-      </button>
-    </div>
-  \`;
-  bv.style.display = 'flex';
+
+  bv.style.cssText = 'padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center';
+  bv.innerHTML = [
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(111,207,151,0.15);',
+    'border:2px solid #6FCF97;display:flex;align-items:center;justify-content:center;',
+    'font-size:1.5rem;font-weight:700;color:#6FCF97;font-family:Bebas Neue,sans-serif">' + inicial + '</div>',
+    '<div>',
+    '<div style="font-family:Oswald,sans-serif;font-size:1rem;font-weight:700;color:var(--white);',
+    'letter-spacing:0.05em;text-transform:uppercase">' + nome + '</div>',
+    '<div style="font-size:0.72rem;color:var(--gray);margin-top:0.2rem">' + email + '</div>',
+    '<div style="font-size:0.65rem;color:#6FCF97;margin-top:0.15rem;letter-spacing:0.08em">💈 BARBEIRO</div>',
+    '</div>',
+    '<div style="display:flex;flex-direction:column;gap:0.6rem;width:100%;max-width:240px">',
+    '<button onclick="closeUserModal();window.location.href='pages/painel.html'"',
+    ' style="width:100%;padding:0.65rem;background:#6FCF97;color:#0D0D0D;border:none;',
+    'border-radius:3px;font-weight:700;font-size:0.78rem;letter-spacing:0.1em;',
+    'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">',
+    '💈 MEU PAINEL</button>',
+    '<button onclick="closeUserModal();fbLogout()"',
+    ' style="width:100%;padding:0.65rem;background:transparent;',
+    'border:1px solid var(--border);color:var(--gray);border-radius:3px;',
+    'font-weight:700;font-size:0.78rem;letter-spacing:0.1em;',
+    'text-transform:uppercase;cursor:pointer;font-family:Inter,sans-serif">',
+    'SAIR DA CONTA ✕</button>',
+    '</div>'
+  ].join('');
 }
 
 function showLoginView() {
@@ -90,7 +88,6 @@ export function showLoggedView() {
   document.getElementById('loggedInView').style.display = 'block';
   if (!window.fbUser) return;
 
-  // Barbeiro tem view própria
   if (window.fbUser.isBarbeiro) { showBarbeiroView(); return; }
 
   const parts = window.fbUser.name.split(' ');
