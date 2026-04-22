@@ -220,6 +220,22 @@ export function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; cal
 export function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
 
 /* ── Avança automaticamente para o próximo dia disponível ── */
+
+/* ── Helper: renderiza ícone do serviço (emoji ou imagem) ── */
+function _svcIconHtml(svc) {
+  if (!svc.icon) return '';
+  if (svc.icon.startsWith('data:') || svc.icon.startsWith('http')) {
+    return `<img src="${svc.icon}" alt="" style="width:1.1em;height:1.1em;object-fit:cover;border-radius:2px;vertical-align:middle">`;
+  }
+  return svc.icon; // emoji
+}
+function _svcIconText(svc) {
+  // Returns plain text icon (for stored strings) — never base64
+  if (!svc.icon) return '';
+  if (svc.icon.startsWith('data:') || svc.icon.startsWith('http')) return '🖼';
+  return svc.icon;
+}
+
 function _irParaProximoDiaDisponivel() {
   // Se já há uma data selecionada e ainda é válida, não mexe
   if (booking.date) return;
@@ -352,7 +368,7 @@ function fillReview() {
   if (sumBarb) sumBarb.textContent = b ? (b.emoji || '') + ' ' + b.nome : '—';
 
   const svcsEl = document.getElementById('sumServices');
-  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${c.icon} ${c.name}</span>`).join('');
+  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${_svcIconHtml(c)} ${c.name}</span>`).join('');
 }
 
 /* ── Termo de aceite ── */
@@ -405,7 +421,7 @@ async function iniciarPagamentoCakto(renovar = false) {
   set('pixSumTotal', total); set('pixSumDate', booking.date);
   set('pixSumTime', booking.time); set('pixSumClient', cliente);
   const svcsEl = document.getElementById('pixSumServices');
-  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${c.icon} ${c.name}</span>`).join('');
+  if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${_svcIconHtml(c)} ${c.name}</span>`).join('');
 
   try {
     const d = await criarCheckoutCakto({
@@ -452,7 +468,7 @@ async function verificarConfirmacao() {
           cliente:      booking.client,
           telefone:     booking.phone,
           email:        window.fbUser?.email || document.getElementById('clientEmail')?.value || '',
-          servicos:     cart.map(c => c.icon + ' ' + c.name).join(', '),
+          servicos:     cart.map(c => (_svcIconText(c) + ' ' + c.name).trim()).join(', '),
           total:        cart.reduce((s, c) => s + c.price, 0),
           data:         booking.date,
           horario:      booking.time,
@@ -491,7 +507,7 @@ function fillConfirm() {
   const total = cart.reduce((s, c) => s + c.price, 0);
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('confClient',   booking.client);
-  set('confServices', cart.map(c => c.icon + ' ' + c.name).join(', '));
+  set('confServices', cart.map(c => (_svcIconText(c) + ' ' + c.name).trim()).join(', '));
   set('confDate',     booking.date);
   set('confTime',     booking.time);
   set('confTotal',    'R$ ' + total);
