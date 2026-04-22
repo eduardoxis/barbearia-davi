@@ -187,6 +187,10 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 .atend-barbeiro-selecionado{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white)}
 .atend-trocar-btn{font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray);background:none;border:1px solid var(--border);border-radius:2px;padding:0.3rem 0.75rem;cursor:pointer;transition:color 0.15s,border-color 0.15s}
 .atend-trocar-btn:hover{color:var(--red);border-color:var(--red)}
+.btn-imprimir-agenda{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.85rem 1rem;background:var(--card2);color:var(--light);border:1px solid var(--border);border-radius:2px;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:border-color 0.2s,color 0.2s}
+.btn-imprimir-agenda:hover{border-color:var(--red);color:var(--red)}
+.btn-imprimir-agenda{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.85rem;background:var(--card2);color:var(--white);border:1px solid var(--border);border-radius:2px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all 0.2s}
+.btn-imprimir-agenda:hover{border-color:var(--red);color:var(--red)}
 
 /* ── Barbeiro admin editor ── */
 .barb-editor-card{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1rem 1.2rem;display:grid;grid-template-columns:60px 1fr auto;gap:0.8rem;align-items:center;margin-bottom:0.6rem;transition:border-color 0.2s}
