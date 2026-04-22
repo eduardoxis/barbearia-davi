@@ -234,3 +234,81 @@ h1 .red{color:var(--red)}
   display: block;
 }
 .gallery-img { position: relative; }
+
+/* ══════════════════════════════════════════
+   MODO CLARO — overrides index
+══════════════════════════════════════════ */
+[data-theme="light"] .hero-bg {
+  background: linear-gradient(160deg, #f5e8e8 0%, #f5f5f5 50%, #f5eaea 100%);
+}
+[data-theme="light"] .hero-grid-lines {
+  background-image:
+    linear-gradient(rgba(224,32,32,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(224,32,32,0.06) 1px, transparent 1px);
+}
+[data-theme="light"] h1 { color: #111; }
+[data-theme="light"] .hero-sub span { color: #111; }
+[data-theme="light"] .hero-stats { border-top-color: rgba(0,0,0,0.1); }
+
+/* Cards de serviço */
+[data-theme="light"] .gallery-card { background: #fff; border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .gallery-card:hover { border-color: rgba(224,32,32,0.4); }
+[data-theme="light"] .gallery-card.in-cart { background: #fff5f5; border-color: var(--red); }
+[data-theme="light"] .gallery-name { color: #111; }
+[data-theme="light"] .gallery-img::after {
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.2));
+}
+/* Fundos dos cards — versão light (mantém identidade mas mais suave) */
+[data-theme="light"] .gi-degrade { background: linear-gradient(135deg,#c8cfe8,#a8c0e0,#7090c8); }
+[data-theme="light"] .gi-corte   { background: linear-gradient(135deg,#c8ccd4,#b0b8c4,#98a4b0); }
+[data-theme="light"] .gi-infantil{ background: linear-gradient(135deg,#c8b8e0,#a090c8,#60c0b0); }
+[data-theme="light"] .gi-barba   { background: linear-gradient(135deg,#e0b0b0,#c07070,#a83030); }
+[data-theme="light"] .gi-combo   { background: linear-gradient(135deg,#b0c8b0,#80b080,#509050); }
+[data-theme="light"] .gi-sobrancelha { background: linear-gradient(135deg,#b0b0d0,#9090c0,#6060a8); }
+[data-theme="light"] .gi-maquina { background: linear-gradient(135deg,#d8c890,#c0a850,#a07820); }
+[data-theme="light"] .gi-hot     { background: linear-gradient(135deg,#e8c0a0,#d09060,#b06020); }
+[data-theme="light"] .remove-btn { background: #ddd; color: #333; }
+[data-theme="light"] .remove-btn:hover { background: #bbb; }
+
+/* Carrinho lateral */
+[data-theme="light"] .cart-panel {
+  background: #fff;
+  border-left: 1px solid rgba(0,0,0,0.1);
+  box-shadow: -12px 0 48px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .cart-header {
+  border-bottom-color: rgba(0,0,0,0.08);
+  background: linear-gradient(180deg,rgba(224,32,32,0.05) 0%,transparent 100%);
+}
+[data-theme="light"] .cart-header::after {
+  background: linear-gradient(to right, transparent, rgba(224,32,32,0.3), transparent);
+}
+[data-theme="light"] .cart-title { color: #111; }
+[data-theme="light"] .cart-close-enhanced {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.1);
+  color: #666;
+}
+[data-theme="light"] .cart-close-enhanced:hover {
+  background: rgba(224,32,32,0.1);
+  border-color: rgba(224,32,32,0.25);
+  color: #111;
+}
+[data-theme="light"] .cart-items {
+  scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
+[data-theme="light"] .cart-items::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+[data-theme="light"] .cart-item { border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .cart-item-name { color: #111; }
+[data-theme="light"] .cart-footer {
+  border-top-color: rgba(0,0,0,0.08);
+  background: linear-gradient(0deg, rgba(0,0,0,0.04) 0%, transparent 100%);
+}
+[data-theme="light"] .cart-total-row {
+  background: rgba(224,32,32,0.04);
+  border-color: rgba(224,32,32,0.2);
+}
+[data-theme="light"] .cart-overlay { background: rgba(0,0,0,0.4); }
+
+/* Localização */
+[data-theme="light"] .mapa-info { background: #fff; border-color: rgba(0,0,0,0.1); }
