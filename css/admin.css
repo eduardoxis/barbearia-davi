@@ -177,11 +177,14 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 .atend-step-pill.done .atend-pill-txt{color:#27ae60}
 .atend-step-arrow{color:var(--gray2);font-size:1rem}
 .atend-step-titulo{font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--gray);margin-bottom:1rem}
-.atend-barbeiros-grid{display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem}
-.atend-barb-card{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.1rem 1.4rem;display:flex;flex-direction:column;align-items:center;gap:0.5rem;cursor:pointer;transition:border-color 0.18s,background 0.18s;min-width:100px}
-.atend-barb-card:hover{border-color:rgba(224,32,32,0.4);background:rgba(224,32,32,0.04)}
+/* auto-fit colapsa colunas vazias -> cards sempre iguais e proporcionais */
+.atend-barbeiros-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+.atend-barb-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1rem 1rem;display:flex;flex-direction:column;align-items:center;gap:0.55rem;cursor:pointer;transition:border-color 0.18s,background 0.18s,transform 0.18s;max-width:220px;width:100%;margin:0 auto}
+.atend-barb-card:hover{border-color:rgba(224,32,32,0.4);background:rgba(224,32,32,0.04);transform:translateY(-2px)}
 .atend-barb-card.selecionado{border-color:var(--red);background:rgba(224,32,32,0.07)}
-.atend-barb-emoji{font-size:2rem;line-height:1}
+.atend-barb-emoji{width:72px;height:72px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;line-height:1;overflow:hidden;flex-shrink:0;transition:border-color 0.18s}
+.atend-barb-card.selecionado .atend-barb-emoji{border-color:var(--red)}
+.atend-barb-emoji img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
 .atend-barb-nome{font-family:'Oswald',sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white)}
 .atend-barbeiro-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;padding:0.7rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:3px}
 .atend-barbeiro-selecionado{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white)}
