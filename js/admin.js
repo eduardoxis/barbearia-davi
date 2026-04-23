@@ -1164,6 +1164,199 @@ export async function imprimirAgendaDoDia() {
 }
 
 /* ══════════════════════════════════════════
+   EXPORTAR AGENDA COMO IMAGEM (PNG)
+   Gera via Canvas — ideal para WhatsApp
+══════════════════════════════════════════ */
+export async function exportarAgendaImagem() {
+  if (!atendData) { showToast('⚠ Selecione uma data primeiro.'); return; }
+
+  showToast('⏳ Gerando imagem...');
+
+  const todos = await buscarAgendamentosDoDia(atendData);
+  const agendamentos = atendBarbeiroId
+    ? todos.filter(a => a.barbeiroId === atendBarbeiroId)
+    : todos;
+
+  let slots = adminSettings.slots || [];
+  if (atendBarbeiroId) {
+    const barb = (adminSettings.barbeiros || []).find(b => b.id === atendBarbeiroId);
+    if (barb?.slots?.length) slots = barb.slots;
+  }
+  slots = [...slots].sort();
+
+  // ── Dimensões ──
+  const W = 800, PAD = 32;
+  const ROW_H = 52;
+  const HEADER_H = 110;
+  const STATS_H = 80;
+  const FOOTER_H = 44;
+  const H = HEADER_H + STATS_H + (slots.length * (ROW_H + 4)) + FOOTER_H + PAD;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // ── Fundo ──
+  ctx.fillStyle = '#0A0A0A';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Faixa vermelha header ──
+  ctx.fillStyle = '#E02020';
+  ctx.fillRect(0, 0, W, HEADER_H - 14);
+
+  // ── Título ──
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText('BARBEARIA DO DAVI', PAD, 40);
+
+  ctx.font = '13px sans-serif';
+  ctx.fillStyle = 'rgba(255,200,200,0.9)';
+  ctx.fillText('Vila Guará · Luziânia – GO  |  @davi_barber10', PAD, 62);
+
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('AGENDA DO DIA — ' + atendData, PAD, 86);
+
+  if (atendBarbeiroNome) {
+    ctx.font = '13px sans-serif';
+    ctx.fillStyle = 'rgba(255,230,230,0.85)';
+    ctx.textAlign = 'right';
+    ctx.fillText('Barbeiro: ' + atendBarbeiroNome, W - PAD, 86);
+    ctx.textAlign = 'left';
+  }
+
+  // ── Stats ──
+  const reservados   = agendamentos.filter(a => a.status !== 'cancelado');
+  const realizados   = agendamentos.filter(a => a.realizado === true);
+  const totalFatur   = agendamentos.reduce((s, a) => s + parseFloat(a.total || 0), 0);
+  const livres       = slots.length - reservados.length;
+
+  const stats = [
+    { icon: '📅', val: slots.length,               label: 'Total slots' },
+    { icon: '🟠', val: reservados.length,           label: 'Reservados'  },
+    { icon: '✅', val: realizados.length,           label: 'Realizados'  },
+    { icon: '🟢', val: livres,                      label: 'Livres'      },
+    { icon: '💰', val: 'R$ ' + totalFatur.toFixed(2).replace('.', ','), label: 'Faturado' },
+  ];
+  const colW = (W - PAD * 2) / stats.length;
+  const sy   = HEADER_H - 10;
+  stats.forEach(({ icon, val, label }, i) => {
+    const x = PAD + i * colW;
+    ctx.fillStyle = '#1A1A1A';
+    roundRect(ctx, x, sy, colW - 6, 64, 6);
+    ctx.fill();
+
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.fillText(icon + ' ' + val, x + (colW - 6) / 2, sy + 26);
+
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#777';
+    ctx.fillText(label, x + (colW - 6) / 2, sy + 46);
+    ctx.textAlign = 'left';
+  });
+
+  // ── Cabeçalho tabela ──
+  let y = sy + 72;
+  ctx.fillStyle = '#282828';
+  ctx.fillRect(PAD, y, W - PAD * 2, 32);
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillStyle = '#AAAAAA';
+  const cols = [
+    { label: 'HORÁRIO',  x: PAD + 12 },
+    { label: 'STATUS',   x: PAD + 80 },
+    { label: 'CLIENTE',  x: PAD + 200 },
+    { label: 'SERVIÇOS', x: PAD + 380 },
+    { label: 'TOTAL',    x: W - PAD - 12, align: 'right' },
+  ];
+  cols.forEach(c => {
+    ctx.textAlign = c.align || 'left';
+    ctx.fillText(c.label, c.x, y + 21);
+  });
+  ctx.textAlign = 'left';
+  y += 36;
+
+  // ── Linhas ──
+  slots.forEach((horario, idx) => {
+    const reserva   = agendamentos.find(a => a.horario === horario && a.status !== 'cancelado');
+    const bloqueado = (adminSettings.takenSlots || []).includes(horario) && !reserva;
+
+    ctx.fillStyle = idx % 2 === 0 ? '#161616' : '#1C1C1C';
+    ctx.fillRect(PAD, y, W - PAD * 2, ROW_H);
+
+    // Barra lateral de status
+    if (reserva?.realizado)  ctx.fillStyle = '#228B22';
+    else if (reserva)         ctx.fillStyle = '#E08C20';
+    else if (bloqueado)       ctx.fillStyle = '#B42020';
+    else                      ctx.fillStyle = '#32A852';
+    ctx.fillRect(PAD, y, 4, ROW_H);
+
+    // Horário
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(horario, PAD + 12, y + ROW_H / 2 + 5);
+
+    // Status
+    ctx.font = '12px sans-serif';
+    if (reserva?.realizado)  { ctx.fillStyle = '#22C822'; ctx.fillText('✓ Realizado', PAD + 80, y + ROW_H / 2 + 5); }
+    else if (reserva)         { ctx.fillStyle = '#FFB432'; ctx.fillText('Reservado',   PAD + 80, y + ROW_H / 2 + 5); }
+    else if (bloqueado)       { ctx.fillStyle = '#FF5050'; ctx.fillText('Bloqueado',   PAD + 80, y + ROW_H / 2 + 5); }
+    else                      { ctx.fillStyle = '#50C850'; ctx.fillText('Livre',       PAD + 80, y + ROW_H / 2 + 5); }
+
+    if (reserva) {
+      ctx.fillStyle = '#E0E0E0';
+      ctx.font = '13px sans-serif';
+      ctx.fillText((reserva.cliente || '—').slice(0, 18), PAD + 200, y + ROW_H / 2 + 5);
+
+      ctx.fillStyle = '#AAAAAA';
+      ctx.fillText((reserva.servicos || '—').replace(/[^\x00-\x7F]/g, '').trim().slice(0, 24), PAD + 380, y + ROW_H / 2 + 5);
+
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#E02020';
+      ctx.textAlign = 'right';
+      ctx.fillText('R$ ' + (reserva.total || '0'), W - PAD - 12, y + ROW_H / 2 + 5);
+      ctx.textAlign = 'left';
+    }
+
+    y += ROW_H + 4;
+  });
+
+  // ── Rodapé ──
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#555';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    'Gerado em ' + new Date().toLocaleString('pt-BR') + '  ·  Barbearia do Davi',
+    W / 2, y + 28
+  );
+  ctx.textAlign = 'left';
+
+  // ── Download ──
+  const link = document.createElement('a');
+  link.download = 'agenda-' + atendData.replace(/\//g, '-') + (atendBarbeiroNome ? '-' + atendBarbeiroNome.toLowerCase().replace(/\s+/g, '_') : '') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+
+  showToast('🖼️ Imagem salva!');
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/* ══════════════════════════════════════════
    INSTAGRAM STORIES
 ══════════════════════════════════════════ */
 
@@ -2166,6 +2359,7 @@ window.prevMonthAtend      = prevMonthAtend;
 window.nextMonthAtend      = nextMonthAtend;
 window.trocarBarbeiro      = trocarBarbeiro;
 window.imprimirAgendaDoDia = imprimirAgendaDoDia;
+window.exportarAgendaImagem = exportarAgendaImagem;
 window.exportarAtendimentosPDF=exportarAtendimentosPDF;
 window.gerarStory          = gerarStory;
 window.baixarStory         = baixarStory;
@@ -2232,3 +2426,4 @@ window.onDataBloqueioChange     = onDataBloqueioChange;
 window.confirmarBloqueioBarb    = confirmarBloqueioBarb;
 window.removerBloqueioBarb      = removerBloqueioBarb;
 window.imprimirAgendaDoDia     = imprimirAgendaDoDia;
+window.exportarAgendaImagem    = exportarAgendaImagem;
