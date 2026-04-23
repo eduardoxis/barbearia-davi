@@ -71,25 +71,3 @@
 /* ══════════════════════════════════════════
    MODO CLARO — overrides perfil/fidelidade
 ══════════════════════════════════════════ */
-[data-theme="light"] .fid-nivel-card.bronze {
-  background: linear-gradient(135deg, #fdf6ee 0%, #f5e8d0 100%);
-}
-[data-theme="light"] .fid-nivel-card.prata {
-  background: linear-gradient(135deg, #f2f4f8 0%, #e0e6f0 100%);
-}
-[data-theme="light"] .fid-nivel-card.ouro {
-  background: linear-gradient(135deg, #fdf8e8 0%, #f5edd0 100%);
-}
-[data-theme="light"] .fid-nivel-card.diamante {
-  background: linear-gradient(135deg, #eef4ff 0%, #dde8f8 100%);
-}
-[data-theme="light"] .fid-nivel-phrase { color: rgba(0,0,0,0.5); }
-[data-theme="light"] .fid-prog-labels { color: rgba(0,0,0,0.4); }
-[data-theme="light"] .fid-prog-bar { background: rgba(0,0,0,0.1); }
-[data-theme="light"] .fid-prog-next { color: rgba(0,0,0,0.4); }
-[data-theme="light"] .fid-prog-next strong { color: rgba(0,0,0,0.65); }
-[data-theme="light"] .fid-conquista.locked {
-  background: rgba(0,0,0,0.05);
-  color: #999;
-  border-color: rgba(0,0,0,0.1);
-}
