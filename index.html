@@ -83,7 +83,6 @@
     <button class="nav-admin-btn" id="navAdminBtn" onclick="openAdmin(true)">⚙ Painel Admin</button>
     <button class="nav-admin-btn" id="navBarbeiroBtn" onclick="window.location.href='pages/painel.html'" style="display:none;border-color:#6FCF97;color:#6FCF97">💈 Painel Barbeiro</button>
     <button class="nav-user-btn" id="navUserBtn" onclick="openUserModal()">👤 Entrar</button>
-    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙</button>
     <!-- ★ CARRINHO MOBILE — no lugar do hamburger ★ -->
     <button class="nav-cart-btn" id="navCartBtn" onclick="toggleCart()" aria-label="Carrinho">
       <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -128,14 +127,6 @@
     <div id="drawerGuestInfo">
       <button class="btn-red" style="width:100%;justify-content:center"
               onclick="closeDrawer();openUserModal()">👤 Entrar / Criar Conta</button>
-    </div>
-    <div class="drawer-theme-row">
-      <span class="drawer-theme-label">☀️ Modo claro</span>
-      <label class="drawer-theme-switch">
-        <input type="checkbox" id="drawerThemeCheck" onchange="toggleTheme()">
-        <div class="drawer-theme-track"></div>
-        <div class="drawer-theme-thumb"></div>
-      </label>
     </div>
   </div>
 </div>
