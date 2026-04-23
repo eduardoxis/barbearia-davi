@@ -114,18 +114,20 @@
 .btn-remarcar:hover{background:var(--red);color:var(--white)}
 
 /* ── Barbeiro grid (step 0) ── */
-.barbeiro-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
-.barbeiro-card{background:var(--card);border:2px solid var(--border);border-radius:6px;padding:1.5rem 1rem 1.2rem;text-align:center;cursor:pointer;transition:all 0.22s;position:relative;overflow:hidden}
+/* auto-fit colapsa colunas vazias → cards sempre iguais; minmax garante mínimo útil */
+.barbeiro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1.2rem;margin-bottom:1.5rem}
+.barbeiro-card{background:var(--card);border:2px solid var(--border);border-radius:6px;padding:1.8rem 1.2rem 1.4rem;text-align:center;cursor:pointer;transition:all 0.22s;position:relative;overflow:hidden;max-width:360px;width:100%;margin-left:auto;margin-right:auto}
 .barbeiro-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(224,32,32,0) 60%,rgba(224,32,32,0.04));opacity:0;transition:opacity 0.22s}
 .barbeiro-card:hover::before{opacity:1}
 .barbeiro-card:hover{border-color:rgba(224,32,32,0.45);transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
 .barbeiro-card.selecionado{border-color:var(--red);background:rgba(224,32,32,0.05);box-shadow:0 0 0 1px var(--red)}
 .barbeiro-card.inativo{opacity:0.3;cursor:not-allowed;pointer-events:none}
-.barbeiro-foto{width:84px;height:84px;border-radius:50%;background:var(--card2);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.4rem;margin:0 auto 0.9rem;overflow:hidden;transition:border-color 0.22s,transform 0.22s}
+/* Foto maior para melhor proporção com o card */
+.barbeiro-foto{width:110px;height:110px;border-radius:50%;background:var(--card2);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:3rem;margin:0 auto 1rem;overflow:hidden;transition:border-color 0.22s,transform 0.22s;flex-shrink:0}
 .barbeiro-card:hover .barbeiro-foto{transform:scale(1.05)}
 .barbeiro-card.selecionado .barbeiro-foto{border-color:var(--red)}
-.barbeiro-foto img{width:100%;height:100%;object-fit:cover}
-.barbeiro-nome{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:0.04em;margin-bottom:0.25rem}
+.barbeiro-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.barbeiro-nome{font-family:'Oswald',sans-serif;font-size:1.15rem;font-weight:700;color:var(--white);letter-spacing:0.04em;margin-bottom:0.25rem}
 .barbeiro-esp{font-size:0.72rem;color:var(--gray);margin-bottom:0.6rem;line-height:1.4}
 .barbeiro-horario{font-size:0.63rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);background:rgba(224,32,32,0.1);padding:0.22rem 0.65rem;border-radius:1px;display:inline-block;margin-bottom:0.3rem}
 .barbeiro-badge-sel{position:absolute;top:0.55rem;right:0.55rem;background:var(--red);color:var(--white);font-size:0.58rem;font-weight:800;padding:0.22rem 0.5rem;border-radius:2px;letter-spacing:0.08em;text-transform:uppercase}
@@ -146,7 +148,9 @@
   .step-nav .btn-next,.step-nav .btn-back{width:100%;text-align:center;justify-content:center}
   .step-nav>div:empty{display:none}
   .slots-grid{grid-template-columns:repeat(3,1fr)}
+  /* tablet: 2 colunas fixas, card proporcional */
   .barbeiro-grid{grid-template-columns:repeat(2,1fr)}
+  .barbeiro-foto{width:90px;height:90px;font-size:2.6rem}
 }
 @media(max-width:480px){
   .steps-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0.2rem}
@@ -158,8 +162,8 @@
 }
 @media(max-width:420px){
   .barbeiro-grid{grid-template-columns:1fr 1fr}
-  .barbeiro-card{padding:1rem 0.6rem}
-  .barbeiro-foto{width:60px;height:60px;font-size:1.6rem}
+  .barbeiro-card{padding:1rem 0.7rem;max-width:none}
+  .barbeiro-foto{width:72px;height:72px;font-size:2rem}
   .barbeiro-nome{font-size:0.95rem}
 }
 @media(max-width:340px){.barbeiro-grid{grid-template-columns:1fr}}
