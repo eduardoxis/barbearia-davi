@@ -1793,10 +1793,10 @@ export function trocarBarbeiroHistorico() {
   ativos.forEach(b => {
     const card = document.createElement('div');
     card.className = 'atend-barb-card';
-    const fotoHtml = b.foto
-      ? `<img src="${b.foto}" style="width:2rem;height:2rem;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`
-      : `<div class="atend-barb-emoji">${b.emoji || '💈'}</div>`;
-    card.innerHTML = `${fotoHtml}<div class="atend-barb-nome">${b.nome}</div>`;
+    const fotoInner = b.foto
+      ? `<img src="${b.foto}" alt="${b.nome}" onerror="this.parentElement.textContent='${b.emoji||'💈'}'">` 
+      : (b.emoji || '💈');
+    card.innerHTML = `<div class="atend-barb-emoji">${fotoInner}</div><div class="atend-barb-nome">${b.nome}</div>`;
     card.onclick = () => selecionarBarbeiroHistorico(b.id, b.nome);
     grid.appendChild(card);
   });
