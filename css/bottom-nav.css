@@ -352,35 +352,3 @@
 /* ══════════════════════════════════════════
    MODO CLARO — overrides bottom-nav & profile sheet
 ══════════════════════════════════════════ */
-[data-theme="light"] .bottom-nav {
-  background: rgba(255,255,255,0.97);
-  border-top: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-}
-[data-theme="light"] .bn-label { color: #888; }
-[data-theme="light"] .bn-item.active .bn-label { color: var(--red); }
-[data-theme="light"] .bn-icon { color: #555; }
-[data-theme="light"] .bn-item.active .bn-icon { color: var(--red); }
-
-[data-theme="light"] .profile-sheet-overlay { background: rgba(0,0,0,0.5); }
-[data-theme="light"] .profile-sheet {
-  background: #fff;
-  border-top: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
-}
-[data-theme="light"] .profile-sheet-pill { background: rgba(0,0,0,0.15); }
-[data-theme="light"] .profile-sheet-title { color: #111; }
-[data-theme="light"] .profile-sheet-close { color: #999; }
-[data-theme="light"] .profile-sheet-divider { background: rgba(0,0,0,0.08); }
-[data-theme="light"] .profile-sheet-name { color: #111; }
-[data-theme="light"] .profile-sheet-email { color: #666; }
-[data-theme="light"] .profile-sheet-logout-btn {
-  border-color: rgba(0,0,0,0.12);
-  color: #666;
-}
-[data-theme="light"] .profile-sheet-logout-btn:active {
-  color: var(--red);
-  border-color: rgba(224,32,32,0.3);
-}
-[data-theme="light"] .profile-sheet-guest-title { color: #111; }
-[data-theme="light"] .profile-sheet-guest-sub { color: #666; }
