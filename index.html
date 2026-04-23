@@ -837,27 +837,21 @@
               <div class="atend-data-titulo" id="atendDataTitulo">← Selecione uma data no calendário</div>
               <div id="atendLista"></div>
               <div id="atendImprimirWrap" style="display:none;margin-top:1.2rem">
-                <button class="btn-imprimir-agenda" onclick="imprimirAgendaDoDia()">🖨️ Imprimir Agenda do Dia (PDF)</button>
+                <div class="atend-export-titulo">📤 Exportar agenda do dia</div>
+                <div class="atend-export-btns">
+                  <button class="btn-export-pdf" onclick="imprimirAgendaDoDia()">
+                    <span class="btn-export-icon">📄</span>
+                    <span class="btn-export-label">PDF</span>
+                    <span class="btn-export-sub">Baixar arquivo</span>
+                  </button>
+                  <button class="btn-export-img" onclick="exportarAgendaImagem()">
+                    <span class="btn-export-icon">🖼️</span>
+                    <span class="btn-export-label">Imagem</span>
+                    <span class="btn-export-sub">Salvar / WhatsApp</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-        <div id="atendCalStep" style="display:none">
-          <div class="atend-barbeiro-header">
-            <div class="atend-barbeiro-selecionado" id="atendBarbeiroNomeLabel"></div>
-            <button class="atend-trocar-btn" onclick="trocarBarbeiro()">↩ Trocar barbeiro</button>
-          </div>
-          <div class="atend-layout">
-            <div class="atend-cal-wrap">
-              <div class="calendar-header">
-                <button class="cal-nav" onclick="prevMonthAtend()">‹</button>
-                <span class="cal-month" id="atendCalLabel"></span>
-                <button class="cal-nav" onclick="nextMonthAtend()">›</button>
-              </div>
-              <div class="cal-grid" id="atendCalGrid"></div>
-            </div>
-            <div><div class="atend-data-titulo" id="atendDataTitulo">Selecione uma data</div><div id="atendLista"></div></div>
           </div>
         </div>
       </div>
