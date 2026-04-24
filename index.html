@@ -1049,14 +1049,17 @@
           <button id="portUploadBtn" class="port-upload-btn" onclick="triggerUploadFoto()">
             📷 Câmera / Galeria
           </button>
-          <div class="port-adm-divider">ou cole uma URL</div>
-          <input class="form-input" id="portNovaUrl" type="url" placeholder="URL da imagem (https://...)">
-          <input class="form-input" id="portNovaCaption" type="text" placeholder="Legenda (opcional)" style="margin-top:0.4rem">
-          <select class="form-input" id="portNovaServico" style="margin-top:0.4rem;background:var(--card2)">
-            <option value="">✂️ Selecione o serviço desta foto *</option>
-          </select>
-          <div class="admin-err-msg" id="portAdmErr">Insira a URL da imagem.</div>
-          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="adicionarFotoPortfolio()">+ Adicionar por URL</button>
+          <!-- Serviço picker: aparece só após escolher arquivo -->
+          <div id="portServicoPicker" style="display:none;margin-top:0.6rem">
+            <select class="form-input" id="portNovaServico" style="background:var(--card2)">
+              <option value="">✂️ Selecione o serviço desta foto *</option>
+            </select>
+            <div class="admin-err-msg" id="portAdmErr"></div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+              <button class="btn-ghost" style="flex:1;text-align:center" onclick="cancelarUploadFoto()">Cancelar</button>
+              <button class="btn-red" style="flex:1;justify-content:center" onclick="confirmarUploadFoto()">Confirmar</button>
+            </div>
+          </div>
         </div>
       </div>
 
