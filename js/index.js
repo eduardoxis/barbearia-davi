@@ -308,3 +308,151 @@ if (document.readyState === 'loading') {
     mut.observe(gridEl, { childList: true });
   }
 }
+
+/* ══════════════════════════════════════════
+   PARTÍCULAS NO HERO
+══════════════════════════════════════════ */
+(function initParticles(){
+  const canvas = document.getElementById('heroParticles');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize(){
+    const hero = canvas.parentElement;
+    W = canvas.width  = hero.offsetWidth;
+    H = canvas.height = hero.offsetHeight;
+  }
+
+  function mkParticle(){
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.6 + 0.4,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -Math.random() * 0.5 - 0.15,
+      alpha: Math.random() * 0.5 + 0.1,
+      life: 1,
+      decay: Math.random() * 0.003 + 0.001
+    };
+  }
+
+  function init(){
+    resize();
+    particles = Array.from({length: 90}, mkParticle);
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach((p, i) => {
+      p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+      if(p.life <= 0 || p.y < -5) particles[i] = mkParticle();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      // alterna entre vermelho e branco
+      const isRed = i % 3 === 0;
+      ctx.fillStyle = isRed
+        ? `rgba(224,32,32,${p.alpha * p.life})`
+        : `rgba(255,255,255,${p.alpha * p.life * 0.5})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', () => { resize(); });
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', () => { init(); draw(); });
+  } else { init(); draw(); }
+})();
+
+/* ══════════════════════════════════════════
+   ANIMAÇÕES DO MAPA
+══════════════════════════════════════════ */
+(function initMapAnims(){
+  function setup(){
+    const mapaC = document.querySelector('.mapa-container');
+    const mapaI = document.querySelector('.mapa-info');
+    if(mapaC){ mapaC.classList.add('anim-map-enter'); getScrollObserver().observe(mapaC); }
+    if(mapaI){ mapaI.classList.add('anim-map-enter'); getScrollObserver().observe(mapaI); }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
+/* ══════════════════════════════════════════
+   RIPPLE NOS BOTÕES DE AGENDAMENTO
+══════════════════════════════════════════ */
+(function initRipple(){
+  function addRipple(e){
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const span = document.createElement('span');
+    span.className = 'ripple-fx';
+    span.style.left = (e.clientX - rect.left) + 'px';
+    span.style.top  = (e.clientY - rect.top)  + 'px';
+    btn.appendChild(span);
+    span.addEventListener('animationend', () => span.remove());
+  }
+
+  function attachRipple(){
+    document.querySelectorAll('.cart-agendar-btn, .gale-agendar-btn').forEach(btn => {
+      if(!btn.dataset.ripple){
+        btn.dataset.ripple = '1';
+        btn.addEventListener('click', addRipple);
+      }
+    });
+  }
+
+  // Re-attach quando o carrinho/modal atualizar
+  const body = document.body;
+  const mo = new MutationObserver(attachRipple);
+  mo.observe(body, { childList: true, subtree: true });
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachRipple);
+  else attachRipple();
+
+  // Pulso no botão quando há itens no carrinho
+  function updateAgendarPulse(){
+    const btn = document.querySelector('.cart-agendar-btn');
+    if(!btn) return;
+    const count = parseInt(document.querySelector('.cart-badge')?.textContent || '0');
+    btn.classList.toggle('has-items', count > 0);
+  }
+  setInterval(updateAgendarPulse, 800);
+})();
+
+/* ══════════════════════════════════════════
+   GALERIA: ZOOM REVEAL NOS CARDS
+══════════════════════════════════════════ */
+(function patchGalleryAnim(){
+  const obs = typeof getScrollObserver === 'function' ? getScrollObserver() : null;
+  if(!obs) return;
+  const grid = document.getElementById('galleryGrid');
+  if(!grid) return;
+  const mo = new MutationObserver(() => {
+    grid.querySelectorAll('.gallery-card:not([data-ganim])').forEach((card, i) => {
+      card.dataset.ganim = '1';
+      card.classList.add('anim-gallery', `anim-d${(i % 8) + 1}`);
+      obs.observe(card);
+    });
+  });
+  mo.observe(grid, { childList: true });
+})();
+
+/* ══════════════════════════════════════════
+   FOOTER ANIMADO
+══════════════════════════════════════════ */
+(function initFooterAnim(){
+  function setup(){
+    const footer = document.querySelector('footer');
+    if(!footer) return;
+    const fo = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if(e.isIntersecting){ footer.classList.add('footer-visible'); fo.disconnect(); }
+      });
+    }, { threshold: 0.15 });
+    fo.observe(footer);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
