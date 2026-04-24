@@ -678,7 +678,7 @@
             <button class="adm-add-btn" onclick="carregarDashboard()">↻ Atualizar</button>
           </div>
         </div>
-        <div id="dashCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem;margin-bottom:1.5rem">
+        <div id="dashCards" style="display:grid;gap:0.8rem;margin-bottom:1.5rem">
           <div class="dash-kpi-card"><div class="dash-kpi-icone">📅</div><div class="dash-kpi-valor" id="kpiAgendVal">—</div><div class="dash-kpi-label">Agendamentos</div><div class="dash-kpi-sub" id="kpiAgendSub">no período</div></div>
           <div class="dash-kpi-card"><div class="dash-kpi-icone">👤</div><div class="dash-kpi-valor" id="kpiClientesVal">—</div><div class="dash-kpi-label">Clientes</div><div class="dash-kpi-sub" id="kpiClientesSub">atendidos</div></div>
           <div class="dash-kpi-card destaque"><div class="dash-kpi-icone">💰</div><div class="dash-kpi-valor" id="kpiFaturadoVal">—</div><div class="dash-kpi-label">Faturamento</div><div class="dash-kpi-sub">recebido no período</div></div>
@@ -1016,7 +1016,7 @@
           <button class="barb-dia-btn on" data-dia="6" onclick="toggleDiaBarb(this)">Sáb</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
+      <div class="barb-horario-grid">
         <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="barbHorarioInicio" type="time" value="08:00"></div>
         <div class="form-group"><label class="form-label">Fim</label><input class="form-input" id="barbHorarioFim" type="time" value="18:00"></div>
         <div class="form-group"><label class="form-label">Intervalo</label><select class="form-input" id="barbIntervalo" style="background:var(--card2)"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></div>
