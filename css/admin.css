@@ -162,9 +162,16 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 .atend-livre-msg{font-size:0.75rem;color:var(--gray2);font-style:italic;padding-top:0.2rem}
 .atend-sem-data{text-align:center;padding:3rem 1.5rem;color:var(--gray);font-size:0.85rem;background:var(--card);border:1px solid var(--border);border-radius:3px}
 
+/* ── Dashboard cards – base (os media queries abaixo fazem o responsive) ── */
+#dashCards{grid-template-columns:repeat(4,1fr)}
+
+/* ── Grade horário do barbeiro (início / fim / intervalo) ── */
+.barb-horario-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem}
+
 /* ── Atendimento: seleção de barbeiro ── */
 /* ── Atendimentos — barra de passos ── */
-.atend-steps-bar{display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;padding:0.9rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:3px}
+.atend-steps-bar{display:flex;align-items:center;gap:0.4rem;margin-bottom:1.5rem;padding:0.7rem 0.8rem;background:var(--card);border:1px solid var(--border);border-radius:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap}
+.atend-steps-bar::-webkit-scrollbar{display:none}
 .atend-step-pill{display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.8rem;border-radius:2px;border:1px solid var(--red);background:rgba(224,32,32,0.08);transition:all 0.2s}
 .atend-step-pill.inactive{border-color:var(--border);background:transparent;opacity:0.45}
 .atend-step-pill.done{border-color:#27ae60;background:rgba(39,174,96,0.1)}
@@ -395,6 +402,13 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
   .modal-barb-body{padding:1rem 1rem 0.5rem}
   .modal-barb-footer{padding:0.8rem 1rem 1rem}
   .modal-barb-title-wrap{padding:0.8rem 1rem 0}
+  /* Barbeiro: intervalo em 2 colunas no mobile */
+  .barb-horario-grid{grid-template-columns:1fr 1fr}
+  .barb-horario-grid .form-group:last-child{grid-column:1 / -1}
+  /* Atend steps: pills menores */
+  .atend-step-pill{padding:0.25rem 0.55rem}
+  .atend-pill-txt{font-size:0.6rem}
+  .atend-pill-num{font-size:0.85rem}
 }
 @media(max-width:600px){
   .func-row{grid-template-columns:1fr;gap:0.6rem}
