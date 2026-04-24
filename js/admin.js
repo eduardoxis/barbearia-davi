@@ -6,10 +6,11 @@
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
 import {
   renderPortfolioAdmin,
-  adicionarFotoPortfolio,
   removerFotoPortfolio,
   triggerUploadFoto,
   onPortFileChange,
+  confirmarUploadFoto,
+  cancelarUploadFoto,
   toggleDestaquePortfolio,
   atualizarLimitePortfolio,
   abrirEditarTagsFoto,
@@ -1938,10 +1939,10 @@ export async function salvarObsCRM() {
    PORTFÓLIO DO BARBEIRO — ADMIN
 ══════════════════════════════════════════ */
 
-// renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio
+// renderPortfolioAdmin, removerFotoPortfolio
 // são importadas de galeria.js e re-expostas globalmente aqui
 // (stubs para compatibilidade com código que chame diretamente)
-export { renderPortfolioAdmin, adicionarFotoPortfolio, removerFotoPortfolio };
+export { renderPortfolioAdmin, removerFotoPortfolio };
 
 /* ══════════════════════════════════════════
    HISTÓRICO DE ATENDIMENTO
@@ -2390,7 +2391,8 @@ export async function marcarAtendimentoRealizado(agendId, barbId, btn) {
 }
 
 window.renderPortfolioAdmin     = renderPortfolioAdmin;
-window.adicionarFotoPortfolio   = adicionarFotoPortfolio;
+window.confirmarUploadFoto      = confirmarUploadFoto;
+window.cancelarUploadFoto       = cancelarUploadFoto;
 window.removerFotoPortfolio     = removerFotoPortfolio;
 window.triggerUploadFoto        = triggerUploadFoto;
 window.onPortFileChange         = onPortFileChange;
