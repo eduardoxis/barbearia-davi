@@ -192,3 +192,119 @@ export async function initSite() {
 window.addToCart    = addToCart;
 window.removeFromCart = removeFromCart;
 window.toggleCart   = toggleCart;
+
+/* ══════════════════════════════════════════
+   ANIMAÇÕES DE SCROLL
+══════════════════════════════════════════ */
+
+/* Observer compartilhado */
+let _scrollObs = null;
+
+function getScrollObserver() {
+  if (_scrollObs) return _scrollObs;
+  _scrollObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      el.classList.add('visible');
+      // Contador animado nos stats
+      if (el.classList.contains('stat-n')) animateStatCounter(el);
+      _scrollObs.unobserve(el);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -30px 0px' });
+  return _scrollObs;
+}
+
+/* Conta o número animadamente de 0 até o valor alvo */
+function animateStatCounter(el) {
+  const original = el.textContent.trim();
+  // Extrai número e sufixo (ex: "300+" → 300, "+")
+  const match = original.match(/^(\d+)(.*)/);
+  if (!match) return;
+  const target  = parseInt(match[1], 10);
+  const suffix  = match[2] || '';
+  const steps   = 40;
+  const delay   = 18; // ms por frame
+  let current   = 0;
+  const inc     = Math.max(1, Math.ceil(target / steps));
+
+  const tick = setInterval(() => {
+    current = Math.min(current + inc, target);
+    el.textContent = current + suffix;
+    if (current >= target) {
+      clearInterval(tick);
+      el.classList.add('glow-done'); // dispara glow vermelho
+    }
+  }, delay);
+}
+
+/* Observa os cards da galeria (chamado após renderGallery) */
+function observeGalleryCards() {
+  const obs = getScrollObserver();
+  document.querySelectorAll('#galleryGrid .gallery-card:not([data-obs])').forEach((card, i) => {
+    card.setAttribute('data-obs', '1');
+    card.classList.add('anim-reveal', `anim-d${(i % 8) + 1}`);
+    obs.observe(card);
+  });
+}
+
+/* Registra os elementos estáticos da página */
+function initScrollAnimations() {
+  const obs = getScrollObserver();
+
+  // Títulos de seção — slide da esquerda
+  document.querySelectorAll('.sec-title').forEach(el => {
+    el.classList.add('anim-left');
+    obs.observe(el);
+  });
+
+  // Stats do hero — reveal escalonado
+  document.querySelectorAll('.hero-stats > div').forEach((el, i) => {
+    el.classList.add('anim-reveal', `anim-d${i + 1}`);
+    obs.observe(el);
+    // Também observa o número interno para a contagem
+    const num = el.querySelector('.stat-n');
+    if (num) obs.observe(num);
+  });
+
+  // Bloco do mapa e info
+  document.querySelectorAll('.mapa-container, .mapa-info').forEach((el, i) => {
+    el.classList.add('anim-reveal', `anim-d${i + 1}`);
+    obs.observe(el);
+  });
+
+  // Botões de ação do hero
+  document.querySelectorAll('.hero-btns > *').forEach((el, i) => {
+    el.classList.add('anim-reveal', `anim-d${i + 1}`);
+    obs.observe(el);
+  });
+}
+
+/* Sobrescreve renderGallery para aplicar animações nos cards */
+const _origRenderGallery = window.renderGallery;
+const _origInit = window.initSite;
+
+// Patch: após renderGallery, observa os novos cards
+const _patchedRenderGallery = function() {
+  // renderGallery é chamada internamente — fazemos patch via MutationObserver
+};
+
+// Inicia animações quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initScrollAnimations();
+    // Aguarda renderGallery popular o grid e então observa os cards
+    const gridEl = document.getElementById('galleryGrid');
+    if (gridEl) {
+      const mut = new MutationObserver(() => observeGalleryCards());
+      mut.observe(gridEl, { childList: true });
+    }
+  });
+} else {
+  initScrollAnimations();
+  const gridEl = document.getElementById('galleryGrid');
+  if (gridEl) {
+    const mut = new MutationObserver(() => observeGalleryCards());
+    mut.observe(gridEl, { childList: true });
+  }
+}
