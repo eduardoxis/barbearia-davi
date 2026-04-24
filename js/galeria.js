@@ -140,6 +140,9 @@ export function triggerUploadFoto() {
   if (inp) inp.click();
 }
 
+/* Arquivos aguardando confirmação de serviço */
+let _pendingFiles = [];
+
 export async function onPortFileChange(input) {
   const barbId = document.getElementById('barbIdEditando')?.value;
   if (!barbId) return;
@@ -158,52 +161,26 @@ export async function onPortFileChange(input) {
     return;
   }
 
-  const btn = document.getElementById('portUploadBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processando…'; }
-
-  const selecionadas = files.slice(0, disponivel);
-  let adicionadas = 0;
-
-  for (const file of selecionadas) {
-    try {
-      const base64 = await redimensionarImagem(file);
-      const capEl  = document.getElementById('portNovaCaption');
-      barb.portfolio.push({
-        url:      base64,
-        caption:  capEl?.value.trim() || '',
-        destaque: false,
-        tags:     [],
-        ordem:    barb.portfolio.length,
-      });
-      adicionadas++;
-    } catch (e) { console.warn('Erro ao processar imagem:', e); }
-  }
-
+  _pendingFiles = files.slice(0, disponivel);
   input.value = '';
-  if (btn) { btn.disabled = false; btn.textContent = '📷 Câmera / Galeria'; }
-  const capEl = document.getElementById('portNovaCaption');
-  if (capEl) capEl.value = '';
 
-  renderPortfolioAdmin(barbId);
-  showToast(`📸 ${adicionadas} foto${adicionadas > 1 ? 's' : ''} adicionada${adicionadas > 1 ? 's' : ''}!`);
+  // Mostra picker de serviço
+  const picker = document.getElementById('portServicoPicker');
+  const svcSel = document.getElementById('portNovaServico');
+  if (picker) picker.style.display = 'block';
+  if (svcSel) svcSel.value = '';
+  const errEl = document.getElementById('portAdmErr');
+  if (errEl) errEl.classList.remove('show');
 }
 
-/* ── Adicionar por URL (mantém compatibilidade) ── */
-export function adicionarFotoPortfolio() {
-  const barbId  = document.getElementById('barbIdEditando')?.value;
-  const urlEl   = document.getElementById('portNovaUrl');
-  const capEl   = document.getElementById('portNovaCaption');
-  const svcEl   = document.getElementById('portNovaServico');
-  const errEl   = document.getElementById('portAdmErr');
-  const url     = urlEl?.value.trim();
-  const svcId   = svcEl?.value;
+export async function confirmarUploadFoto() {
+  const barbId = document.getElementById('barbIdEditando')?.value;
+  const svcEl  = document.getElementById('portNovaServico');
+  const errEl  = document.getElementById('portAdmErr');
+  const svcId  = svcEl?.value;
 
-  if (!url) {
-    if (errEl) { errEl.textContent = 'Insira a URL da imagem.'; errEl.classList.add('show'); }
-    return;
-  }
   if (!svcId) {
-    if (errEl) { errEl.textContent = '⚠️ Selecione o serviço desta foto antes de adicionar.'; errEl.classList.add('show'); }
+    if (errEl) { errEl.textContent = '⚠️ Selecione o serviço desta foto antes de confirmar.'; errEl.classList.add('show'); }
     if (svcEl) { svcEl.style.borderColor = 'var(--red)'; setTimeout(() => svcEl.style.borderColor = '', 2000); }
     return;
   }
@@ -213,27 +190,44 @@ export function adicionarFotoPortfolio() {
   if (!barb) return;
   if (!barb.portfolio) barb.portfolio = [];
 
-  const limite = getLimite(barb);
-  if (barb.portfolio.length >= limite) {
-    showToast(`⚠️ Limite de ${limite} fotos atingido!`); return;
-  }
+  const btn = document.getElementById('portUploadBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processando…'; }
 
-  // Busca o serviço para salvar o tag automaticamente
   const svc = adminSettings.services?.find(s => s.id === svcId);
   const tagServico = svc ? `#${svc.name.toLowerCase().replace(/\s+/g,'-')}` : '';
 
-  barb.portfolio.push({
-    url, caption: capEl?.value.trim() || '',
-    destaque: false,
-    tags: tagServico ? [tagServico] : [],
-    servicoId: svcId,
-    ordem: barb.portfolio.length,
-  });
-  if (urlEl) urlEl.value = '';
-  if (capEl) capEl.value = '';
+  let adicionadas = 0;
+  for (const file of _pendingFiles) {
+    try {
+      const base64 = await redimensionarImagem(file);
+      barb.portfolio.push({
+        url:       base64,
+        caption:   '',
+        destaque:  false,
+        tags:      tagServico ? [tagServico] : [],
+        servicoId: svcId,
+        ordem:     barb.portfolio.length,
+      });
+      adicionadas++;
+    } catch (e) { console.warn('Erro ao processar imagem:', e); }
+  }
+
+  _pendingFiles = [];
+  if (btn) { btn.disabled = false; btn.textContent = '📷 Câmera / Galeria'; }
+  const picker = document.getElementById('portServicoPicker');
+  if (picker) picker.style.display = 'none';
   if (svcEl) svcEl.value = '';
+
   renderPortfolioAdmin(barbId);
-  showToast('📸 Foto adicionada com serviço: ' + (svc?.name || svcId));
+  showToast(`📸 ${adicionadas} foto${adicionadas > 1 ? 's' : ''} adicionada${adicionadas > 1 ? 's' : ''}!`);
+}
+
+export function cancelarUploadFoto() {
+  _pendingFiles = [];
+  const picker = document.getElementById('portServicoPicker');
+  if (picker) picker.style.display = 'none';
+  const errEl = document.getElementById('portAdmErr');
+  if (errEl) errEl.classList.remove('show');
 }
 
 /* ── Remover foto ── */
@@ -839,7 +833,9 @@ window.renderPortfolioAdmin       = renderPortfolioAdmin;
 window.adicionarFotoPortfolio     = adicionarFotoPortfolio;
 window.removerFotoPortfolio       = removerFotoPortfolio;
 window.triggerUploadFoto          = triggerUploadFoto;
-window.onPortFileChange           = onPortFileChange;
+window.onPortFileChange            = onPortFileChange;
+window.confirmarUploadFoto         = confirmarUploadFoto;
+window.cancelarUploadFoto          = cancelarUploadFoto;
 window.toggleDestaquePortfolio    = toggleDestaquePortfolio;
 window.atualizarLimitePortfolio   = atualizarLimitePortfolio;
 window.abrirEditarTagsFoto        = abrirEditarTagsFoto;
