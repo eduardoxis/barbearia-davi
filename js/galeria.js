@@ -830,7 +830,6 @@ if (document.readyState === 'loading') {
 }
 
 window.renderPortfolioAdmin       = renderPortfolioAdmin;
-window.adicionarFotoPortfolio     = adicionarFotoPortfolio;
 window.removerFotoPortfolio       = removerFotoPortfolio;
 window.triggerUploadFoto          = triggerUploadFoto;
 window.onPortFileChange            = onPortFileChange;
