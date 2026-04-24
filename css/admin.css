@@ -167,6 +167,11 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 
 /* ── Grade horário do barbeiro (início / fim / intervalo) ── */
 .barb-horario-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem}
+.barb-horario-grid .form-group{margin-bottom:0}
+.barb-horario-grid .form-input{height:42px;box-sizing:border-box}
+/* Modal: nunca vaza pra fora da tela */
+.adm-modal-overlay{box-sizing:border-box}
+.modal-barb{box-sizing:border-box}
 
 /* ── Atendimento: seleção de barbeiro ── */
 /* ── Atendimentos — barra de passos ── */
@@ -402,6 +407,7 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
   .modal-barb-body{padding:1rem 1rem 0.5rem}
   .modal-barb-footer{padding:0.8rem 1rem 1rem}
   .modal-barb-title-wrap{padding:0.8rem 1rem 0}
+  .adm-modal-overlay{padding:0.5rem}
   /* Barbeiro: intervalo em 2 colunas no mobile */
   .barb-horario-grid{grid-template-columns:1fr 1fr}
   .barb-horario-grid .form-group:last-child{grid-column:1 / -1}
