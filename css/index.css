@@ -236,6 +236,61 @@ h1 .red{color:var(--red)}
 .gallery-img { position: relative; }
 
 /* ══════════════════════════════════════════
+   ANIMAÇÕES DE SCROLL & ENTRADA
+══════════════════════════════════════════ */
+
+/* Keyframes */
+@keyframes revealUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes revealLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes glowPulseRed{0%,100%{text-shadow:none}50%{text-shadow:0 0 28px rgba(224,32,32,0.75),0 0 8px rgba(224,32,32,0.4)}}
+@keyframes shimmerBtn{0%{background-position:-250% 0}100%{background-position:250% 0}}
+@keyframes scrollBounce{0%,100%{transform:scaleY(1);transform-origin:top}50%{transform:scaleY(0.35);transform-origin:top}}
+@keyframes borderGlow{0%,100%{box-shadow:0 0 0 0 rgba(224,32,32,0)}50%{box-shadow:0 0 0 4px rgba(224,32,32,0.18)}}
+
+/* Classes base — elementos ficam invisíveis até o observer atuar */
+.anim-reveal{opacity:0}
+.anim-left{opacity:0}
+
+/* Ativação via JS (IntersectionObserver adiciona .visible) */
+.anim-reveal.visible{animation:revealUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards}
+.anim-left.visible{animation:revealLeft 0.5s cubic-bezier(0.22,1,0.36,1) forwards}
+
+/* Delays escalonados para cards em grade */
+.anim-d1{animation-delay:0.06s}
+.anim-d2{animation-delay:0.12s}
+.anim-d3{animation-delay:0.18s}
+.anim-d4{animation-delay:0.24s}
+.anim-d5{animation-delay:0.30s}
+.anim-d6{animation-delay:0.36s}
+.anim-d7{animation-delay:0.42s}
+.anim-d8{animation-delay:0.48s}
+
+/* Glow vermelho nos números quando contagem termina */
+.stat-n.glow-done{animation:glowPulseRed 0.9s ease}
+
+/* Shimmer no botão principal (btn-primary) */
+.btn-primary{position:relative;overflow:hidden}
+.btn-primary::after{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.18) 50%,transparent 100%);
+  background-size:250% 100%;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.15s;
+}
+.btn-primary:hover::after{
+  opacity:1;
+  animation:shimmerBtn 0.65s linear;
+}
+
+/* Bounce no indicador de scroll do hero */
+.scroll-line{animation:scrollBounce 2.2s ease-in-out infinite}
+
+/* Glow suave nos cards ao entrar na viewport */
+.gallery-card.visible-glow{animation:borderGlow 1.2s ease 0.1s}
+
+/* ══════════════════════════════════════════
    MODO CLARO — overrides index
 ══════════════════════════════════════════ */
 
