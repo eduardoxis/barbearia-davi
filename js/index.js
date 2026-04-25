@@ -7,6 +7,7 @@ import {
   adminSettings, cart, addToCartArr, removeFromCartArr,
   showToast, updateHeroStatus, updateNavUserFb, showAdminNavBtn
 } from './global.js';
+import { startRealtimeSync } from './realtime.js';
 
 /* ── Renderiza galeria de serviços ── */
 export function renderGallery() {
@@ -216,6 +217,10 @@ export async function initSite() {
 
   const { renderBarbeiroGrid } = await import('./agendamento.js');
   renderBarbeiroGrid();
+
+  // Inicia sincronização em tempo real — todos os usuários recebem
+  // atualizações do admin/barbeiro automaticamente, sem precisar de F5
+  startRealtimeSync();
 }
 
 /* ── Expõe funções globais ── */
