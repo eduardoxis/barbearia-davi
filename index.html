@@ -15,7 +15,7 @@
            signOut, onAuthStateChanged, updateProfile }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc,
-           getDocs, query, where, orderBy }
+           getDocs, query, where, orderBy, onSnapshot }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
@@ -35,7 +35,7 @@
     auth, db, storage,
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
     signOut, onAuthStateChanged, updateProfile,
-    doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy,
+    doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy, onSnapshot,
     storageRef, uploadBytes, getDownloadURL
   };
 </script>
