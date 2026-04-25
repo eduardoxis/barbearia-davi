@@ -32,6 +32,9 @@ let atendBarbeiroNome = '';
 export function openAdmin(skipLogin = false) {
   document.getElementById('admin-panel').classList.add('show');
   document.body.style.overflow = 'hidden';
+  // Esconde bottom-nav no mobile para não sobrepor o painel
+  const bn = document.getElementById('bottomNav');
+  if (bn) bn.style.setProperty('display', 'none', 'important');
   if (skipLogin) {
     document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminDash').style.display = 'block';
@@ -42,6 +45,9 @@ export function openAdmin(skipLogin = false) {
 export function closeAdmin() {
   document.getElementById('admin-panel').classList.remove('show');
   document.body.style.overflow = '';
+  // Restaura bottom-nav
+  const bn = document.getElementById('bottomNav');
+  if (bn) bn.style.removeProperty('display');
   document.getElementById('adminLogin').style.display = 'block';
   document.getElementById('adminDash').style.display = 'none';
   document.getElementById('adminEmail').value = '';
