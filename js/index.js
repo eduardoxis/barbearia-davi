@@ -135,6 +135,14 @@ export async function initSite() {
       }
     } catch (e) { console.warn('Sem Firestore, usando dados padrão.', e); }
 
+    // Carrega dias bloqueados dos barbeiros (para o agendamento público)
+    try {
+      const { collection, getDocs, db } = window._fb;
+      const snap = await getDocs(collection(db, 'dias_bloqueados'));
+      adminSettings.diasBloqueadosBarbeiro = [];
+      snap.forEach(d => adminSettings.diasBloqueadosBarbeiro.push({ id: d.id, ...d.data() }));
+    } catch (_) { /* collection pode ainda não existir */ }
+
     // Monitora autenticação
     window._fb.onAuthStateChanged(window._fb.auth, async (user) => {
       if (user) {
