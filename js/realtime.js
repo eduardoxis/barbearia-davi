@@ -1,31 +1,33 @@
 /* ══════════════════════════════════════════
    REALTIME.JS — Sincronização em tempo real via Firestore onSnapshot
    Barbearia do Davi
-   
+
    Como funciona:
    - Fica ouvindo mudanças no Firestore (settings/admin e dias_bloqueados)
    - Quando admin ou barbeiro salva algo, TODOS os outros usuários
      recebem a atualização automaticamente, sem precisar de F5
-   - O usuário que acabou de salvar NÃO recebe o toast nem re-render
+   - O usuário que acabou de salvar NÃO recebe o banner nem re-render
      desnecessário (usa a flag _justSaved)
 ══════════════════════════════════════════ */
 
 import { adminSettings } from './global.js';
 
 /* ── Estado interno ── */
-let _unsubSettings  = null;   // função para cancelar listener de settings
-let _unsubDiasBloq  = null;   // função para cancelar listener de dias bloqueados
-let _justSaved      = false;  // true por 5s após o usuário atual salvar algo
-let _syncStarted    = false;  // evita iniciar duas vezes
+let _unsubSettings      = null;
+let _unsubDiasBloq      = null;
+let _justSaved          = false;
+let _syncStarted        = false;
+let _primeiroSettings   = true;  // ignora o snapshot inicial (dados já carregados)
+let _primeiroDiasBloq   = true;  // ignora o snapshot inicial da coleção
 
-/* ── Marca que o usuário atual acabou de salvar (chame antes do setDoc) ── */
+/* ── Marca que o usuário atual acabou de salvar ── */
 export function markJustSaved() {
   _justSaved = true;
   clearTimeout(window._bbJustSavedTimer);
   window._bbJustSavedTimer = setTimeout(() => { _justSaved = false; }, 5000);
 }
 
-/* ── Aplica dados do snapshot ao adminSettings ── */
+/* ── Aplica dados do Firestore ao adminSettings em memória ── */
 function _aplicarDados(d) {
   const keys = [
     'shopOpen', 'workDays', 'workHours', 'slots', 'takenSlots',
@@ -42,39 +44,42 @@ function _aplicarDados(d) {
       adminSettings.duracaoPadrao = 60;
     }
   }
-  // Garante time='1h' em todos os serviços
   if (adminSettings.services) {
     adminSettings.services = adminSettings.services.map(s => ({ ...s, time: '1h' }));
   }
 }
 
-/* ── Re-renderiza a página atual com os novos dados ── */
+/* ── Re-renderiza todos os componentes afetados ── */
 async function _reRenderPagina() {
-  // Atualiza status hero (aberto/fechado) — existe em todas as páginas
+  // 1. Status hero (aberto/fechado) — presente em todas as páginas
   try {
     const { updateHeroStatus } = await import('./global.js');
-    updateHeroStatus();
+    if (updateHeroStatus) updateHeroStatus();
   } catch (_) {}
 
-  // Galeria de serviços (index.html)
+  // 2. Galeria de serviços
   try {
     const { renderGallery, updateCartUI } = await import('./index.js');
     if (renderGallery) renderGallery();
     if (updateCartUI)  updateCartUI();
   } catch (_) {}
 
-  // Grid de barbeiros no agendamento
+  // 3. Agendamento: grid de barbeiros + calendário + slots (se visíveis)
   try {
-    const { renderBarbeiroGrid } = await import('./agendamento.js');
-    if (renderBarbeiroGrid) renderBarbeiroGrid();
-  } catch (_) {}
+    const ag = await import('./agendamento.js');
 
-  // Painel admin (re-renderiza dashboard se estiver aberto)
-  try {
-    const { loadAdminSettings } = await import('./admin.js');
-    // Só re-carrega se o painel admin estiver visível na tela
-    if (document.getElementById('adminSection')?.offsetParent !== null) {
-      loadAdminSettings();
+    if (ag.renderBarbeiroGrid) ag.renderBarbeiroGrid();
+
+    // Calendário — re-renderiza se estiver visível na tela
+    const calGrid = document.getElementById('calGrid');
+    if (calGrid && calGrid.offsetParent !== null && ag.renderCalendar) {
+      ag.renderCalendar();
+    }
+
+    // Slots de horário — re-renderiza se visíveis
+    const slotsGrid = document.getElementById('slotsGrid');
+    if (slotsGrid && slotsGrid.offsetParent !== null && ag.renderSlots) {
+      ag.renderSlots();
     }
   } catch (_) {}
 }
@@ -83,7 +88,7 @@ async function _reRenderPagina() {
 export async function startRealtimeSync() {
   if (_syncStarted) return;
 
-  // Aguarda o Firebase estar pronto
+  // Aguarda o Firebase estar pronto (max 5 segundos)
   let tentativas = 0;
   while (!window._fb?.onSnapshot && tentativas < 50) {
     await new Promise(r => setTimeout(r, 100));
@@ -91,7 +96,7 @@ export async function startRealtimeSync() {
   }
 
   if (!window._fb?.onSnapshot) {
-    console.warn('[realtime] onSnapshot não disponível no window._fb. Sync em tempo real desativado.');
+    console.warn('[realtime] onSnapshot indisponível. Sync desativado.');
     return;
   }
 
@@ -102,41 +107,37 @@ export async function startRealtimeSync() {
   try {
     _unsubSettings = onSnapshot(
       doc(db, 'settings', 'admin'),
-      { includeMetadataChanges: true },
       (snap) => {
         if (!snap.exists()) return;
 
-        // hasPendingWrites=true → mudança local (este usuário acabou de escrever)
-        // Ignoramos completamente para não duplicar trabalho
-        if (snap.metadata.hasPendingWrites) return;
+        // Primeiro disparo = carga inicial da página (dados já estão em memória)
+        if (_primeiroSettings) { _primeiroSettings = false; return; }
 
-        // Atualiza os dados em memória
+        // Atualiza adminSettings com os dados vindos do servidor
         _aplicarDados(snap.data());
 
-        // Se foi o próprio usuário que salvou (confirmação do servidor), atualiza
-        // dados silenciosamente mas não mostra toast nem re-renderiza
+        // Se foi ESTE usuário quem salvou, apenas atualiza dados silenciosamente
         if (_justSaved) return;
 
-        // Outro usuário salvou → re-renderiza e avisa sutilmente
+        // Outro usuário (admin/barbeiro) salvou → atualiza a UI e avisa
         _reRenderPagina();
         _mostrarBanner();
       },
-      (err) => {
-        console.warn('[realtime] Erro no listener settings/admin:', err.message);
-      }
+      (err) => console.warn('[realtime] Erro settings/admin:', err.message)
     );
   } catch (e) {
-    console.warn('[realtime] Não foi possível iniciar listener settings/admin:', e);
+    console.warn('[realtime] Falha ao criar listener settings/admin:', e);
   }
 
-  /* ── Listener 2: dias_bloqueados (coleção do barbeiro) ── */
+  /* ── Listener 2: dias_bloqueados ── */
   try {
     _unsubDiasBloq = onSnapshot(
       collection(db, 'dias_bloqueados'),
-      { includeMetadataChanges: true },
       (snap) => {
-        if (snap.metadata.hasPendingWrites) return;
+        // Primeiro disparo = carga inicial
+        if (_primeiroDiasBloq) { _primeiroDiasBloq = false; return; }
 
+        // Atualiza lista de dias bloqueados por barbeiro
         adminSettings.diasBloqueadosBarbeiro = [];
         snap.forEach(d => {
           adminSettings.diasBloqueadosBarbeiro.push({ id: d.id, ...d.data() });
@@ -144,19 +145,21 @@ export async function startRealtimeSync() {
 
         if (_justSaved) return;
 
-        // Re-renderiza calendário de agendamento se estiver visível
-        try {
-          import('./agendamento.js').then(m => {
-            if (m.renderBarbeiroGrid) m.renderBarbeiroGrid();
-          });
-        } catch (_) {}
+        // Re-renderiza calendário e grid de barbeiros
+        import('./agendamento.js').then(ag => {
+          if (ag.renderBarbeiroGrid) ag.renderBarbeiroGrid();
+          const calGrid = document.getElementById('calGrid');
+          if (calGrid && calGrid.offsetParent !== null && ag.renderCalendar) {
+            ag.renderCalendar();
+          }
+        }).catch(() => {});
+
+        _mostrarBanner();
       },
-      (err) => {
-        console.warn('[realtime] Erro no listener dias_bloqueados:', err.message);
-      }
+      (err) => console.warn('[realtime] Erro dias_bloqueados:', err.message)
     );
   } catch (e) {
-    console.warn('[realtime] Não foi possível iniciar listener dias_bloqueados:', e);
+    console.warn('[realtime] Falha ao criar listener dias_bloqueados:', e);
   }
 }
 
@@ -165,40 +168,39 @@ export function stopRealtimeSync() {
   if (_unsubSettings) { _unsubSettings(); _unsubSettings = null; }
   if (_unsubDiasBloq) { _unsubDiasBloq(); _unsubDiasBloq = null; }
   _syncStarted = false;
+  _primeiroSettings = true;
+  _primeiroDiasBloq = true;
 }
 
-/* ── Banner sutil de atualização (aparece no topo, some em 3s) ── */
+/* ── Banner sutil no topo da página ── */
 let _bannerTimer = null;
 function _mostrarBanner() {
-  // Não mostra banner dentro do painel admin/barbeiro
   if (window.location.pathname.includes('painel')) return;
 
   let banner = document.getElementById('bb-realtime-banner');
   if (!banner) {
     banner = document.createElement('div');
     banner.id = 'bb-realtime-banner';
-    banner.style.cssText = `
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
-      color: #c8a96e;
-      text-align: center;
-      font-size: 0.78rem;
-      font-family: 'Inter', sans-serif;
-      letter-spacing: 0.04em;
-      padding: 7px 1rem;
-      z-index: 99999;
-      transform: translateY(-100%);
-      transition: transform 0.3s ease;
-      border-bottom: 1px solid #c8a96e33;
-      pointer-events: none;
-    `;
+    banner.style.cssText = [
+      'position:fixed', 'top:0', 'left:0', 'right:0',
+      'background:linear-gradient(90deg,#1a1a1a,#2a2a2a)',
+      'color:#c8a96e',
+      'text-align:center',
+      'font-size:0.78rem',
+      'font-family:Inter,sans-serif',
+      'letter-spacing:0.04em',
+      'padding:7px 1rem',
+      'z-index:99999',
+      'transform:translateY(-100%)',
+      'transition:transform 0.3s ease',
+      'border-bottom:1px solid #c8a96e33',
+      'pointer-events:none',
+    ].join(';');
     document.body.appendChild(banner);
   }
 
   banner.textContent = '✦ Conteúdo atualizado pelo administrador';
   banner.style.transform = 'translateY(0)';
-
   clearTimeout(_bannerTimer);
   _bannerTimer = setTimeout(() => {
     banner.style.transform = 'translateY(-100%)';
