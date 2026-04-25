@@ -1,1 +1,1501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Barbearia do Davi | Luziânia – Vila Guará</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+           signOut, onAuthStateChanged, updateProfile }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, collection, addDoc,
+           getDocs, query, where, orderBy, onSnapshot, deleteDoc }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+  const firebaseConfig = {
+    apiKey: "AIzaSyDK0bmVX9tTMCLw7fSDBrW-E8D3SK63DaY",
+    authDomain: "barbearia-davi.firebaseapp.com",
+    projectId: "barbearia-davi",
+    storageBucket: "barbearia-davi.firebasestorage.app",
+    messagingSenderId: "327274722401",
+    appId: "1:327274722401:web:f2ddac69ff5d4161716620"
+  };
+  const app     = initializeApp(firebaseConfig);
+  const auth    = getAuth(app);
+  const db      = getFirestore(app);
+  const storage = getStorage(app);
+  window._fb = {
+    auth, db, storage,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, updateProfile,
+    doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc,
+    storageRef, uploadBytes, getDownloadURL
+  };
+</script>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/index.css">
+<link rel="stylesheet" href="css/agendamento.css">
+  <link rel="stylesheet" href="css/galeria.css">
+<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/perfil.css">
+<link rel="stylesheet" href="css/historico.css">
+<link rel="stylesheet" href="css/admin.css">
+<!-- ★ BOTTOM NAV — NOVO ★ -->
+<link rel="stylesheet" href="css/bottom-nav.css">
 
+  <style>
+    /* ── Atendimento realizado ── */
+    .card-atendimento.realizado { border-left: 3px solid #27ae60 !important; }
+    .atend-badge.realizado { background: rgba(39,174,96,0.15); color: #27ae60; border-color: rgba(39,174,96,0.3); }
+    .atend-btn-realizado {
+      margin-top: 0.5rem; width: 100%; padding: 0.45rem;
+      background: transparent; border: 1.5px solid #27ae60;
+      color: #27ae60; border-radius: 5px;
+      font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.05em;
+      text-transform: uppercase; transition: all 0.18s;
+    }
+    .atend-btn-realizado:hover:not(:disabled) { background: #27ae60; color: #fff; }
+    .atend-btn-realizado.done { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="nav-logo-main">Barbearia do Davi</span>
+    <span class="nav-logo-sub">Luziânia · Vila Guará</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#servicos">Serviços</a></li>
+    <li><a href="#localizacao">Localização</a></li>
+    <li><a href="#agendar">Agendar</a></li>
+    <li><a href="https://instagram.com/davi_barber10" target="_blank">Instagram</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="nav-admin-btn" id="navAdminBtn" onclick="openAdmin(true)">⚙ Painel Admin</button>
+    <button class="nav-admin-btn" id="navBarbeiroBtn" onclick="window.location.href='pages/painel.html'" style="display:none;border-color:#6FCF97;color:#6FCF97">💈 Painel Barbeiro</button>
+    <button class="nav-user-btn" id="navUserBtn" onclick="openUserModal()">👤 Entrar</button>
+    <!-- ★ CARRINHO MOBILE — no lugar do hamburger ★ -->
+    <button class="nav-cart-btn" id="navCartBtn" onclick="toggleCart()" aria-label="Carrinho">
+      <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+      <span class="nav-cart-badge" id="navCartBadge">0</span>
+    </button>
+    <!-- hamburger oculto no mobile via css/bottom-nav.css -->
+    <button class="hamburger" id="hamburger" onclick="toggleDrawer()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ DRAWER MOBILE (oculto no mobile via CSS — bottom nav substitui) ═══ -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="mobile-drawer" id="mobileDrawer">
+  <div class="drawer-header">
+    <span class="drawer-logo">Barbearia <span>do Davi</span></span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <nav class="drawer-links">
+    <a href="#servicos"   onclick="closeDrawer()">Serviços</a>
+    <a href="#localizacao" onclick="closeDrawer()">Localização</a>
+    <a href="#agendar"    onclick="closeDrawer()">Agendar</a>
+    <a href="https://instagram.com/davi_barber10" target="_blank" onclick="closeDrawer()">Instagram</a>
+  </nav>
+  <div class="drawer-cta">
+    <button class="drawer-admin-btn" id="drawerAdminBtn"
+            onclick="closeDrawer();openAdmin(true)">⚙ Painel Admin</button>
+    <button class="drawer-admin-btn" id="drawerBarbeiroBtn"
+            onclick="closeDrawer();window.location.href='pages/painel.html'"
+            style="border-color:#6FCF97;color:#6FCF97">💈 Meu Painel</button>
+    <div id="drawerLoggedInfo" style="display:none;flex-direction:column;gap:0.5rem">
+      <div class="drawer-user-name"  id="drawerUserName"></div>
+      <div class="drawer-user-email" id="drawerUserEmail"></div>
+      <button class="btn-red" style="width:100%;justify-content:center"
+              onclick="closeDrawer();openUserModal()">👤 Minha Conta</button>
+      <button class="drawer-logout-btn show" onclick="closeDrawer();fbLogout()">Sair da conta</button>
+    </div>
+    <div id="drawerGuestInfo">
+      <button class="btn-red" style="width:100%;justify-content:center"
+              onclick="closeDrawer();openUserModal()">👤 Entrar / Criar Conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <canvas id="heroParticles"></canvas>
+  <div class="hero-grid-lines"></div>
+  <div class="hero-redline"></div>
+  <div class="hero-content">
+    <div class="hero-tag open" id="heroStatusTag">🔴 Aberto agora · Luziânia, GO</div>
+    <h1>BARBEARIA<br><span class="red">DO DAVI</span></h1>
+    <p class="hero-sub">Vila Guará · <span>Luziânia – GO</span></p>
+    <div class="hero-btns">
+      <a href="#servicos" class="btn-red btn-primary">✂ Ver Serviços</a>
+      <a href="#agendar"  class="btn-ghost">Agendar Horário</a>
+    </div>
+    <div class="hero-stats">
+      <div><span class="stat-n">300+</span><span class="stat-l">Clientes</span></div>
+      <div><span class="stat-n">5★</span><span class="stat-l">Avaliação</span></div>
+      <div><span class="stat-n">7 Anos</span><span class="stat-l">Experiência</span></div>
+    </div>
+  </div>
+  <div class="hero-scroll"><div class="scroll-line"></div><span class="scroll-label">Scroll</span></div>
+</section>
+
+<!-- ═══ SERVIÇOS ═══ -->
+<section id="servicos">
+  <div class="max-w">
+    <div class="gallery-intro">
+      <div>
+        <div class="sec-label">Serviços</div>
+        <div class="sec-title">Monte seu <span>Pedido</span></div>
+        <div class="sec-sub">Escolha um ou mais serviços, adicione ao carrinho e agende.</div>
+      </div>
+      <div class="cart-summary">
+        <div class="cart-total" id="cartTotalDisplay">R$ 0</div>
+        <button class="cart-badge" onclick="toggleCart()">🛒 Pedido <span id="cartCount">0</span></button>
+      </div>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+</section>
+
+<!-- ═══ LOCALIZAÇÃO ═══ -->
+<section id="localizacao">
+  <div class="mapa-wrap">
+    <div class="sec-label">Onde estamos</div>
+    <div class="sec-title">Nossa <span>Localização</span></div>
+    <div class="sec-sub">Clique no mapa ou no botão para abrir no GPS.</div>
+    <div class="mapa-container">
+      <iframe
+        src="https://maps.google.com/maps?q=-16.2223425,-47.9128605&z=17&output=embed&hl=pt-BR"
+        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+        title="Localização Barbearia do Davi"></iframe>
+    </div>
+    <div class="mapa-info">
+      <div class="mapa-address">
+        <strong>Barbearia do Davi</strong>
+        Av. Manoel Bras, Qd. 147 Lote 01 "B" PED 2<br>
+        Vila Guará · Luziânia – GO · CEP 72820-200
+      </div>
+      <a href="https://maps.app.goo.gl/DFPsBaEbefZAjbjk7" target="_blank" class="mapa-btn">
+        📍 Abrir no Maps
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AGENDAMENTO ═══ -->
+<section id="agendar">
+  <div class="booking-wrap">
+    <div class="sec-label">Agendamento</div>
+    <div class="sec-title">Confirmar <span>Horário</span></div>
+    <div class="sec-sub">Selecione serviços acima, depois escolha data e horário.</div>
+    <div class="steps-bar">
+      <div class="barb-indicador" id="barbIndicador">
+        <div class="barb-ind-foto" id="barbIndFoto">💈</div>
+        <div class="barb-ind-info">
+          <span class="barb-ind-label">Barbeiro</span>
+          <span class="barb-ind-nome" id="barbIndNome">—</span>
+          <button class="barb-ind-trocar" onclick="goBookStep(0)">trocar</button>
+        </div>
+      </div>
+      <div class="step-tab active" data-step="0"><span class="tab-num">01</span>Barbeiro</div>
+      <div class="step-tab" data-step="1"><span class="tab-num">02</span>Seus Dados</div>
+      <div class="step-tab" data-step="2"><span class="tab-num">03</span>Data &amp; Hora</div>
+      <div class="step-tab" data-step="3"><span class="tab-num">04</span>Revisão</div>
+      <div class="step-tab" data-step="4"><span class="tab-num">05</span>Pagamento</div>
+    </div>
+    <div class="step-panel active" id="bStep0">
+      <div style="margin-bottom:1.5rem">
+        <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:0.3rem">✂ Escolha seu Barbeiro</div>
+        <div style="font-size:0.82rem;color:var(--gray);line-height:1.6">Cada barbeiro tem sua própria agenda. Selecione com quem prefere ser atendido.</div>
+      </div>
+      <div class="barbeiro-grid" id="barbeiroGrid"></div>
+      <div style="text-align:center;font-size:0.72rem;color:var(--gray);margin-top:0.5rem;padding:0.6rem;background:rgba(224,32,32,0.04);border:1px solid rgba(224,32,32,0.12);border-radius:2px" id="step0Hint">👆 Toque em um barbeiro para selecionar e avançar automaticamente</div>
+    </div>
+    <div class="step-panel" id="bStep1">
+      <div class="user-info-section">
+        <h3>💈 Informações do cliente</h3>
+        <div id="loggedUserInfo" style="display:none;margin-bottom:1rem;background:rgba(224,32,32,0.06);border:1px solid var(--border-red);border-radius:2px;padding:0.8rem">
+          <div style="font-size:0.82rem;color:var(--light);font-weight:600" id="loggedUserName">-</div>
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:0.1rem" id="loggedUserEmail">-</div>
+        </div>
+        <div id="guestFields">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="clientName" type="text" placeholder="Seu nome completo" oninput="checkStep1()"></div>
+            <div class="form-group"><label class="form-label">WhatsApp *</label><input class="form-input" id="clientPhone" type="tel" placeholder="(61) 9 0000-0000" oninput="checkStep1()"></div>
+          </div>
+          <div class="form-row single">
+            <div class="form-group"><label class="form-label">E-mail (opcional)</label><input class="form-input" id="clientEmail" type="email" placeholder="seu@email.com"></div>
+          </div>
+        </div>
+      </div>
+      <div class="step-nav"><div></div><button class="btn-next" id="step1Next" disabled onclick="goBookStep(2)">Escolher Data →</button></div>
+    </div>
+    <div class="step-panel" id="bStep2">
+      <div class="cal-wrap">
+        <div class="calendar">
+          <div class="calendar-header">
+            <button class="cal-nav" onclick="prevMonth()">‹</button>
+            <span class="cal-month" id="calMonthLabel"></span>
+            <button class="cal-nav" onclick="nextMonth()">›</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="slots-panel">
+          <h3>Horários disponíveis</h3>
+          <div class="slots-grid" id="slotsGrid"><p class="slots-empty">Selecione uma data</p></div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goBookStep(1)">← Voltar</button>
+        <button class="btn-next" id="step2Next" disabled onclick="goBookStep(3)">Revisar →</button>
+      </div>
+    </div>
+    <div class="step-panel" id="bStep3">
+      <div class="order-summary">
+        <h3>📋 Resumo do Pedido</h3>
+        <div class="sum-row"><span class="sum-label">Cliente</span><span class="sum-val" id="sumClient">—</span></div>
+        <div class="sum-row"><span class="sum-label">WhatsApp</span><span class="sum-val" id="sumPhone">—</span></div>
+        <div class="sum-row"><span class="sum-label">Serviços</span><div class="services-list" id="sumServices"></div></div>
+        <div class="sum-row"><span class="sum-label">Data</span><span class="sum-val" id="sumDate">—</span></div>
+        <div class="sum-row"><span class="sum-label">Horário</span><span class="sum-val" id="sumTime">—</span></div>
+        <div class="sum-row sum-total"><span class="sum-label">Total</span><span class="sum-val" id="sumTotal">—</span></div>
+      </div>
+      <div class="termo-wrap">
+        <div class="termo-texto">
+          <strong>📋 Termos do Agendamento</strong><br>
+          Ao confirmar o pagamento, você declara estar ciente das seguintes condições:
+          <ul style="margin:0.6rem 0 0 1rem;display:flex;flex-direction:column;gap:0.3rem">
+            <li>❌ <strong>Não há reembolso</strong> após a confirmação do pagamento.</li>
+            <li>🔄 É permitida <strong>remarcação</strong> com no mínimo <strong>24 horas de antecedência</strong>.</li>
+            <li>🔁 Limite de <strong>2 remarcações</strong> por agendamento.</li>
+          </ul>
+        </div>
+        <label class="termo-label" id="termoLabel">
+          <input type="checkbox" id="termoCheckbox" onchange="verificarTermoAceito()">
+          <span>Declaro que estou ciente de que <strong>não há reembolso</strong> após a confirmação. Posso remarcar com até <strong>24 horas de antecedência</strong>.</span>
+        </label>
+        <div class="termo-aviso" id="termoAviso">⚠ Você precisa aceitar os termos para prosseguir.</div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goBookStep(2)">← Voltar</button>
+        <button class="btn-next" id="btnIrPagamento" onclick="irParaPagamentoComTermo()" disabled>Ir para Pagamento →</button>
+      </div>
+    </div>
+    <div class="step-panel" id="bStep4">
+      <div id="pixLoading" style="text-align:center;padding:3rem 1rem">
+        <div class="pix-spinner"></div>
+        <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--white);margin-top:1.2rem;text-transform:uppercase;letter-spacing:0.05em">Preparando pagamento...</div>
+        <div style="font-size:0.78rem;color:var(--gray);margin-top:0.4rem">Conectando à Cakto</div>
+      </div>
+      <div id="pixReady" style="display:none">
+        <div class="pix-grid">
+          <div class="pix-steps">
+            <h4>Como pagar</h4>
+            <div class="px-step"><div class="px-n">1</div><div class="px-t">Clique em <strong>"Ir para o Pagamento"</strong>.</div></div>
+            <div class="px-step"><div class="px-n">2</div><div class="px-t">Escolha <strong>Pix</strong> e escaneie o QR Code.</div></div>
+            <div class="px-step"><div class="px-n">3</div><div class="px-t">Volte aqui. Confirmação <strong>automática!</strong> 🎉</div></div>
+            <div style="margin-top:1rem;background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:1rem">
+              <div id="pixSumServices" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.5rem"></div>
+              <div style="font-size:0.78rem;color:var(--gray)">📅 <span id="pixSumDate">—</span> às <span id="pixSumTime">—</span></div>
+              <div style="font-size:0.78rem;color:var(--gray);margin-top:0.2rem">👤 <span id="pixSumClient">—</span></div>
+            </div>
+            <div id="pixPollingStatus" style="margin-top:0.8rem;font-size:0.72rem;color:var(--gray);display:flex;align-items:center;gap:0.5rem;background:var(--card2);padding:0.6rem;border-radius:2px">
+              <span class="polling-dot"></span><span id="pixPollingMsg">Aguardando confirmação...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:0.5rem;font-size:0.7rem;color:var(--gray)">
+              <span>Expira em <span id="pixTimer" style="color:var(--red);font-weight:700">14:59</span></span>
+              <button class="forgot-link" onclick="iniciarPagamentoCakto(true)">Gerar novo link</button>
+            </div>
+          </div>
+          <div class="pix-box" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;min-height:280px">
+            <div style="text-align:center">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:0.1em;color:var(--white);line-height:1">CAKTO</div>
+              <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--gray)">Checkout Seguro</div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--red)">R$ <span id="pixSumTotal">0</span></div>
+            <a id="caktoCheckoutBtn" href="#" target="_blank" rel="noopener" class="btn-red" style="width:100%;justify-content:center;padding:1.1rem;text-decoration:none;text-align:center">🔒 Ir para o Pagamento →</a>
+            <div style="font-size:0.65rem;color:var(--gray2);text-align:center">🔐 Pagamento seguro via Cakto</div>
+          </div>
+        </div>
+      </div>
+      <div id="pixError" style="display:none;text-align:center;padding:3rem 1rem">
+        <div style="font-size:2rem;margin-bottom:1rem">⚠️</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:1rem;color:var(--white);margin-bottom:0.5rem;text-transform:uppercase">Erro ao gerar link</div>
+        <div style="font-size:0.8rem;color:var(--gray);margin-bottom:1.5rem" id="pixErrorMsg">Tente novamente.</div>
+        <button class="btn-red" style="justify-content:center" onclick="iniciarPagamentoCakto()">🔄 Tentar novamente</button>
+      </div>
+      <div class="step-nav" style="margin-top:1rem">
+        <button class="btn-back" id="pixBackBtn" onclick="goBookStep(3)">← Voltar</button>
+        <div></div>
+      </div>
+    </div>
+    <div class="step-panel" id="bStep5">
+      <div class="confirmed-wrap">
+        <div class="conf-icon">✓</div>
+        <div class="conf-title">AGENDADO <span>COM SUCESSO!</span></div>
+        <p class="conf-desc">Seu horário está garantido. O Davi já sabe te esperar! Baixe ou compartilhe seu comprovante.</p>
+        <div class="conf-card">
+          <div class="conf-row"><span>Cliente</span><span id="confClient">—</span></div>
+          <div class="conf-row"><span>Serviços</span><span id="confServices">—</span></div>
+          <div class="conf-row"><span>Data</span><span id="confDate">—</span></div>
+          <div class="conf-row"><span>Horário</span><span id="confTime">—</span></div>
+          <div class="conf-row"><span>Total</span><span id="confTotal" style="color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:1.3rem">—</span></div>
+          <div class="conf-row"><span>Pagamento</span><span class="conf-paid">✓ Confirmado via Pix</span></div>
+        </div>
+        <div class="conf-btns">
+          <button class="btn-pdf"   onclick="generatePDF()">📄 Baixar Comprovante PDF</button>
+          <button class="btn-share" onclick="shareWhatsApp()">📲 Compartilhar no WhatsApp</button>
+          <button class="btn-gcal"  onclick="adicionarGoogleCalendar()">📅 Adicionar ao Google Calendar</button>
+          <button class="btn-back" style="width:100%;text-align:center;justify-content:center;margin-top:0.3rem" onclick="resetBooking()">+ Novo Agendamento</button>
+        </div>
+        <div class="conf-acoes-pos">
+          <div class="conf-acoes-titulo">Precisa alterar o horário?</div>
+          <button class="btn-remarcar" id="btnRemarcarPos" onclick="abrirModalRemarcacao()">🔄 Remarcar Atendimento</button>
+          <div style="margin-top:0.5rem;padding:0.7rem 0.9rem;background:rgba(224,32,32,0.04);border:1px solid rgba(224,32,32,0.15);border-radius:2px;font-size:0.72rem;color:var(--gray);line-height:1.6">
+            ❌ <strong style="color:var(--light)">Não há reembolso</strong> conforme os termos aceitos.<br>
+            🔄 Remarcação disponível com <strong style="color:var(--light)">24h de antecedência</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ INSTAGRAM ═══ -->
+<div class="insta-section">
+  <div class="sec-label" style="justify-content:center;margin-bottom:0.5rem">Nos siga</div>
+  <a href="https://instagram.com/davi_barber10" target="_blank" class="insta-link">
+    <div class="insta-icon">📸</div>
+    <span class="insta-handle"><span>@</span>davi_barber10</span>
+  </a>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="max-w">
+    <div class="footer-logo">BARBEARIA <span>DO DAVI</span></div>
+    <div class="footer-info">
+      📍 Av. Manoel Bras, Qd. 147 Lote 01 "B" PED 2, Vila Guará · Luziânia – GO<br>
+      📱 (61) 9 0000-0000 &nbsp;·&nbsp; Seg–Sáb: 8h–19h
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 Barbearia do Davi. Todos os direitos reservados.</span>
+      <a href="https://www.instagram.com/eduardo_xis/" target="_blank" class="footer-dev">Desenvolvido por Eduardo ↗</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ CARRINHO ═══ -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-panel" id="cartPanel">
+  <div class="cart-header">
+    <span class="cart-title">Seu Pedido</span>
+    <button class="cart-close cart-close-enhanced" onclick="toggleCart()" title="Fechar carrinho">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-footer">
+    <div class="cart-total-row">
+      <span class="cart-total-label">Total</span>
+      <span class="cart-total-val" id="cartTotalPanel">R$ 0</span>
+    </div>
+    <button class="btn-red cart-agendar-btn"
+            onclick="toggleCart();document.getElementById('agendar').scrollIntoView({behavior:'smooth'})">
+      ✂ Agendar Agora →
+    </button>
+  </div>
+</div>
+
+<!-- ═══ MODAL USUÁRIO ═══ -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeUserModal()">✕</button>
+    <div id="modalLoginRegister">
+      <div class="modal-title">Sua <span style="color:var(--red)">Conta</span></div>
+      <div class="modal-sub">Entre ou crie uma conta para salvar seu histórico.</div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabLogin"    onclick="switchTab('login')">Entrar</button>
+        <button class="modal-tab"        id="tabRegister" onclick="switchTab('register')">Criar Conta</button>
+      </div>
+      <div id="loginForm" class="modal-form">
+        <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="loginEmail" type="email" placeholder="seu@email.com"></div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label class="form-label">Senha</label>
+            <button class="forgot-link" onclick="switchTab('forgot')">Esqueceu a senha?</button>
+          </div>
+          <div class="pass-wrap">
+            <input class="form-input" id="loginPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="pass-eye" onclick="togglePass('loginPass',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="loginErr">E-mail ou senha incorretos.</div>
+        <button class="btn-red" style="width:100%;justify-content:center" onclick="doLogin()">Entrar</button>
+      </div>
+      <div id="registerForm" class="modal-form" style="display:none">
+        <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="regName" type="text" placeholder="Seu nome"></div>
+        <div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="regEmail" type="email" placeholder="seu@email.com"></div>
+        <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" id="regPhone" type="tel" placeholder="(61) 9 0000-0000"></div>
+        <div class="form-group">
+          <label class="form-label">Senha *</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="regPass" type="password" placeholder="Mínimo 6 caracteres" oninput="checkPassStrength(this.value)">
+            <button class="pass-eye" onclick="togglePass('regPass',this)">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+          <div class="strength-label" id="strengthLabel"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar senha *</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="regPass2" type="password" placeholder="Repita a senha">
+            <button class="pass-eye" onclick="togglePass('regPass2',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="regErr">Erro ao criar conta.</div>
+        <button class="btn-red" style="width:100%;justify-content:center" onclick="doRegister()">Criar Conta</button>
+      </div>
+      <div id="forgotForm" class="modal-form" style="display:none">
+        <button class="back-link" onclick="switchTab('login')">← Voltar</button>
+        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Recuperar <span style="color:var(--red)">Senha</span></div>
+        <div class="modal-sub" style="margin-bottom:1rem">Informe seu e-mail para receber o código.</div>
+        <div class="form-group"><label class="form-label">E-mail cadastrado</label><input class="form-input" id="forgotEmail" type="email" placeholder="seu@email.com"></div>
+        <div style="margin:0.5rem 0">
+          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem">Receber código via</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
+            <button id="chEmail" onclick="selectResetChannel('email')" style="border:1px solid var(--border);background:var(--card2);color:var(--gray);padding:0.7rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;transition:all 0.2s">📧 E-mail</button>
+            <button id="chPhone" onclick="selectResetChannel('phone')" style="border:1px solid var(--border);background:var(--card2);color:var(--gray);padding:0.7rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;transition:all 0.2s">📱 WhatsApp</button>
+          </div>
+        </div>
+        <div class="modal-err" id="forgotErr">E-mail não encontrado.</div>
+        <button class="btn-red" style="width:100%;justify-content:center" id="sendCodeBtn" disabled onclick="sendResetCode()">Enviar Código →</button>
+      </div>
+      <div id="forgotCodeForm" class="modal-form" style="display:none">
+        <button class="back-link" onclick="switchTab('forgot')">← Voltar</button>
+        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Verificar <span style="color:var(--red)">Código</span></div>
+        <div class="modal-sub" id="codeDeliveryMsg" style="margin-bottom:1rem">Código enviado.</div>
+        <div class="reset-code-box">
+          <span style="font-size:0.6rem;font-weight:700;color:var(--gray);display:block;margin-bottom:0.2rem;letter-spacing:0.1em;text-transform:uppercase">⚠ Demo — código gerado:</span>
+          <span class="reset-code" id="generatedCode">------</span>
+          <span class="reset-code-hint">Em produção seria enviado pelo canal escolhido</span>
+        </div>
+        <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem">Digite o código de 6 dígitos</div>
+        <div class="code-boxes">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,0)" onkeydown="codeKey(event,0)">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,1)" onkeydown="codeKey(event,1)">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,2)" onkeydown="codeKey(event,2)">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,3)" onkeydown="codeKey(event,3)">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,4)" onkeydown="codeKey(event,4)">
+          <input class="code-box" maxlength="1" type="text" inputmode="numeric" oninput="codeIn(this,5)" onkeydown="codeKey(event,5)">
+        </div>
+        <div class="modal-err" id="codeErr" style="text-align:center">Código incorreto.</div>
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--gray);margin-top:0.3rem">
+          <span>Expira em <span id="codeTimer" style="color:var(--red);font-weight:700">10:00</span></span>
+          <button class="forgot-link" onclick="sendResetCode(true)">Reenviar</button>
+        </div>
+        <button class="btn-red" style="width:100%;justify-content:center" id="verifyBtn" disabled onclick="verifyCode()">Verificar →</button>
+      </div>
+      <div id="forgotNewPass" class="modal-form" style="display:none">
+        <button class="back-link" onclick="switchTab('forgotCode')">← Voltar</button>
+        <div class="modal-title" style="font-size:1.1rem;margin-top:0.5rem">Nova <span style="color:var(--red)">Senha</span></div>
+        <div class="modal-sub" style="margin-bottom:1rem">Os dois campos devem ser idênticos.</div>
+        <div class="form-group">
+          <label class="form-label">Nova senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="newPass1" type="password" placeholder="Mínimo 6 caracteres" oninput="checkNewPass()">
+            <button class="pass-eye" onclick="togglePass('newPass1',this)">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="newStrengthFill"></div></div>
+          <div class="strength-label" id="newStrengthLabel"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar nova senha</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="newPass2" type="password" placeholder="Repita a senha" oninput="checkNewPass()">
+            <button class="pass-eye" onclick="togglePass('newPass2',this)">👁</button>
+          </div>
+        </div>
+        <div class="modal-err" id="newPassErr">As senhas não coincidem.</div>
+        <button class="btn-red" style="width:100%;justify-content:center" id="savePassBtn" disabled onclick="saveNewPassword()">✓ Salvar Senha</button>
+      </div>
+    </div>
+    <div id="loggedInView" style="display:none">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--red);color:var(--white);font-size:1.3rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Bebas Neue',sans-serif" id="userAvatarModal">D</div>
+        <div style="min-width:0">
+          <div style="font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--white);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="loggedModalName">—</div>
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="loggedModalEmail">—</div>
+        </div>
+      </div>
+      <div class="hist-abas">
+        <button class="hist-aba ativa" id="histAbaHistorico"  onclick="switchHistAba('historico')">📋 Histórico</button>
+        <button class="hist-aba"        id="histAbaProximos"  onclick="switchHistAba('proximos')">📅 Próximos</button>
+        <button class="hist-aba"        id="histAbaFidelidade" onclick="switchHistAba('fidelidade')">⭐ Fidelidade</button>
+      </div>
+      <div class="hist-filtros" id="histFiltros">
+        <button class="hist-filtro-btn ativo" onclick="filtrarHistorico('todos',this)">Todos</button>
+        <button class="hist-filtro-btn" onclick="filtrarHistorico('30',this)">30 dias</button>
+        <button class="hist-filtro-btn" onclick="filtrarHistorico('90',this)">90 dias</button>
+        <button class="hist-filtro-btn" onclick="filtrarHistorico('realizado',this)">✓ Realizados</button>
+        <button class="hist-filtro-btn" onclick="filtrarHistorico('remarcado',this)">🔄 Remarcados</button>
+      </div>
+      <div id="userHistoryList" style="max-height:380px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--gray3) transparent">
+        <div class="hist-loading">Carregando atendimentos...</div>
+      </div>
+      <div id="fidPanel" style="display:none;max-height:420px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--gray3) transparent">
+        <div id="fidContent" class="fid-panel"></div>
+      </div>
+      <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
+        <div id="histResumo" style="font-size:0.7rem;color:var(--gray)"></div>
+        <button class="btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="doLogout()">Sair ✕</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REMARCAÇÃO ═══ -->
+<div class="modal-overlay" id="modalSolicitacao" style="z-index:460">
+  <div class="modal-solicitacao">
+    <button class="modal-close" onclick="fecharModalSolicitacao()">✕</button>
+    <div style="font-family:'Oswald',sans-serif;font-size:1.2rem;font-weight:700;color:var(--white);margin-bottom:1rem">🔄 Remarcar <span style="color:var(--red)">Atendimento</span></div>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.78rem">
+      <div style="font-size:0.62rem;color:var(--gray);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem">Agendamento atual</div>
+      <div style="color:var(--white);font-weight:600" id="solInfoServicos">—</div>
+      <div style="color:var(--gray);margin-top:0.2rem">📅 <span id="solInfoData">—</span> às <span id="solInfoHorario">—</span></div>
+      <div style="color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:1.2rem;margin-top:0.2rem" id="solInfoTotal">—</div>
+    </div>
+    <div id="solConteudoRemarcacao">
+      <div class="sol-aviso info" id="solAvisoRemarcacao">✅ Remarcação disponível. Escolha a nova data e horário.</div>
+      <div style="margin-bottom:1rem">
+        <div class="calendar">
+          <div class="calendar-header">
+            <button class="cal-nav" onclick="solMesAnterior()">‹</button>
+            <span class="cal-month" id="solCalLabel"></span>
+            <button class="cal-nav" onclick="solProximoMes()">›</button>
+          </div>
+          <div class="cal-grid" id="solCalGrid"></div>
+        </div>
+        <div class="slots-panel" style="margin-top:0.8rem">
+          <h3>Horários disponíveis</h3>
+          <div class="slots-grid" id="solHorariosGrid"><p class="slots-empty">Selecione uma data</p></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.75rem;color:var(--gray);align-items:center">
+        <span>📅</span><span id="solNovaDataTexto">Nenhuma data selecionada</span>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Motivo (opcional)</label>
+        <textarea class="form-input" id="solMotivoRemarcacao" rows="2" placeholder="Ex: Compromisso surgiu de última hora..."></textarea>
+      </div>
+      <button class="btn-remarcar" id="btnConfirmarRemarcacao" onclick="confirmarSolicitacaoRemarcacao()" disabled>🔄 Confirmar Remarcação</button>
+    </div>
+    <div style="margin-top:0.8rem;padding:0.8rem 1rem;background:rgba(224,32,32,0.05);border:1px solid rgba(224,32,32,0.2);border-radius:2px;font-size:0.75rem;color:var(--gray);line-height:1.6">
+      ❌ <strong style="color:var(--light)">Não há reembolso</strong> conforme os termos aceitos. Você pode apenas remarcar com até 24h de antecedência.
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN PANEL (conteúdo idêntico ao original) ═══ -->
+<div id="admin-panel">
+  <div class="admin-container">
+    <div id="adminLogin">
+      <div class="admin-login">
+        <div class="a-eyebrow">⚙ Acesso Admin</div>
+        <h2 class="a-big-title">PAINEL <span>DO DAVI</span></h2>
+        <p class="a-sub">Entre com sua conta para acessar o painel de gerenciamento.</p>
+        <div class="admin-login-form">
+          <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="adminEmail" type="email" placeholder="davibarber@gmail.com"></div>
+          <div class="form-group">
+            <label class="form-label">Senha</label>
+            <div class="pass-wrap">
+              <input class="form-input" id="adminPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()">
+              <button class="pass-eye" onclick="togglePass('adminPass',this)">👁</button>
+            </div>
+          </div>
+          <div class="admin-err-msg" id="adminErr">E-mail ou senha incorretos.</div>
+          <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.4rem" onclick="doAdminLogin()">Entrar no Painel →</button>
+          <button class="btn-ghost" style="width:100%;text-align:center;margin-top:0.6rem" onclick="closeAdmin()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+    <div id="adminDash" style="display:none">
+      <div class="adm-topbar">
+        <div>
+          <div class="adm-topbar-title">PAINEL <span>DO DAVI</span></div>
+          <div class="adm-topbar-sub">Barbearia do Davi · Vila Guará, Luziânia – GO</div>
+        </div>
+        <div style="display:flex;gap:0.8rem;align-items:center">
+          <button class="adm-save-btn" id="globalSaveBtn" onclick="saveAdminSettings()">💾 Salvar tudo</button>
+          <button class="adm-logout-btn" onclick="adminLogout()">Sair ✕</button>
+        </div>
+      </div>
+      <div class="adm-stats">
+        <div class="adm-stat"><span class="adm-stat-n" id="stTotalSvc">8</span><span class="adm-stat-l">Serviços</span></div>
+        <div class="adm-stat"><span class="adm-stat-n" id="stWorkDays">6</span><span class="adm-stat-l">Dias/semana</span></div>
+        <div class="adm-stat"><span class="adm-stat-n" id="stSlots">11</span><span class="adm-stat-l">Horários</span></div>
+        <div class="adm-stat"><span class="adm-stat-n" id="stBlocked">0</span><span class="adm-stat-l">Bloqueados</span></div>
+      </div>
+      <div class="adm-tabs">
+        <button class="adm-tab"        onclick="switchAdmTab('dashboard')">📊 Dashboard</button>
+        <button class="adm-tab"        onclick="switchAdmTab('barbeiros')">💈 Barbeiros</button>
+        <button class="adm-tab active" onclick="switchAdmTab('status')">🔴 Status</button>
+        <button class="adm-tab"        onclick="switchAdmTab('funcionamento')">🕑 Funcionamento</button>
+        <button class="adm-tab"        onclick="switchAdmTab('dias')">📅 Dias</button>
+        <button class="adm-tab"        onclick="switchAdmTab('horarios')">🕐 Horários</button>
+        <button class="adm-tab"        onclick="switchAdmTab('servicos')">✂ Serviços</button>
+        <button class="adm-tab"        onclick="switchAdmTab('atendimentos')">📋 Atendimentos</button>
+        <button class="adm-tab"        onclick="switchAdmTab('historico')">📂 Histórico</button>
+        <button class="adm-tab"        onclick="switchAdmTab('backup')">📦 Backup</button>
+        <button class="adm-tab"        onclick="switchAdmTab('solicitacoes')">🔔 Solicitações</button>
+        <button class="adm-tab"        onclick="switchAdmTab('clientes')">👥 Clientes</button>
+        <button class="adm-tab"        onclick="switchAdmTab('instagram')">📸 Instagram</button>
+      </div>
+      <!-- painéis renderizados via JS — mantidos intactos -->
+      <div class="adm-panel" id="admTab-dashboard">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;margin-bottom:1.5rem">
+          <div><div class="adm-section-title">📊 Dashboard de Ganhos</div><div class="adm-section-sub">Visão financeira e operacional.</div></div>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <select id="dashPeriodo" onchange="carregarDashboard()" style="background:var(--card2);border:1px solid var(--border);color:var(--white);padding:0.45rem 0.8rem;font-family:'Inter',sans-serif;font-size:0.78rem;border-radius:2px;outline:none;cursor:pointer">
+              <option value="7">Últimos 7 dias</option>
+              <option value="30" selected>Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+            <button class="adm-add-btn" onclick="carregarDashboard()">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="dashCards" style="display:grid;gap:0.8rem;margin-bottom:1.5rem">
+          <div class="dash-kpi-card"><div class="dash-kpi-icone">📅</div><div class="dash-kpi-valor" id="kpiAgendVal">—</div><div class="dash-kpi-label">Agendamentos</div><div class="dash-kpi-sub" id="kpiAgendSub">no período</div></div>
+          <div class="dash-kpi-card"><div class="dash-kpi-icone">👤</div><div class="dash-kpi-valor" id="kpiClientesVal">—</div><div class="dash-kpi-label">Clientes</div><div class="dash-kpi-sub" id="kpiClientesSub">atendidos</div></div>
+          <div class="dash-kpi-card destaque"><div class="dash-kpi-icone">💰</div><div class="dash-kpi-valor" id="kpiFaturadoVal">—</div><div class="dash-kpi-label">Faturamento</div><div class="dash-kpi-sub">recebido no período</div></div>
+          <div class="dash-kpi-card"><div class="dash-kpi-icone">🎯</div><div class="dash-kpi-valor" id="kpiTicketVal">—</div><div class="dash-kpi-label">Ticket Médio</div><div class="dash-kpi-sub">por atendimento</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">📈 Faturamento por Dia</div><div class="dash-grafico-area" id="graficoFaturamento"><div class="dash-loading">Clique em Atualizar</div></div></div>
+          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">📊 Agendamentos por Dia da Semana</div><div class="dash-grafico-area" id="graficoDias"><div class="dash-loading">Clique em Atualizar</div></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">✂ Serviços Mais Vendidos</div><div id="dashServicos"><div class="dash-loading">Clique em Atualizar</div></div></div>
+          <div class="dash-grafico-wrap"><div class="dash-grafico-titulo">🕐 Horários Mais Movimentados</div><div id="dashHorarios"><div class="dash-loading">Clique em Atualizar</div></div></div>
+        </div>
+      </div>
+      <div class="adm-panel" id="admTab-barbeiros">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+          <button class="btn-red" style="justify-content:center;gap:0.4rem" onclick="abrirModalBarbeiro('')">+ Novo Barbeiro</button>
+        </div>
+        <div id="listaBarbeirosAdmin"></div>
+      </div>
+      <div class="adm-panel active" id="admTab-status">
+        <div class="status-toggle-wrap">
+          <div class="status-toggle-info">
+            <div class="status-toggle-title" id="statusToggleTitle">🟢 Aberto Agora</div>
+            <div class="status-toggle-sub"   id="statusToggleSub">A barbearia está recebendo clientes</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="shopOpenToggle" checked onchange="toggleShopStatus()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="adm-panel" id="admTab-funcionamento"><div id="funcionamentoGrid"></div></div>
+      <div class="adm-panel" id="admTab-dias">
+        <!-- ── Dias de atendimento (global) ── -->
+        <div class="dias-section-header">
+          <div class="dias-section-titulo">📅 Dias de Atendimento</div>
+        </div>
+        <div class="days-big-grid" id="adminDaysGrid"></div>
+
+        <!-- ── Datas bloqueadas (barbearia toda) ── -->
+        <hr class="dias-global-sep">
+        <div class="dias-section-header">
+          <div class="dias-section-titulo">🚫 Datas Bloqueadas (Barbearia Toda)</div>
+          <div class="dias-section-acoes">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.8rem" onclick="openAddBlockedDate()">+ Bloquear Data</button>
+          </div>
+        </div>
+        <div id="blockedDatesList"></div>
+        <div id="blockedDatesEmpty" class="barb-bloq-empty" style="display:none">Nenhuma data global bloqueada.</div>
+
+        <!-- ── Bloqueios por barbeiro ── -->
+        <hr class="dias-global-sep">
+        <div class="dias-section-header">
+          <div class="dias-section-titulo">🔒 Dias Bloqueados por Barbeiro</div>
+          <div class="dias-section-acoes">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.8rem" onclick="openModalBloqueioBarb()">🔒 Bloquear Dia</button>
+          </div>
+        </div>
+        <div class="barb-bloq-lista" id="listaBloqueiosBarb"></div>
+        <div id="listaBloqueiosBarbEmpty" class="barb-bloq-empty">Nenhum dia bloqueado para barbeiros.</div>
+      </div>
+      <div class="adm-panel" id="admTab-horarios">
+
+        <!-- Cabeçalho com ações -->
+        <div class="dias-section-header" style="margin-bottom:1rem">
+          <div class="dias-section-titulo">⏰ Horários Disponíveis</div>
+          <div class="dias-section-acoes">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.9rem" onclick="openAddSlotModal()">+ Adicionar Horário</button>
+          </div>
+        </div>
+
+        <!-- Controle de duração padrão -->
+        <div class="slot-duracao-wrap">
+          <div class="slot-duracao-info">
+            <span class="slot-duracao-label">⏱ Duração padrão por atendimento:</span>
+            <span class="slot-duracao-atual" id="labelDuracaoAtual">1h (60 min)</span>
+          </div>
+          <div class="slot-duracao-controls">
+            <select class="form-input" id="selectDuracaoPadrao" style="flex:1;background:var(--card2);font-size:0.8rem">
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60" selected>60 min (1h)</option>
+              <option value="90">90 min (1h30)</option>
+              <option value="120">120 min (2h)</option>
+            </select>
+            <button class="btn-ghost" style="font-size:0.75rem;padding:0.35rem 0.8rem;white-space:nowrap" onclick="aplicarDuracaoPadrao()">🔄 Recalcular slots</button>
+          </div>
+          <p class="slot-duracao-hint">Ao recalcular, os horários serão gerados automaticamente com base nos dias e horários de funcionamento.</p>
+        </div>
+
+        <!-- Grid de slots -->
+        <div class="slots-manage-grid" id="adminSlotsGrid"></div>
+      </div>
+      <div class="adm-panel" id="admTab-servicos">
+
+        <!-- Cabeçalho com ações -->
+        <div class="dias-section-header" style="margin-bottom:1rem">
+          <div class="dias-section-titulo">✂ Serviços</div>
+          <div class="dias-section-acoes">
+            <input class="form-input" id="svcSearchInput" type="text" placeholder="🔍 Buscar serviço..." oninput="filtrarServicosAdmin()"
+              style="background:var(--card2);font-size:0.8rem;padding:0.35rem 0.7rem;width:180px">
+            <button class="btn-red" style="font-size:0.75rem;padding:0.35rem 0.9rem" onclick="openAddSvcModal()">+ Novo Serviço</button>
+          </div>
+        </div>
+
+        <!-- Contagem -->
+        <div class="svc-count-bar" id="svcCountBar"></div>
+
+        <!-- Lista de serviços -->
+        <div id="adminServicesList"></div>
+      </div>
+      <div class="adm-panel" id="admTab-atendimentos">
+
+        <!-- Indicador de passos -->
+        <div class="atend-steps-bar">
+          <div class="atend-step-pill" id="atendPill1">
+            <span class="atend-pill-num">1</span>
+            <span class="atend-pill-txt">Barbeiro</span>
+          </div>
+          <div class="atend-step-arrow">›</div>
+          <div class="atend-step-pill inactive" id="atendPill2">
+            <span class="atend-pill-num">2</span>
+            <span class="atend-pill-txt">Data</span>
+          </div>
+          <div class="atend-step-arrow">›</div>
+          <div class="atend-step-pill inactive" id="atendPill3">
+            <span class="atend-pill-num">3</span>
+            <span class="atend-pill-txt">Atendimentos</span>
+          </div>
+        </div>
+
+        <!-- PASSO 1: Seleção de barbeiro -->
+        <div id="atendBarbeiroStep">
+          <div class="atend-step-titulo">Selecione o barbeiro para ver a agenda</div>
+          <div class="atend-barbeiros-grid" id="atendBarbeirosGrid"></div>
+        </div>
+
+        <!-- PASSO 2+3: Calendário e lista -->
+        <div id="atendCalStep" style="display:none">
+          <div class="atend-barbeiro-header">
+            <div class="atend-barbeiro-selecionado" id="atendBarbeiroNomeLabel"></div>
+            <button class="atend-trocar-btn" onclick="trocarBarbeiro()">↩ Trocar barbeiro</button>
+          </div>
+          <div class="atend-layout">
+            <div class="atend-cal-wrap">
+              <div class="calendar-header">
+                <button class="cal-nav" onclick="prevMonthAtend()">‹</button>
+                <span class="cal-month" id="atendCalLabel"></span>
+                <button class="cal-nav" onclick="nextMonthAtend()">›</button>
+              </div>
+              <div class="cal-grid" id="atendCalGrid"></div>
+            </div>
+            <div>
+              <div class="atend-data-titulo" id="atendDataTitulo">← Selecione uma data no calendário</div>
+              <div id="atendLista"></div>
+              <div id="atendImprimirWrap" style="display:none;margin-top:1.2rem">
+                <div class="atend-export-titulo">📤 Exportar agenda do dia</div>
+                <div class="atend-export-btns">
+                  <button class="btn-export-pdf" onclick="imprimirAgendaDoDia()">
+                    <span class="btn-export-icon">📄</span>
+                    <span class="btn-export-label">PDF</span>
+                    <span class="btn-export-sub">Baixar arquivo</span>
+                  </button>
+                  <button class="btn-export-img" onclick="exportarAgendaImagem()">
+                    <span class="btn-export-icon">🖼️</span>
+                    <span class="btn-export-label">Imagem</span>
+                    <span class="btn-export-sub">Salvar / WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ── Histórico de Atendimento ── -->
+      <div class="adm-panel" id="admTab-historico">
+        <!-- Seletor de barbeiro -->
+        <div id="histAtendBarbStep">
+          <div class="atend-step-titulo">Selecione o barbeiro</div>
+          <div class="atend-barbeiros-grid" id="histAtendBarbGrid"></div>
+        </div>
+        <!-- Lista de atendimentos -->
+        <div id="histAtendListStep" style="display:none">
+          <div class="atend-barbeiro-header">
+            <div class="atend-barbeiro-selecionado" id="histAtendBarbLabel"></div>
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
+              <input class="hist-atend-busca" id="histAtendBusca" type="text" placeholder="🔍 Buscar cliente..." oninput="filtrarHistoricoAtend()">
+              <button class="atend-trocar-btn" onclick="trocarBarbeiroHistorico()">↩ Trocar barbeiro</button>
+            </div>
+          </div>
+          <div class="hist-atend-stats" id="histAtendStats"></div>
+          <div id="histAtendLista"></div>
+        </div>
+      </div>
+
+      <div class="adm-panel" id="admTab-backup"><div id="backupHistoricoLista"></div></div>
+      <div class="adm-panel" id="admTab-solicitacoes"><div id="listaSolicitacoes"></div></div>
+      <div class="adm-panel" id="admTab-clientes"><div id="crmGrid"></div></div>
+
+      <!-- ── Instagram Stories ── -->
+      <div class="adm-panel" id="admTab-instagram">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;margin-bottom:1.5rem">
+          <div>
+            <div class="adm-section-title">📸 Instagram Stories</div>
+            <div class="adm-section-sub">Gere a imagem do Story com os horários disponíveis e publique manualmente.</div>
+          </div>
+        </div>
+        <div class="insta-layout">
+          <!-- Coluna de controles -->
+          <div class="insta-controls">
+            <div class="insta-group">
+              <label class="insta-label">Data</label>
+              <input type="date" id="instaData" class="form-input" />
+            </div>
+            <div class="insta-group">
+              <label class="insta-label">Barbeiro</label>
+              <select id="instaBarbeiro" class="form-input">
+                <option value="todos">Todos os barbeiros</option>
+              </select>
+            </div>
+            <div class="insta-group">
+              <label class="insta-label">Texto promocional <span style="color:var(--gray);font-weight:400">(opcional)</span></label>
+              <input type="text" id="instaPromo" class="form-input" placeholder="Ex: Promoção hoje! 20% off" maxlength="60" />
+            </div>
+            <button class="btn-red" style="width:100%;justify-content:center;margin-top:0.5rem" onclick="gerarStory()">⚡ Gerar Story</button>
+            <div id="instaAcoes" style="display:none;margin-top:0.75rem;display:none;flex-direction:column;gap:0.5rem">
+              <button class="insta-btn-acao" onclick="baixarStory()">⬇ Baixar imagem PNG</button>
+              <button class="insta-btn-acao compartilhar" id="btnCompartilhar" onclick="compartilharStory()" style="display:none">📤 Compartilhar</button>
+            </div>
+            <div class="insta-dica">
+              <strong>Como usar:</strong> Gere a imagem → Baixe → Abra o Instagram → Crie um Story → Selecione a imagem salva.
+            </div>
+          </div>
+          <!-- Coluna de preview -->
+          <div class="insta-preview-wrap">
+            <div class="insta-preview-label">Preview (9:16)</div>
+            <div class="insta-canvas-wrap">
+              <canvas id="instaCanvas" width="1080" height="1920"></canvas>
+              <div class="insta-canvas-placeholder" id="instaPlaceholder">
+                <div class="insta-ph-icon">📸</div>
+                <div class="insta-ph-txt">Clique em "Gerar Story"<br>para ver o preview</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CRM ═══ -->
+<div class="crm-modal-overlay hidden" id="crmModalOverlay" onclick="fecharCrmModal(event)">
+  <div class="crm-modal" id="crmModal">
+    <button class="crm-modal-close" onclick="document.getElementById('crmModalOverlay').classList.add('hidden')">✕</button>
+    <div class="crm-modal-name" id="crmModalNome">—</div>
+    <div class="crm-modal-contact" id="crmModalContato"></div>
+    <div class="crm-modal-kpis">
+      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiVisitas">0</span><span class="crm-kpi-l">Visitas</span></div>
+      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiGasto">R$0</span><span class="crm-kpi-l">Total gasto</span></div>
+      <div class="crm-kpi"><span class="crm-kpi-n" id="crmKpiIntervalo">—</span><span class="crm-kpi-l">Intervalo médio</span></div>
+    </div>
+    <div class="crm-modal-section"><div class="crm-modal-section-title">✂ Serviços mais feitos</div><div id="crmModalServicos" class="crm-servicos-top"></div></div>
+    <div class="crm-modal-section"><div class="crm-modal-section-title">📋 Histórico</div><div id="crmModalHistorico"></div></div>
+    <div class="crm-modal-section">
+      <div class="crm-modal-section-title">📝 Observações</div>
+      <textarea class="crm-obs-area" id="crmObsArea" placeholder="Ex: Vem a cada 15 dias..."></textarea>
+      <button class="crm-obs-save-btn" onclick="salvarObsCRM()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL BARBEIRO ═══ -->
+<div class="adm-modal-overlay" id="overlayModalBarbeiro">
+  <div class="modal-barb">
+    <!-- Título fixo no topo -->
+    <div class="modal-barb-title-wrap">
+      <div class="adm-modal-title" id="tituloModalBarbeiro">+ Novo Barbeiro</div>
+    </div>
+
+    <!-- Área scrollável -->
+    <div class="modal-barb-body">
+      <input type="hidden" id="barbIdEditando">
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label" style="text-align:center;display:block">Foto ou Emoji</label>
+        <input type="hidden" id="barbFotoUrl">
+        <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="svc-foto-upload" id="barbFotoUploadArea" onclick="document.getElementById('barbFotoFile').click()">
+          <div class="svc-foto-placeholder" id="barbFotoPlaceholder">
+            <span class="svc-foto-icon">📷</span>
+            <span class="svc-foto-txt">Clique para<br>escolher foto</span>
+          </div>
+          <img id="barb-foto-preview" class="svc-foto-img" style="display:none" alt="Foto do barbeiro">
+          <div class="svc-foto-loading" id="barbFotoLoading" style="display:none">
+            <div class="svc-foto-loading-spinner"></div>
+            Enviando...
+          </div>
+        </div>
+        <input type="file" id="barbFotoFile" accept="image/jpeg,image/png" style="display:none" onchange="onBarbFotoChange(this)">
+        <div class="svc-foto-acoes" id="barbFotoAcoes" style="display:none">
+          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('barbFotoFile').click()">🔄 Trocar</button>
+          <button type="button" class="svc-foto-btn-remove" onclick="removerFotoBarbeiro()">✕ Remover</button>
+        </div>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem">
+          <button onclick="selecionarEmoji(this,'💈')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">💈</button>
+          <button onclick="selecionarEmoji(this,'✂️')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">✂️</button>
+          <button onclick="selecionarEmoji(this,'🪒')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🪒</button>
+          <button onclick="selecionarEmoji(this,'👨')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👨</button>
+          <button onclick="selecionarEmoji(this,'🧔')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">🧔</button>
+          <button onclick="selecionarEmoji(this,'👦')" style="font-size:1.3rem;background:none;border:1px solid var(--border);border-radius:2px;padding:0.2rem 0.4rem;cursor:pointer">👦</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:0.7rem">
+        <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="barbNome" type="text" placeholder="Ex: Davi"></div>
+        <div class="form-group"><label class="form-label">Especialidade</label><input class="form-input" id="barbEsp" type="text" placeholder="Ex: Degradê &amp; Barba"></div>
+      </div>
+      <!-- Bio logo após nome/especialidade -->
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Bio / Apresentação</label>
+        <textarea class="form-input" id="barbBio" rows="2" placeholder="Ex: 5 anos de experiência, especialista em degradê..." style="resize:vertical;min-height:52px"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Dias de Atendimento</label>
+        <div class="barb-dias-grid" id="barbDiasGrid">
+          <button class="barb-dia-btn on" data-dia="0" onclick="toggleDiaBarb(this)">Dom</button>
+          <button class="barb-dia-btn on" data-dia="1" onclick="toggleDiaBarb(this)">Seg</button>
+          <button class="barb-dia-btn on" data-dia="2" onclick="toggleDiaBarb(this)">Ter</button>
+          <button class="barb-dia-btn on" data-dia="3" onclick="toggleDiaBarb(this)">Qua</button>
+          <button class="barb-dia-btn on" data-dia="4" onclick="toggleDiaBarb(this)">Qui</button>
+          <button class="barb-dia-btn on" data-dia="5" onclick="toggleDiaBarb(this)">Sex</button>
+          <button class="barb-dia-btn on" data-dia="6" onclick="toggleDiaBarb(this)">Sáb</button>
+        </div>
+      </div>
+      <div class="barb-horario-grid">
+        <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="barbHorarioInicio" type="time" value="08:00"></div>
+        <div class="form-group"><label class="form-label">Fim</label><input class="form-input" id="barbHorarioFim" type="time" value="18:00"></div>
+        <div class="form-group"><label class="form-label">Intervalo</label><select class="form-input" id="barbIntervalo" style="background:var(--card2)"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></div>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Situação</label>
+        <select class="form-input" id="barbAtivo" style="background:var(--card2)"><option value="true">✅ Ativo</option><option value="false">❌ Inativo</option></select>
+      </div>
+
+      <!-- Acesso ao Painel do Barbeiro -->
+      <div style="margin-bottom:1rem;padding:0.8rem;background:rgba(224,32,32,0.04);border:1px solid var(--border-red);border-radius:2px">
+        <div class="form-label" style="margin-bottom:0.6rem;display:flex;align-items:center;gap:0.4rem">🔑 Acesso ao Painel do Barbeiro</div>
+        <div style="font-size:0.72rem;color:var(--gray2);margin-bottom:0.7rem;line-height:1.5">Defina e-mail e senha para que o barbeiro acesse o próprio painel de agenda.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+          <div class="form-group"><label class="form-label">E-mail de acesso</label><input class="form-input" id="barbEmail" type="email" placeholder="barbeiro@email.com"></div>
+          <div class="form-group"><label class="form-label">Senha de acesso</label><input class="form-input" id="barbSenha" type="password" placeholder="Mínimo 4 caracteres"></div>
+        </div>
+      </div>
+
+      <!-- Portfólio -->
+      <div id="portAdminWrap" style="display:none">
+        <div class="port-adm-titulo">📸 Galeria de Cortes</div>
+        <div id="portAdmHeader" class="port-adm-header"></div>
+        <div style="font-size:0.65rem;color:var(--gray2);margin-bottom:0.5rem">⠿ Arraste para reordenar · ⭐ Até 3 destaques aparecem no card do barbeiro</div>
+        <div class="port-adm-grid" id="portAdminGrid"></div>
+        <div class="port-adm-add">
+          <!-- Upload câmera/galeria -->
+          <input type="file" id="portFileInput" accept="image/*" multiple style="display:none"
+                 onchange="onPortFileChange(this)">
+          <button id="portUploadBtn" class="port-upload-btn" onclick="triggerUploadFoto()">
+            📷 Câmera / Galeria
+          </button>
+          <!-- Serviço picker: aparece só após escolher arquivo -->
+          <div id="portServicoPicker" style="display:none;margin-top:0.6rem">
+            <select class="form-input" id="portNovaServico" style="background:var(--card2)">
+              <option value="">✂️ Selecione o serviço desta foto *</option>
+            </select>
+            <div class="admin-err-msg" id="portAdmErr"></div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+              <button class="btn-ghost" style="flex:1;text-align:center" onclick="cancelarUploadFoto()">Cancelar</button>
+              <button class="btn-red" style="flex:1;justify-content:center" onclick="confirmarUploadFoto()">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-err-msg" id="erroBarbeiro">Preencha o nome do barbeiro.</div>
+    </div><!-- /modal-barb-body -->
+
+    <!-- Rodapé fixo — Cancelar / Salvar sempre visíveis -->
+    <div class="modal-barb-footer">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharModalBarbeiro()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarSalvarBarbeiro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL GALERIA DO BARBEIRO (nova versão) ═══ -->
+<div class="gale-overlay" id="overlayGaleria" class-onclick-handled-by-js>
+  <div class="gale-modal">
+    <!-- Botão fechar -->
+    <div class="gale-close-btn"><button id="galeBtnClose">✕</button></div>
+    <!-- Header: avatar + info + badges -->
+    <div class="gale-header" id="galeHeader"></div>
+    <!-- Filtro por tags -->
+    <div class="gale-tags-filtro" id="galeTagsFiltro"></div>
+    <!-- Grid de fotos -->
+    <div class="gale-grid" id="galeGrid"></div>
+    <!-- Avaliações -->
+    <div class="gale-avaliacoes-wrap">
+      <div class="gale-avaliacoes-titulo">⭐ Avaliações</div>
+      <div id="galeAvaliacoes"></div>
+      <div id="galeAvForm"></div>
+    </div>
+    <!-- Footer: botão agendar -->
+    <div class="gale-footer">
+      <button class="gale-agendar-btn" id="galeAgendarBtn">
+        ✂️ Agendar com este barbeiro
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LIGHTBOX GALERIA (com swipe + navegação) ═══ -->
+<div class="gale-lb-overlay" id="galeOverlayLb">
+  <div class="gale-lb-top">
+    <span class="gale-lb-counter" id="galeLbCounter"></span>
+    <button class="gale-lb-close-btn" id="galeLbCloseBtn">✕</button>
+  </div>
+  <div class="gale-lb-img-wrap">
+    <button class="gale-lb-nav prev" id="galeLbPrev">‹</button>
+    <img id="galeLbImg" src="" alt="Foto do corte">
+    <button class="gale-lb-nav next" id="galeLbNext">›</button>
+  </div>
+  <div class="gale-lb-bottom">
+    <div class="gale-lb-caption-text" id="galeLbCaption"></div>
+    <div class="gale-lb-tags-row" id="galeLbTags"></div>
+    <button class="gale-lb-quero-btn" id="galeLbQueroBtn">
+      ✂️ Quero esse corte!
+    </button>
+  </div>
+</div>
+
+<!-- Compatibilidade: mantém IDs antigos ocultos para evitar erros de referência -->
+<div id="overlayPortfolio" style="display:none"></div>
+<div id="portLightbox"     style="display:none"></div>
+
+<!-- ═══ MODAL EDITAR TAGS DA FOTO ═══ -->
+<div class="tags-modal-overlay" id="overlayEditarTags">
+  <div class="tags-modal">
+    <div class="tags-modal-titulo">🏷 Tags da Foto</div>
+    <input type="hidden" id="tagsBarbId">
+    <input type="hidden" id="tagsFotoIdx">
+    <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.5rem">Toque nas sugestões ou adicione suas próprias:</div>
+    <div class="tags-sugeridas-grid" id="tagsChips"></div>
+    <input class="form-input" id="tagsAtuaisInput" placeholder="#degradê #barba #navalhado" style="margin:0.5rem 0;font-size:0.82rem" oninput="_sincronizarTagsInput && _sincronizarTagsInput()">
+    <div class="tags-modal-actions">
+      <button class="btn-ghost" style="flex:1;text-align:center" id="galeTagCancelBtn">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" id="galeTagSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL BLOQUEAR DIA — BARBEIRO ═══ -->
+<div class="adm-modal-overlay" id="overlayBloqueioBarb">
+  <div class="adm-modal">
+    <div class="adm-modal-title">🔒 Bloquear Dia — Barbeiro</div>
+
+    <!-- Passo 1: Selecionar barbeiro -->
+    <div class="form-group">
+      <label class="form-label">Barbeiro <span style="color:var(--red)">*</span></label>
+      <select class="form-input" id="bloqueioBarberSelect" onchange="onBarbeiroBloqueioChange()">
+        <option value="">Selecione o barbeiro...</option>
+      </select>
+    </div>
+
+    <!-- Passo 2: Data + Motivo (revelado após seleção do barbeiro) -->
+    <div id="bloqueioDateStep" style="display:none">
+      <div class="form-group" style="margin-top:0.7rem">
+        <label class="form-label">Data <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="bloqueioDateInput" type="date" onchange="onDataBloqueioChange()">
+      </div>
+      <div class="form-group" style="margin-top:0.6rem">
+        <label class="form-label">Motivo (opcional)</label>
+        <input class="form-input" id="bloqueioReason" type="text" placeholder="Ex: Folga, Férias, Feriado pessoal...">
+      </div>
+      <!-- Alerta de agendamentos existentes -->
+      <div class="bloqueio-agend-alert" id="bloqueioAgendAlert" style="display:none"></div>
+    </div>
+
+    <div class="admin-err-msg" id="bloqueioErr">Preencha todos os campos obrigatórios.</div>
+    <div style="display:flex;gap:0.6rem;margin-top:1rem">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeModalBloqueioBarb()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarBloqueioBarb()">🔒 Confirmar Bloqueio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL BLOQUEAR DATA ═══ -->
+<div class="adm-modal-overlay" id="addBlockedDateOverlay">
+  <div class="adm-modal">
+    <div class="adm-modal-title">📅 Bloquear Dia Específico</div>
+    <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="blockedDateInput" type="date"></div>
+    <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Motivo (opcional)</label><input class="form-input" id="blockedDateReason" type="text" placeholder="Ex: Feriado, Viagem..."></div>
+    <div class="admin-err-msg" id="blockedDateErr">Esta data já está bloqueada.</div>
+    <div style="display:flex;gap:0.6rem;margin-top:1rem">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddBlockedDate()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmAddBlockedDate()">Bloquear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL NOVO HORÁRIO ═══ -->
+<div class="adm-modal-overlay" id="addSlotOverlay">
+  <div class="adm-modal">
+    <div class="adm-modal-title">+ Novo Horário</div>
+    <div class="form-group" style="margin-top:0.5rem"><label class="form-label">Horário</label><input class="form-input" id="newSlotInput" type="time" value="09:00"></div>
+    <div class="admin-err-msg" id="slotErr">Este horário já existe.</div>
+    <div style="display:flex;gap:0.6rem;margin-top:1rem">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddSlotModal()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmAddSlot()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SERVIÇO ═══ -->
+<div class="adm-modal-overlay" id="addSvcOverlay">
+  <div class="adm-modal svc-modal-flex" style="max-width:460px">
+    <!-- Título fixo -->
+    <div class="adm-modal-title" id="svcModalTitle" style="padding:1.4rem 1.8rem 0;margin-bottom:0.6rem;flex-shrink:0">+ Novo Serviço</div>
+    <input type="hidden" id="editSvcId">
+    <input type="hidden" id="svcIcon">
+
+    <!-- Área scrollável -->
+    <div class="svc-modal-body">
+
+      <!-- ── Upload de Foto ── -->
+      <div class="form-group" style="margin-top:0.5rem">
+        <label class="form-label">Foto do Serviço</label>
+        <div class="svc-foto-upload" id="svcFotoUploadArea" onclick="document.getElementById('svcFotoInput').click()">
+          <div class="svc-foto-placeholder" id="svcFotoPlaceholder">
+            <span class="svc-foto-icon">📷</span>
+            <span class="svc-foto-txt">Clique para escolher foto<br><small>JPG ou PNG · redimensionada automaticamente</small></span>
+          </div>
+          <img id="svcFotoPreview" class="svc-foto-img" style="display:none" alt="Preview do serviço">
+          <div class="svc-foto-loading" id="svcFotoLoading" style="display:none">
+            <div class="svc-foto-loading-spinner"></div>
+            Enviando foto...
+          </div>
+        </div>
+        <input type="file" id="svcFotoInput" accept="image/jpeg,image/png" style="display:none" onchange="svcFotoSelecionada(this)">
+        <div class="svc-foto-acoes" id="svcFotoAcoes" style="display:none">
+          <button type="button" class="svc-foto-btn-troca" onclick="document.getElementById('svcFotoInput').click()">🔄 Trocar foto</button>
+          <button type="button" class="svc-foto-btn-remove" onclick="removerFotoSvc()">✕ Remover</button>
+        </div>
+        <!-- Seletor de redimensionamento -->
+        <div id="svcFotoResizeWrap" style="display:none;margin-top:0.5rem;align-items:center;gap:0.5rem">
+          <span style="font-size:0.68rem;color:var(--gray);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Tamanho:</span>
+          <select id="svcFotoResizeOpt" class="form-input" style="flex:1;background:var(--card2);font-size:0.72rem;padding:0.3rem 0.5rem">
+            <option value="800">Pequeno (800px) — ideal para web</option>
+            <option value="1200" selected>Médio (1200px) — recomendado</option>
+            <option value="1920">Grande (1920px) — alta qualidade</option>
+            <option value="0">Original — sem redimensionar</option>
+          </select>
+        </div>
+        <div class="admin-err-msg" id="svcFotoErr">Formato inválido. Use apenas JPG ou PNG.</div>
+        <!-- Erro de upload visível (não só toast) -->
+        <div class="admin-err-msg" id="svcFotoUploadErr" style="margin-top:0.4rem"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:0.6rem">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" id="svcName" type="text" placeholder="Ex: Corte Clássico">
+      </div>
+      <div class="form-group" style="margin-top:0.6rem"><label class="form-label">Descrição</label><textarea class="form-input" id="svcDesc" rows="2" placeholder="Descreva brevemente..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.6rem">
+        <div class="form-group"><label class="form-label">Preço (R$) *</label><input class="form-input" id="svcPrice" type="number" min="0" step="1" placeholder="35"></div>
+        <div class="form-group"><label class="form-label">Duração</label><input class="form-input" id="svcTime" type="text" placeholder="45min"></div>
+      </div>
+      <div class="admin-err-msg" id="svcErr" style="margin-top:0.5rem">Preencha nome e preço.</div>
+
+    </div><!-- /svc-modal-body -->
+
+    <!-- Rodapé fixo — sempre visível -->
+    <div class="svc-modal-footer">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="closeAddSvcModal()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" id="svcSalvarBtn" onclick="confirmSaveService()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════════
+     ★ BOTTOM NAV — substitui o hamburger ★
+     Idêntico ao design do preview enviado
+     ═══════════════════════════════════════════ -->
+<nav class="bottom-nav" id="bottomNav">
+
+  <div class="bn-item active" data-page="inicio"
+       onclick="bnSetActive(this); window.scrollTo({top:0,behavior:'smooth'})">
+    <span class="bn-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+    </span>
+    <span class="bn-label">Início</span>
+  </div>
+
+  <div class="bn-item" data-page="servicos"
+       onclick="bnSetActive(this); document.getElementById('servicos').scrollIntoView({behavior:'smooth'})">
+    <span class="bn-icon">
+      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+    </span>
+    <span class="bn-label">Serviços</span>
+  </div>
+
+  <div class="bn-item" data-page="agendar"
+       onclick="bnSetActive(this); document.getElementById('agendar').scrollIntoView({behavior:'smooth'})">
+    <span class="bn-icon">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </span>
+    <span class="bn-label">Agendar</span>
+  </div>
+
+  <div class="bn-item" data-page="perfil" id="bnPerfil"
+       onclick="bnSetActive(this); openProfileSheetOrModal()">
+    <span class="bn-dot" id="bnPerfilDot"></span>
+    <span class="bn-icon">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </span>
+    <span class="bn-label">Perfil</span>
+  </div>
+
+</nav>
+
+<script>
+  /* ── Bottom Nav JS ── */
+  function bnSetActive(el) {
+    document.querySelectorAll('.bottom-nav .bn-item').forEach(function(i){ i.classList.remove('active'); });
+    el.classList.add('active');
+    el.style.transform = 'scale(0.9)';
+    setTimeout(function(){ el.style.transform = ''; }, 120);
+  }
+  /* Auto-highlight no scroll */
+  (function() {
+    var map = [
+      { id: 'agendar',  page: 'agendar'  },
+      { id: 'servicos', page: 'servicos' },
+    ];
+    window.addEventListener('scroll', function() {
+      var y = window.scrollY + window.innerHeight / 3;
+      var matched = 'inicio';
+      map.forEach(function(s) {
+        var el = document.getElementById(s.id);
+        if (el && el.offsetTop <= y) matched = s.page;
+      });
+      document.querySelectorAll('.bottom-nav .bn-item').forEach(function(item) {
+        item.classList.toggle('active', item.dataset.page === matched);
+      });
+    });
+  })();
+  /* Bolinha vermelha no Perfil quando logado */
+  (function waitFb() {
+    if (!window._fb) { setTimeout(waitFb, 200); return; }
+    window._fb.onAuthStateChanged(window._fb.auth, function(user) {
+      var dot = document.getElementById('bnPerfilDot');
+      if (dot) dot.classList.toggle('show', !!user);
+    });
+  })();
+
+  /* ═══ CORREÇÕES 2 & 3: Profile Sheet Mobile ═══ */
+
+  /* Abre sheet no mobile, modal no desktop */
+  function openProfileSheetOrModal() {
+    if (window.innerWidth <= 768) {
+      openProfileSheet();
+    } else {
+      openUserModal();
+    }
+  }
+  window.openProfileSheetOrModal = openProfileSheetOrModal;
+
+  function openProfileSheet() {
+    renderProfileSheet();
+    var overlay = document.getElementById('profileSheetOverlay');
+    var sheet   = document.getElementById('profileSheet');
+    overlay.style.display = 'block';
+    /* forçar reflow para a transição funcionar */
+    void overlay.offsetWidth;
+    overlay.classList.add('open');
+    sheet.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  window.openProfileSheet = openProfileSheet;
+
+  function closeProfileSheet() {
+    var overlay = document.getElementById('profileSheetOverlay');
+    var sheet   = document.getElementById('profileSheet');
+    overlay.classList.remove('open');
+    sheet.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(function() { overlay.style.display = 'none'; }, 350);
+  }
+  window.closeProfileSheet = closeProfileSheet;
+
+  function renderProfileSheet() {
+    var body = document.getElementById('profileSheetBody');
+    if (!body) return;
+    var user = window.fbUser;
+    if (user) {
+      /* Calcula iniciais */
+      var parts    = (user.name || 'U').split(' ');
+      var initials = (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+      var adminBtn = user.isAdmin
+        ? '<button class="profile-sheet-admin-btn" onclick="closeProfileSheet();openAdmin(true)">⚙ Painel Admin</button>'
+        : '';
+      var barbeiroBtn = user.isBarbeiro
+        ? '<button class="profile-sheet-barbeiro-btn" onclick="closeProfileSheet();window.location.href=\'pages/painel.html\'">💈 Painel Barbeiro</button>'
+        : '';
+      body.innerHTML =
+        '<div class="profile-sheet-user">' +
+          '<div class="profile-sheet-avatar">' + initials + '</div>' +
+          '<div class="profile-sheet-info">' +
+            '<div class="profile-sheet-name">' + escapeHtml(user.name) + '</div>' +
+            '<div class="profile-sheet-email">' + escapeHtml(user.email) + '</div>' +
+            (user.isBarbeiro ? '<div style="font-size:0.65rem;color:#6FCF97;margin-top:2px;letter-spacing:0.08em;font-weight:600">💈 BARBEIRO</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="profile-sheet-divider"></div>' +
+        '<div class="profile-sheet-actions">' +
+          adminBtn +
+          barbeiroBtn +
+          '<button class="profile-sheet-account-btn" onclick="closeProfileSheet();openUserModal()">👤 Minha Conta</button>' +
+          '<button class="profile-sheet-logout-btn" onclick="closeProfileSheet();doLogout()">Sair da conta</button>' +
+        '</div>';
+    } else {
+      body.innerHTML =
+        '<div class="profile-sheet-guest">' +
+          '<div class="profile-sheet-guest-title">Sua Conta</div>' +
+          '<div class="profile-sheet-guest-sub">Entre ou crie uma conta para salvar seu histórico de agendamentos.</div>' +
+        '</div>' +
+        '<div class="profile-sheet-divider"></div>' +
+        '<div class="profile-sheet-actions">' +
+          '<button class="profile-sheet-account-btn" onclick="closeProfileSheet();openUserModal();switchTab(\'login\')">Entrar</button>' +
+          '<button class="profile-sheet-logout-btn" onclick="closeProfileSheet();openUserModal();switchTab(\'register\')">Criar Conta</button>' +
+        '</div>';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  /* Swipe para fechar */
+  (function() {
+    var sheet     = document.getElementById('profileSheet');
+    var startY    = 0;
+    var dragging  = false;
+    sheet.addEventListener('touchstart', function(e) {
+      startY   = e.touches[0].clientY;
+      dragging = true;
+    }, { passive: true });
+    sheet.addEventListener('touchmove', function(e) {
+      if (!dragging) return;
+      var dy = e.touches[0].clientY - startY;
+      if (dy > 0) sheet.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    sheet.addEventListener('touchend', function(e) {
+      if (!dragging) return;
+      dragging = false;
+      var dy = e.changedTouches[0].clientY - startY;
+      sheet.style.transform = '';
+      if (dy > 80) closeProfileSheet();
+    });
+  })();
+</script>
+
+<!-- ═══ PROFILE SHEET MOBILE (Correções 2 e 3) ═══ -->
+<div class="profile-sheet-overlay" id="profileSheetOverlay" onclick="closeProfileSheet()"></div>
+<div class="profile-sheet" id="profileSheet">
+  <div class="profile-sheet-pill"></div>
+  <div class="profile-sheet-header">
+    <span class="profile-sheet-title">Perfil</span>
+    <button class="profile-sheet-close" onclick="closeProfileSheet()" aria-label="Fechar">✕</button>
+  </div>
+  <div class="profile-sheet-divider"></div>
+  <div id="profileSheetBody"></div>
+</div>
+
+<!-- ═══ JAVASCRIPT (módulos ES6) ═══ -->
+<script type="module">
+  import { initSite } from './js/index.js';
+  import './js/login.js';
+  import './js/agendamento.js';
+  import './js/historico.js';
+  import './js/admin.js';
+  import './js/perfil.js';
+  import './js/galeria.js';
+  initSite();
+</script>
+
+
+<script>
+// Garante que as funções da galeria estejam disponíveis como globals
+// mesmo se o módulo demorar para registrar no window
+(function waitForGaleria() {
+  var fns = ['abrirGaleriaBarbeiro','fecharGaleria','fecharLightboxGaleria',
+             'navLightbox','queroEsseCorte','galeSetTag','lbTouchStart','lbTouchEnd',
+             'abrirLightboxGaleria','galeSetNota','galeEnviarAvaliacao',
+             'fecharEditarTags','confirmarEditarTags','toggleTagChip'];
+  var interval = setInterval(function() {
+    var allReady = fns.every(function(fn) { return typeof window[fn] === 'function'; });
+    if (allReady) { clearInterval(interval); return; }
+    // Tenta de novo em 50ms — não deve demorar mais que 1-2 ciclos
+  }, 50);
+  // Timeout de segurança: 5s
+  setTimeout(function() { clearInterval(interval); }, 5000);
+})();
+</script>
+</body>
+</html>
