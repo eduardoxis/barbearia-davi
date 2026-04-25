@@ -420,6 +420,7 @@ export function abrirGaleriaBarbeiro(id) {
     const estrelas = nota ? `<div class="gale-nota-badge">${_renderEstrelas(nota)} <span>${nota.toFixed(1)}</span></div>` : '';
     const totalFotos = (b.portfolio || []).length;
     const fotosInfo  = totalFotos ? `<div class="gale-fotos-badge">📸 ${totalFotos} foto${totalFotos !== 1 ? 's' : ''}</div>` : '';
+    const instaHandle = b.instagram ? `<a class="gale-insta-handle" href="https://instagram.com/${b.instagram}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">📸 @${b.instagram}</a>` : '';
 
     /* Hero de fundo: usa a primeira foto de destaque ou a primeira do portfólio */
     const heroFoto = (b.portfolio || []).find(f => f.destaque)?.url || b.portfolio?.[0]?.url || '';
@@ -436,6 +437,7 @@ export function abrirGaleriaBarbeiro(id) {
             <div class="gale-nome">${b.nome}</div>
             <div class="gale-esp">${b.especialidade || 'Barbeiro profissional'}</div>
             ${b.bio ? `<div class="gale-bio">${b.bio}</div>` : ''}
+            ${instaHandle}
             <div class="gale-badges">${cortes}${estrelas}${fotosInfo}</div>
           </div>
         </div>
