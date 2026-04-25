@@ -14,7 +14,7 @@
   import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy }
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
@@ -30,7 +30,7 @@
   const auth    = getAuth(app);
   const db      = getFirestore(app);
   const storage = getStorage(app);
-  window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy };
+  window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc };
 
   // Autenticação do barbeiro no Firebase para liberar writes no Firestore.
   // Usa as credenciais salvas na sessão durante o login (email/senha do barbeiro),
@@ -427,7 +427,35 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   background: #6FCF97;
   border-radius: 50%;
 }
-.barb-cal-day.selecionado.tem-agend::after { background: #fff; }.semana-day-header {
+/* ── Dias bloqueados pelo barbeiro ── */
+.bloq-painel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--red);
+  border-radius: 2px;
+}
+.bloq-painel-info { display: flex; flex-direction: column; gap: 0.15rem; }
+.bloq-painel-data { font-size: 0.8rem; font-weight: 700; color: var(--white); }
+.bloq-painel-motivo { font-size: 0.7rem; color: var(--gray2); }
+.bloq-painel-del {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--gray2);
+  width: 26px; height: 26px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.bloq-painel-del:hover { border-color: var(--red); color: var(--red); }
+.semana-day-header {
   font-family: 'Oswald', sans-serif;
   font-size: 0.82rem;
   font-weight: 700;
@@ -484,12 +512,13 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   </div>
 
   <!-- ── Tabs ── -->
-  <div class="barb-tabs" style="grid-template-columns:repeat(5,1fr)">
-    <button class="barb-tab active" id="tabHoje"      onclick="barb_switchTab('hoje')">📅 Hoje</button>
-    <button class="barb-tab"        id="tabAmanha"    onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
-    <button class="barb-tab"        id="tabSemana"    onclick="barb_switchTab('semana')">📆 Semana</button>
+  <div class="barb-tabs" style="grid-template-columns:repeat(6,1fr)">
+    <button class="barb-tab active" id="tabHoje"       onclick="barb_switchTab('hoje')">📅 Hoje</button>
+    <button class="barb-tab"        id="tabAmanha"     onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
+    <button class="barb-tab"        id="tabSemana"     onclick="barb_switchTab('semana')">📆 Semana</button>
     <button class="barb-tab"        id="tabCalendario" onclick="barb_switchTab('calendario')">🗓 Calendário</button>
-    <button class="barb-tab"        id="tabAgenda"    onclick="barb_switchTab('agenda')">⚙️ Minha Agenda</button>
+    <button class="barb-tab"        id="tabStory"      onclick="barb_switchTab('story')">📸 Story</button>
+    <button class="barb-tab"        id="tabAgenda"     onclick="barb_switchTab('agenda')">⚙️ Agenda</button>
   </div>
 
   <!-- ── Painel: Hoje ── -->
@@ -532,39 +561,41 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
         <div class="agenda-section-title">📷 Minha Foto</div>
         <div class="agenda-section-sub">Atualize sua foto de perfil exibida no agendamento</div>
         <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
-          <!-- Avatar preview -->
-          <div id="painelFotoAvatar" style="
-            width:72px;height:72px;border-radius:50%;
-            background:var(--card2);border:2px solid var(--border);
-            display:flex;align-items:center;justify-content:center;
-            font-size:2rem;overflow:hidden;flex-shrink:0;position:relative;
-          ">
+          <div id="painelFotoAvatar" style="width:72px;height:72px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;flex-shrink:0;position:relative;">
             <span id="painelFotoEmoji">💈</span>
             <img id="painelFotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0">
             <div id="painelFotoLoading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;font-size:0.7rem;color:var(--gray)">⏳</div>
           </div>
-          <!-- Botões -->
           <div style="display:flex;flex-direction:column;gap:0.5rem">
-            <label style="
-              background:var(--red);color:#fff;
-              font-size:0.7rem;font-weight:700;letter-spacing:0.1em;
-              text-transform:uppercase;padding:0.5rem 1rem;
-              border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;
-              display:inline-block;
-            ">
+            <label style="background:var(--red);color:#fff;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;display:inline-block;">
               📁 ESCOLHER FOTO
               <input type="file" accept="image/jpeg,image/png" style="display:none" onchange="painelUploadFoto(this)">
             </label>
-            <button onclick="painelRemoverFoto()" style="
-              background:transparent;border:1px solid var(--border);color:var(--gray);
-              font-size:0.68rem;font-weight:700;letter-spacing:0.08em;
-              text-transform:uppercase;padding:0.4rem 0.8rem;
-              border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;
-            ">✕ REMOVER</button>
+            <button onclick="painelRemoverFoto()" style="background:transparent;border:1px solid var(--border);color:var(--gray);font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 0.8rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;">✕ REMOVER</button>
           </div>
         </div>
         <div id="painelFotoMsg" style="font-size:0.72rem;margin-top:0.5rem;min-height:1rem"></div>
       </div>
+
+      <!-- ── FEATURE 4: Instagram ── -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">📸 Instagram</div>
+        <div class="agenda-section-sub">Cole o link do seu perfil — só o @usuário aparece na galeria</div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="agenda-field" style="flex:1;min-width:200px">
+            <label class="agenda-label">Link ou @usuário</label>
+            <input class="agenda-input" type="url" id="painelInstagram" placeholder="https://instagram.com/seu_usuario" style="width:100%;box-sizing:border-box">
+          </div>
+          <button onclick="salvarInstagramBarbeiro()" style="background:var(--red);border:none;color:#fff;font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.52rem 1rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;align-self:flex-end">💾 SALVAR</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+          <span style="font-size:0.7rem;color:var(--gray)">Exibido como:</span>
+          <span id="painelInstagramDisplay" style="font-size:0.82rem;font-weight:700;color:#E1306C"></span>
+        </div>
+        <div id="painelInstagramMsg" style="font-size:0.72rem;margin-top:0.3rem;min-height:1rem"></div>
+      </div>
+
+      <!-- ── Dias de atendimento ── -->
       <div class="agenda-section">
         <div class="agenda-section-title">📅 Dias de atendimento</div>
         <div class="agenda-section-sub">Selecione os dias em que você trabalha</div>
@@ -579,10 +610,10 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
         </div>
       </div>
 
-      <!-- Horário -->
+      <!-- ── FEATURE 1: Horário com validação ── -->
       <div class="agenda-section">
         <div class="agenda-section-title">⏰ Horário de funcionamento</div>
-        <div class="agenda-section-sub">Defina o início e fim do seu atendimento</div>
+        <div class="agenda-section-sub">Defina o início e fim dentro do horário da barbearia</div>
         <div class="agenda-horario-row">
           <div class="agenda-field">
             <label class="agenda-label">Início</label>
@@ -594,9 +625,11 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
             <input class="agenda-input" type="time" id="agendaFim" value="18:00">
           </div>
         </div>
+        <!-- Hint de validação vs horário do admin -->
+        <div id="agendaLimiteHint" style="display:none;font-size:0.7rem;font-weight:600;margin-top:0.6rem;padding:0.4rem 0.7rem;border-radius:2px;background:rgba(0,0,0,0.2);border-left:3px solid currentColor;line-height:1.4"></div>
       </div>
 
-      <!-- Intervalo entre cortes -->
+      <!-- ── Intervalo entre cortes ── -->
       <div class="agenda-section">
         <div class="agenda-section-title">✂️ Duração por atendimento</div>
         <div class="agenda-section-sub">Tempo reservado para cada cliente</div>
@@ -609,19 +642,88 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
         </div>
       </div>
 
-      <!-- Preview de horários gerados -->
+      <!-- ── Preview de horários ── -->
       <div class="agenda-section">
         <div class="agenda-section-title">📋 Horários gerados</div>
         <div class="agenda-section-sub">Prévia dos slots disponíveis para agendamento</div>
         <div class="agenda-slots-preview" id="agendaSlotsPreview"></div>
       </div>
 
-      <!-- Botão salvar -->
+      <!-- ── FEATURE 2: Dias bloqueados pelo barbeiro ── -->
+      <div class="agenda-section">
+        <div class="agenda-section-title">🔒 Dias que não vou atender</div>
+        <div class="agenda-section-sub">Bloqueie dias específicos — folga, viagem, compromisso</div>
+
+        <!-- Formulário de bloqueio -->
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.8rem;align-items:flex-end">
+          <div class="agenda-field">
+            <label class="agenda-label">Data</label>
+            <input class="agenda-input" type="date" id="painelBloqDate">
+          </div>
+          <div class="agenda-field" style="flex:1;min-width:140px">
+            <label class="agenda-label">Motivo (opcional)</label>
+            <input class="agenda-input" type="text" id="painelBloqReason" placeholder="Ex: Folga, médico…" style="width:100%;box-sizing:border-box">
+          </div>
+          <button onclick="adicionarDiaBloqueadoPainel()" style="background:var(--red);border:none;color:#fff;font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.52rem 1rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;align-self:flex-end">+ BLOQUEAR</button>
+        </div>
+        <div id="painelBloqMsg" style="font-size:0.72rem;margin-bottom:0.5rem;min-height:1rem"></div>
+
+        <!-- Lista de bloqueios -->
+        <div id="painelBloqLista" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+        <div id="painelBloqEmpty" style="font-size:0.78rem;color:var(--gray2);font-style:italic;display:none">Nenhum dia bloqueado.</div>
+      </div>
+
+      <!-- ── Botão salvar ── -->
       <button class="agenda-save-btn" id="agendaSaveBtn" onclick="salvarMinhaAgenda()">
         💾 SALVAR MINHA AGENDA
       </button>
       <div class="agenda-save-msg" id="agendaSaveMsg"></div>
 
+    </div>
+  </div>
+
+  <!-- ── FEATURE 3: Painel Story ── -->
+  <div class="barb-panel" id="panel-story">
+    <div style="max-width:520px">
+      <div style="font-family:'Oswald',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray);margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--border)">
+        Gere um Story com <strong style="color:var(--white)">seus horários disponíveis</strong> para compartilhar
+      </div>
+
+      <!-- Configuração -->
+      <div style="display:flex;flex-direction:column;gap:0.8rem;margin-bottom:1.2rem">
+        <div class="agenda-field">
+          <label class="agenda-label">Data do Story</label>
+          <input class="agenda-input" type="date" id="storyData">
+        </div>
+        <div class="agenda-field">
+          <label class="agenda-label">Promoção / texto extra (opcional)</label>
+          <input class="agenda-input" type="text" id="storyPromo" placeholder="Ex: Combo corte + barba R$45">
+        </div>
+        <button onclick="gerarStoryPainel()" style="background:var(--red);border:none;color:#fff;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.8rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;width:100%;transition:background 0.2s">
+          ✨ GERAR STORY
+        </button>
+      </div>
+
+      <!-- Placeholder -->
+      <div id="storyPlaceholder" style="border:2px dashed var(--border);border-radius:4px;padding:3rem 1rem;text-align:center;color:var(--gray2)">
+        <div style="font-size:2.2rem;margin-bottom:0.6rem;opacity:0.4">📸</div>
+        <div style="font-size:0.82rem">Clique em <strong style="color:var(--gray)">Gerar Story</strong> para criar a imagem</div>
+      </div>
+
+      <!-- Ações (aparecem após gerar) -->
+      <div id="storyAcoes" style="display:none;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap">
+        <button onclick="baixarStoryPainel()" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--white);font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.65rem 1rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color 0.2s;min-width:140px">
+          ⬇️ BAIXAR PNG
+        </button>
+        <button id="storyBtnCompartilhar" onclick="compartilharStoryPainel()" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--white);font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.65rem 1rem;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color 0.2s;min-width:140px;display:none">
+          📤 COMPARTILHAR
+        </button>
+      </div>
+
+      <!-- Canvas do Story (scroll horizontal no mobile) -->
+      <div style="overflow-x:auto;border-radius:4px;border:1px solid var(--border);background:#0D0D0D">
+        <canvas id="painelStoryCanvas" style="max-width:100%;height:auto;display:block"></canvas>
+      </div>
     </div>
   </div>
 
