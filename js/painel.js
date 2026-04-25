@@ -3,9 +3,10 @@
    Barbearia do Davi
 ══════════════════════════════════════════ */
 
-let _barbeiro     = null;
-let _agendamentos = [];
-let _dataAtual    = _hoje();
+let _barbeiro          = null;
+let _agendamentos      = [];
+let _dataAtual         = _hoje();
+let _diasBloqueadosPainel = [];
 
 /* ─── Helpers de data ─────────────────── */
 function _hoje() { return _fmtBR(new Date()); }
@@ -52,6 +53,7 @@ async function init() {
   if (!_barbeiro) { _mostrarErroAcesso(); return; }
   _renderHeader();
   await _carregarEAtualizar();
+  await _loadDiasBloqueados();
 
   document.getElementById('btnHoje')?.addEventListener('click', () => {
     _dataAtual = _hoje(); _renderPainelHoje(); _renderNavData();
@@ -208,6 +210,7 @@ function _renderPainelSemana() {
 function _renderTab(tab) {
   if (tab === 'amanha')    _renderPainelAmanha();
   if (tab === 'semana')    _renderPainelSemana();
+  if (tab === 'story')     _initStoryTab();
   if (tab === 'calendario') {
     _renderCalendarioBarbeiro();
     if (!_calNavRegistrado) {
@@ -236,6 +239,12 @@ function _renderMinhaAgenda() {
   if (emoji && _barbeiro.emoji) emoji.textContent = _barbeiro.emoji;
   _painelAtualizarAvatarUI(_barbeiro.foto || '');
 
+  // Instagram
+  const instaEl = document.getElementById('painelInstagram');
+  if (instaEl) instaEl.value = _barbeiro.instagram ? `https://instagram.com/${_barbeiro.instagram}` : '';
+  const instaDisplay = document.getElementById('painelInstagramDisplay');
+  if (instaDisplay) instaDisplay.textContent = _barbeiro.instagram ? `@${_barbeiro.instagram}` : '';
+
   // Dias
   const diasAtivos = _barbeiro.diasAtendimento || [1,2,3,4,5,6];
   document.querySelectorAll('#agendaDiasGrid .agenda-dia-btn').forEach(btn => {
@@ -262,14 +271,45 @@ function _renderMinhaAgenda() {
     };
   });
 
+  // Data mínima para bloqueio de dias
+  const bloqDate = document.getElementById('painelBloqDate');
+  if (bloqDate) bloqDate.min = new Date().toISOString().split('T')[0];
+
   _atualizarPreviewSlots();
+  _renderDiasBloqueados();
 }
 
 function _atualizarPreviewSlots() {
   const inicio = document.getElementById('agendaInicio')?.value || '08:00';
   const fim    = document.getElementById('agendaFim')?.value    || '18:00';
-  const slots  = _gerarSlots(inicio, fim, _agendaIntervalo);
-  const wrap   = document.getElementById('agendaSlotsPreview');
+  const diasAtivos = [...document.querySelectorAll('#agendaDiasGrid .agenda-dia-btn.on')]
+    .map(b => parseInt(b.dataset.dia));
+
+  // Validação vs horário da barbearia
+  const hintEl = document.getElementById('agendaLimiteHint');
+  if (hintEl) {
+    if (diasAtivos.length) {
+      const lim   = _getShopConstraintsForDays(diasAtivos);
+      const erros = _validarHorarioBarbeiro(inicio, fim, diasAtivos);
+      if (erros.length) {
+        hintEl.innerHTML = `⚠️ Fora do horário da barbearia`;
+        hintEl.title = erros.join('\n');
+        hintEl.style.color = 'var(--red)';
+        hintEl.style.display = 'block';
+      } else if (lim) {
+        hintEl.textContent = `✓ Dentro do horário da barbearia (${lim.open}–${lim.close})`;
+        hintEl.style.color = '#27ae60';
+        hintEl.style.display = 'block';
+      } else {
+        hintEl.style.display = 'none';
+      }
+    } else {
+      hintEl.style.display = 'none';
+    }
+  }
+
+  const slots = _gerarSlots(inicio, fim, _agendaIntervalo);
+  const wrap  = document.getElementById('agendaSlotsPreview');
   if (!wrap) return;
   if (!slots.length) {
     wrap.innerHTML = '<span style="font-size:0.75rem;color:var(--gray)">Nenhum horário gerado. Verifique início/fim.</span>';
@@ -306,6 +346,14 @@ window.salvarMinhaAgenda = async function() {
 
   if (!diasAtivos.length) {
     if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '⚠️ Selecione ao menos um dia de atendimento.'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💾 SALVAR MINHA AGENDA'; }
+    return;
+  }
+
+  // Validação vs horário da barbearia
+  const errosHorario = _validarHorarioBarbeiro(inicio, fim, diasAtivos);
+  if (errosHorario.length) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '⚠️ ' + errosHorario[0]; }
     if (btn) { btn.disabled = false; btn.textContent = '💾 SALVAR MINHA AGENDA'; }
     return;
   }
@@ -687,3 +735,346 @@ window.painelRemoverFoto = async function() {
 
 if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
 else init();
+
+/* ══════════════════════════════════════════
+   FEATURE 1 — VALIDAÇÃO DE HORÁRIO vs ADM
+══════════════════════════════════════════ */
+
+function _validarHorarioBarbeiro(inicio, fim, diasAtivos) {
+  const settings  = window._painelSettings || {};
+  const workHours = settings.workHours || {};
+  const workDays  = settings.workDays  || [];
+  const NOMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const erros = [];
+  diasAtivos.forEach(dia => {
+    if (workDays.length && !workDays.includes(dia)) {
+      erros.push(`${NOMES[dia]}: não é dia de funcionamento da barbearia`);
+      return;
+    }
+    const h = workHours[dia] ?? workHours[String(dia)];
+    if (!h) return;
+    if (inicio < h.open)  erros.push(`${NOMES[dia]}: início ${inicio} antes da abertura (${h.open})`);
+    if (fim   > h.close)  erros.push(`${NOMES[dia]}: fim ${fim} após o fechamento (${h.close})`);
+  });
+  return erros;
+}
+
+function _getShopConstraintsForDays(diasAtivos) {
+  const settings  = window._painelSettings || {};
+  const workHours = settings.workHours || {};
+  let maxOpen = null, minClose = null;
+  diasAtivos.forEach(dia => {
+    const h = workHours[dia] ?? workHours[String(dia)];
+    if (!h) return;
+    if (!maxOpen  || h.open  > maxOpen)  maxOpen  = h.open;
+    if (!minClose || h.close < minClose) minClose = h.close;
+  });
+  return maxOpen ? { open: maxOpen, close: minClose } : null;
+}
+
+/* ══════════════════════════════════════════
+   FEATURE 2 — DIAS BLOQUEADOS (painel barbeiro)
+══════════════════════════════════════════ */
+
+async function _loadDiasBloqueados() {
+  if (!window._fb || !_barbeiro) return;
+  try {
+    const { collection, getDocs, query, where, db } = window._fb;
+    const q    = query(collection(db, 'dias_bloqueados'), where('barber_id', '==', _barbeiro.id));
+    const snap = await getDocs(q);
+    _diasBloqueadosPainel = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { _diasBloqueadosPainel = []; }
+  _renderDiasBloqueados();
+}
+
+function _renderDiasBloqueados() {
+  const lista = document.getElementById('painelBloqLista');
+  const empty = document.getElementById('painelBloqEmpty');
+  if (!lista) return;
+
+  const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const bloqueios = [..._diasBloqueadosPainel].sort((a,b) => a.date > b.date ? 1 : -1);
+
+  lista.innerHTML = '';
+  if (!bloqueios.length) {
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  bloqueios.forEach(item => {
+    const [y,m,d] = item.date.split('-').map(Number);
+    const dt      = new Date(y, m-1, d);
+    const friendly = `${DIAS[dt.getDay()]}, ${String(d).padStart(2,'0')} ${MESES[m-1]} ${y}`;
+    const row = document.createElement('div');
+    row.className = 'bloq-painel-item';
+    row.innerHTML = `
+      <div class="bloq-painel-info">
+        <div class="bloq-painel-data">🔒 ${friendly}</div>
+        ${item.reason ? `<div class="bloq-painel-motivo">📝 ${item.reason}</div>` : ''}
+      </div>
+      <button class="bloq-painel-del" onclick="removerDiaBloqueadoPainel('${item.id}')">✕</button>`;
+    lista.appendChild(row);
+  });
+}
+
+window.adicionarDiaBloqueadoPainel = async function() {
+  const dateISO = document.getElementById('painelBloqDate')?.value;
+  const reason  = (document.getElementById('painelBloqReason')?.value || '').trim() || null;
+  const msgEl   = document.getElementById('painelBloqMsg');
+
+  if (!dateISO) {
+    if (msgEl) { msgEl.style.color='var(--red)'; msgEl.textContent='Selecione uma data.'; }
+    return;
+  }
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const [y,m,d] = dateISO.split('-').map(Number);
+  if (new Date(y,m-1,d) < hoje) {
+    if (msgEl) { msgEl.style.color='var(--red)'; msgEl.textContent='Não é possível bloquear datas passadas.'; }
+    return;
+  }
+  if (_diasBloqueadosPainel.some(b => b.date === dateISO)) {
+    if (msgEl) { msgEl.style.color='var(--red)'; msgEl.textContent='Este dia já está bloqueado.'; }
+    return;
+  }
+
+  const novoDoc = { barber_id: _barbeiro.id, date: dateISO, reason, created_at: new Date().toISOString() };
+  if (window._fb) {
+    try {
+      if (window._fbAuthReady) await window._fbAuthReady;
+      const ref = await window._fb.addDoc(window._fb.collection(window._fb.db, 'dias_bloqueados'), novoDoc);
+      novoDoc.id = ref.id;
+    } catch(e) {
+      if (msgEl) { msgEl.style.color='var(--red)'; msgEl.textContent='Erro: '+e.message; }
+      return;
+    }
+  } else { novoDoc.id = 'local_'+Date.now(); }
+
+  _diasBloqueadosPainel.push(novoDoc);
+  _renderDiasBloqueados();
+  document.getElementById('painelBloqDate').value   = '';
+  document.getElementById('painelBloqReason').value = '';
+  if (msgEl) { msgEl.style.color='#27ae60'; msgEl.textContent='✅ Dia bloqueado!'; }
+  setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+};
+
+window.removerDiaBloqueadoPainel = async function(id) {
+  if (!confirm('Desbloquear este dia?')) return;
+  if (window._fb && !id.startsWith('local_')) {
+    try {
+      if (window._fbAuthReady) await window._fbAuthReady;
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'dias_bloqueados', id));
+    } catch(e) { _mostrarToast('❌ Erro: '+e.message); return; }
+  }
+  _diasBloqueadosPainel = _diasBloqueadosPainel.filter(b => b.id !== id);
+  _renderDiasBloqueados();
+  _mostrarToast('✅ Dia desbloqueado!');
+};
+
+/* ══════════════════════════════════════════
+   FEATURE 3 — STORY DO BARBEIRO
+══════════════════════════════════════════ */
+
+function _initStoryTab() {
+  const dataInput = document.getElementById('storyData');
+  if (dataInput && !dataInput.value) dataInput.value = new Date().toISOString().split('T')[0];
+  const btnComp = document.getElementById('storyBtnCompartilhar');
+  if (btnComp) btnComp.style.display = !!navigator.share ? 'flex' : 'none';
+}
+
+function _storyFormatarData(iso) {
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y,m,d] = iso.split('-').map(Number);
+  return `${d} de ${MESES[m-1]} de ${y}`;
+}
+
+async function _getSlotsPainelBarbeiro(dataISO) {
+  const [y,m,d] = dataISO.split('-');
+  const dataBR  = `${d}/${m}/${y}`;
+  const slots   = _gerarSlots(_barbeiro.horarioInicio||'08:00', _barbeiro.horarioFim||'18:00', _barbeiro.intervalo||60);
+  const settings    = window._painelSettings || {};
+  const adminBlocked = settings.takenSlots || [];
+  const isBloqueado = _diasBloqueadosPainel.some(b => b.date === dataISO);
+  if (isBloqueado) return [];
+  const agDoDia = _agendamentos
+    .filter(a => { const ad = a.data||''; return ad===dataBR || ad===dataISO; })
+    .map(a => a.horario);
+  return slots.filter(s => !agDoDia.includes(s) && !adminBlocked.includes(s));
+}
+
+function _storyRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function _desenharStoryBarbeiro({ dataISO, livres, promoTxt }) {
+  const canvas = document.getElementById('painelStoryCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = 1080;
+  const COLS = 3, SLOT_W = 240, SLOT_H = 88, GAP_X = 40, GAP_Y = 20;
+  const rows = Math.ceil(livres.length / COLS);
+  const H = Math.max(
+    820 +
+    (livres.length ? rows*(SLOT_H+GAP_Y)+60 : 140) +
+    (promoTxt ? 160 : 0) +
+    290,
+    1920
+  );
+  canvas.width = W; canvas.height = H;
+
+  // Background
+  ctx.fillStyle = '#0D0D0D'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(255,255,255,0.018)';
+  for (let x=0;x<W;x+=40) for (let y=0;y<H;y+=40) { ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill(); }
+
+  // Red bars
+  ctx.fillStyle='#E02020'; ctx.fillRect(0,0,W,14); ctx.fillRect(0,H-14,W,14);
+  ctx.fillStyle='rgba(224,32,32,0.12)'; ctx.fillRect(0,14,6,H-28);
+
+  let curY = 60;
+
+  // Title
+  ctx.font='bold 110px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF'; ctx.textAlign='center';
+  curY+=110; ctx.fillText('BARBEARIA', W/2, curY);
+  ctx.font='bold 180px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#E02020';
+  curY+=190; ctx.fillText('DAVI', W/2, curY);
+
+  curY+=50; ctx.strokeStyle='#E02020'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(80,curY); ctx.lineTo(W-80,curY); ctx.stroke();
+
+  // Barbeiro name
+  curY+=90;
+  ctx.font='bold 64px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF'; ctx.textAlign='center';
+  const emoji = _barbeiro.emoji || '💈';
+  ctx.fillText(`${emoji}  ${(_barbeiro.nome||'').toUpperCase()}`, W/2, curY);
+
+  // Subtitle
+  curY+=70; ctx.font='bold 56px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF';
+  ctx.fillText('HORÁRIOS DISPONÍVEIS', W/2, curY);
+  curY+=58; ctx.font='400 44px Arial,sans-serif'; ctx.fillStyle='#888888';
+  ctx.fillText(_storyFormatarData(dataISO).toUpperCase(), W/2, curY);
+
+  curY+=55; ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(80,curY); ctx.lineTo(W-80,curY); ctx.stroke();
+  curY+=65;
+
+  // Slots
+  const blockX = (W - (COLS*SLOT_W + (COLS-1)*GAP_X)) / 2;
+  if (!livres.length) {
+    ctx.font='400 48px Arial,sans-serif'; ctx.fillStyle='#555555'; ctx.textAlign='center';
+    ctx.fillText('Nenhum horário disponível neste dia', W/2, curY+60);
+    curY+=140;
+  } else {
+    livres.forEach((h,i) => {
+      const col=i%COLS, row=Math.floor(i/COLS);
+      const sx=blockX+col*(SLOT_W+GAP_X), sy=curY+row*(SLOT_H+GAP_Y);
+      ctx.fillStyle='rgba(224,32,32,0.15)'; _storyRoundRect(ctx,sx,sy,SLOT_W,SLOT_H,6); ctx.fill();
+      ctx.strokeStyle='#E02020'; ctx.lineWidth=2; _storyRoundRect(ctx,sx,sy,SLOT_W,SLOT_H,6); ctx.stroke();
+      ctx.font='bold 48px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF'; ctx.textAlign='center';
+      ctx.fillText(h, sx+SLOT_W/2, sy+SLOT_H/2+17);
+    });
+    curY += rows*(SLOT_H+GAP_Y)+40;
+  }
+
+  // Promo
+  if (promoTxt) {
+    curY+=20;
+    ctx.fillStyle='rgba(224,32,32,0.2)'; _storyRoundRect(ctx,80,curY,W-160,110,6); ctx.fill();
+    ctx.strokeStyle='#E02020'; ctx.lineWidth=3; _storyRoundRect(ctx,80,curY,W-160,110,6); ctx.stroke();
+    ctx.font='bold 50px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF'; ctx.textAlign='center';
+    ctx.fillText(promoTxt.toUpperCase(), W/2, curY+73);
+    curY+=150;
+  }
+
+  // Footer
+  curY+=20; ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(80,curY); ctx.lineTo(W-80,curY); ctx.stroke();
+  curY+=80; ctx.font='bold 52px "Arial Black",Arial,sans-serif'; ctx.fillStyle='#FFFFFF'; ctx.textAlign='center';
+  ctx.fillText('BARBEARIA DO DAVI', W/2, curY);
+  curY+=70; ctx.font='400 40px Arial,sans-serif'; ctx.fillStyle='#E02020';
+  ctx.fillText('Agende pelo link na bio 📲', W/2, curY);
+
+  // Instagram handle in footer
+  if (_barbeiro.instagram) {
+    curY+=55; ctx.font='400 38px Arial,sans-serif'; ctx.fillStyle='#888888';
+    ctx.fillText(`@${_barbeiro.instagram}`, W/2, curY);
+  }
+}
+
+window.gerarStoryPainel = async function() {
+  const dataISO  = document.getElementById('storyData')?.value;
+  const promoTxt = (document.getElementById('storyPromo')?.value||'').trim();
+  if (!dataISO) { _mostrarToast('⚠️ Selecione uma data'); return; }
+  _mostrarToast('⏳ Gerando Story...');
+  const livres = await _getSlotsPainelBarbeiro(dataISO);
+  _desenharStoryBarbeiro({ dataISO, livres, promoTxt });
+  const acoes = document.getElementById('storyAcoes');
+  if (acoes) acoes.style.display = 'flex';
+  const ph = document.getElementById('storyPlaceholder');
+  if (ph) ph.style.display = 'none';
+  _mostrarToast('✅ Story gerado!');
+};
+
+window.baixarStoryPainel = function() {
+  const canvas = document.getElementById('painelStoryCanvas');
+  if (!canvas) return;
+  const dataISO = document.getElementById('storyData')?.value || '';
+  const [y,m,d] = dataISO.split('-');
+  const nomeArq = `story-${(_barbeiro.nome||'barbeiro').toLowerCase().replace(/\s+/g,'_')}-${d||''}${m||''}${y||''}.png`;
+  const link = document.createElement('a');
+  link.download = nomeArq; link.href = canvas.toDataURL('image/png'); link.click();
+  _mostrarToast('⬇️ Download iniciado!');
+};
+
+window.compartilharStoryPainel = async function() {
+  const canvas = document.getElementById('painelStoryCanvas');
+  if (!canvas || !navigator.share) return;
+  canvas.toBlob(async blob => {
+    const file = new File([blob], `story-barbearia.png`, { type: 'image/png' });
+    try { await navigator.share({ files: [file], title: 'Story Barbearia do Davi' }); }
+    catch(e) { if (e.name !== 'AbortError') _mostrarToast('⚠️ Compartilhamento não suportado.'); }
+  }, 'image/png');
+};
+
+/* ══════════════════════════════════════════
+   FEATURE 4 — INSTAGRAM DO BARBEIRO
+══════════════════════════════════════════ */
+
+window.salvarInstagramBarbeiro = async function() {
+  const instaVal = (document.getElementById('painelInstagram')?.value || '').trim();
+  const msgEl    = document.getElementById('painelInstagramMsg');
+  let handle = instaVal;
+
+  if (instaVal.includes('instagram.com/')) {
+    const match = instaVal.match(/instagram\.com\/([^/?&#\s]+)/);
+    handle = match ? match[1] : '';
+  }
+  handle = handle.replace(/^@/, '').trim();
+
+  try {
+    if (window._fbAuthReady) await window._fbAuthReady;
+    const fb   = window._fb;
+    const snap = await fb.getDoc(fb.doc(fb.db,'settings','admin'));
+    const sets = snap.exists() ? snap.data() : {};
+    const barbs = sets.barbeiros || [];
+    const idx   = barbs.findIndex(b => b.id === _barbeiro.id);
+    if (idx < 0) throw new Error('Barbeiro não encontrado.');
+    barbs[idx] = { ...barbs[idx], instagram: handle };
+    await fb.setDoc(fb.doc(fb.db,'settings','admin'), { ...sets, barbeiros: barbs }, { merge: true });
+    _barbeiro.instagram = handle;
+    const disp = document.getElementById('painelInstagramDisplay');
+    if (disp) disp.textContent = handle ? `@${handle}` : '';
+    if (msgEl) { msgEl.style.color='#27ae60'; msgEl.textContent = handle ? `✅ Salvo: @${handle}` : '✅ Instagram removido.'; }
+    _mostrarToast('✅ Instagram atualizado!');
+    setTimeout(() => { if (msgEl) msgEl.textContent=''; }, 4000);
+  } catch(e) {
+    if (msgEl) { msgEl.style.color='var(--red)'; msgEl.textContent='⚠️ Erro: '+e.message; }
+  }
+};
