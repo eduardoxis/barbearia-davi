@@ -4,6 +4,7 @@
 ══════════════════════════════════════════ */
 
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
+import { markJustSaved } from './realtime.js';
 import {
   renderPortfolioAdmin,
   removerFotoPortfolio,
@@ -103,6 +104,7 @@ export async function loadAdminSettings() {
 export async function saveAdminSettings() {
   const btn = document.getElementById('globalSaveBtn');
   try {
+    markJustSaved(); // evita que o próprio admin receba o banner de "atualizado"
     await window._fb.setDoc(window._fb.doc(window._fb.db, 'settings', 'admin'), {
       shopOpen: adminSettings.shopOpen, workDays: adminSettings.workDays,
       workHours: adminSettings.workHours, slots: adminSettings.slots,
@@ -2261,6 +2263,7 @@ export async function confirmarBloqueioBarb() {
   // Salva no Firestore
   if (window._fb) {
     try {
+      markJustSaved(); // evita banner de "atualizado" para quem está salvando
       const ref = await window._fb.addDoc(window._fb.collection(window._fb.db, 'dias_bloqueados'), novoDoc);
       novoDoc.id = ref.id;
     } catch (e) {
@@ -2285,6 +2288,7 @@ export async function removerBloqueioBarb(id) {
   if (!confirm('Desbloquear este dia para este barbeiro?')) return;
   if (window._fb && !id.startsWith('local_')) {
     try {
+      markJustSaved(); // evita banner de "atualizado" para quem está removendo
       await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'dias_bloqueados', id));
     } catch (e) {
       showToast('❌ Erro ao remover: ' + e.message);
