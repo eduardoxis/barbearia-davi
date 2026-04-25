@@ -182,6 +182,10 @@ export function updateNavUserFb() {
       if (nb) nb.style.display = 'flex';
       // Persiste sessão do barbeiro no localStorage
       try { localStorage.setItem('bbdavi_barbeiro', JSON.stringify(window.fbUser)); } catch (_) {}
+      // Injeta item no bottom-nav mobile
+      _bnMostrarBarbeiro();
+    } else {
+      _bnEsconderBarbeiro();
     }
   } else {
     btn.textContent = '👤 Entrar';
@@ -196,8 +200,37 @@ export function updateNavUserFb() {
     if (db2) db2.classList.remove('show');
     const nb2 = document.getElementById('navBarbeiroBtn');
     if (nb2) nb2.style.display = 'none';
+    _bnEsconderBarbeiro();
     hideAdminNavBtn();
   }
+}
+
+/* ── Botão Painel Barbeiro no bottom-nav mobile ── */
+function _bnMostrarBarbeiro() {
+  const nav = document.getElementById('bottomNav');
+  if (!nav) return;
+  if (document.getElementById('bnBarbeiro')) return; // já existe
+  const item = document.createElement('div');
+  item.className = 'bn-item';
+  item.id = 'bnBarbeiro';
+  item.setAttribute('data-page', 'barbeiro');
+  item.style.cssText = 'color:#6FCF97';
+  item.innerHTML =
+    '<span class="bn-icon" style="color:#6FCF97">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<circle cx="12" cy="8" r="3"/><path d="M6 21v-1a6 6 0 0 1 12 0v1"/>' +
+    '<path d="M17 3l1.5 1.5L17 6"/><path d="M19 4.5h-3"/></svg>' +
+    '</span>' +
+    '<span class="bn-label" style="color:#6FCF97">Meu Painel</span>';
+  item.onclick = function() {
+    window.location.href = 'pages/painel.html';
+  };
+  nav.appendChild(item);
+}
+
+function _bnEsconderBarbeiro() {
+  const el = document.getElementById('bnBarbeiro');
+  if (el) el.remove();
 }
 
 export function showAdminNavBtn() {
