@@ -14,7 +14,7 @@
   import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc }
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc, onSnapshot }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
@@ -30,7 +30,7 @@
   const auth    = getAuth(app);
   const db      = getFirestore(app);
   const storage = getStorage(app);
-  window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc };
+  window._fb = { auth, db, storage, storageRef, uploadBytes, getDownloadURL, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, addDoc, deleteDoc, onSnapshot };
 
   // Autenticação do barbeiro no Firebase para liberar writes no Firestore.
   // Usa as credenciais salvas na sessão durante o login (email/senha do barbeiro),
