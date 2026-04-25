@@ -271,6 +271,31 @@
   background: rgba(224,32,32,0.22);
 }
 
+/* Botão Painel Barbeiro (verde) */
+.profile-sheet-barbeiro-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(111,207,151,0.12);
+  border: 1px solid rgba(111,207,151,0.35);
+  border-radius: 6px;
+  color: #6FCF97;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+.profile-sheet-barbeiro-btn:active {
+  background: rgba(111,207,151,0.22);
+}
+
 /* Botão Historico / Ver Conta */
 .profile-sheet-account-btn {
   display: flex;
