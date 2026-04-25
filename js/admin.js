@@ -2117,24 +2117,10 @@ export async function carregarBloqueiosBarb() {
 export function renderBloqueiosBarb() {
   const lista  = document.getElementById('listaBloqueiosBarb');
   const empty  = document.getElementById('listaBloqueiosBarbEmpty');
-  const filtro = document.getElementById('filtroBloqueioBarb');
   if (!lista) return;
 
-  // Popula o filtro com os barbeiros
-  if (filtro) {
-    const val = filtro.value;
-    filtro.innerHTML = '<option value="">Todos os barbeiros</option>';
-    (adminSettings.barbeiros || []).forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b.id; opt.textContent = b.nome;
-      filtro.appendChild(opt);
-    });
-    filtro.value = val;
-  }
-
-  const filtroVal = filtro?.value || '';
   const bloqueios = (adminSettings.diasBloqueadosBarbeiro || [])
-    .filter(b => !filtroVal || b.barber_id === filtroVal)
+    .slice()
     .sort((a, b) => (a.date > b.date ? 1 : -1));
 
   lista.innerHTML = '';
