@@ -146,6 +146,28 @@ export async function initSite() {
     // Monitora autenticação
     window._fb.onAuthStateChanged(window._fb.auth, async (user) => {
       if (user) {
+        // Verifica primeiro se este Firebase user corresponde a um barbeiro cadastrado
+        // (barbeiros fazem signIn com email/senha no Firebase, mas não ficam em users/{uid})
+        const settingsSnap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin')).catch(() => null);
+        const barbeiros = settingsSnap?.exists() ? (settingsSnap.data().barbeiros || []) : [];
+        const barbMatch = barbeiros.find(b => b.email === user.email && b.ativo !== false);
+
+        if (barbMatch) {
+          // É um barbeiro — monta fbUser com isBarbeiro e não busca em users/
+          window.fbUser = {
+            uid:        'barb_' + barbMatch.id,
+            email:      user.email,
+            name:       barbMatch.nome,
+            isBarbeiro: true,
+            barbeiroId: barbMatch.id,
+          };
+          window._barbeiroPainel = barbMatch;
+          try { localStorage.setItem('bbdavi_barbeiro', JSON.stringify(window.fbUser)); } catch (_) {}
+          updateNavUserFb();
+          return;
+        }
+
+        // Usuário normal (cliente ou admin)
         const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'users', user.uid));
         const data = snap.exists() ? snap.data() : {};
         window.fbUser = { uid: user.uid, email: user.email, name: data.name || user.displayName || 'Usuário', phone: data.phone || '', isAdmin: data.isAdmin || false };
