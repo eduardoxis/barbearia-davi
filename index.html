@@ -1393,17 +1393,22 @@
       var adminBtn = user.isAdmin
         ? '<button class="profile-sheet-admin-btn" onclick="closeProfileSheet();openAdmin(true)">⚙ Painel Admin</button>'
         : '';
+      var barbeiroBtn = user.isBarbeiro
+        ? '<button class="profile-sheet-barbeiro-btn" onclick="closeProfileSheet();window.location.href=\'pages/painel.html\'">💈 Painel Barbeiro</button>'
+        : '';
       body.innerHTML =
         '<div class="profile-sheet-user">' +
           '<div class="profile-sheet-avatar">' + initials + '</div>' +
           '<div class="profile-sheet-info">' +
             '<div class="profile-sheet-name">' + escapeHtml(user.name) + '</div>' +
             '<div class="profile-sheet-email">' + escapeHtml(user.email) + '</div>' +
+            (user.isBarbeiro ? '<div style="font-size:0.65rem;color:#6FCF97;margin-top:2px;letter-spacing:0.08em;font-weight:600">💈 BARBEIRO</div>' : '') +
           '</div>' +
         '</div>' +
         '<div class="profile-sheet-divider"></div>' +
         '<div class="profile-sheet-actions">' +
           adminBtn +
+          barbeiroBtn +
           '<button class="profile-sheet-account-btn" onclick="closeProfileSheet();openUserModal()">👤 Minha Conta</button>' +
           '<button class="profile-sheet-logout-btn" onclick="closeProfileSheet();doLogout()">Sair da conta</button>' +
         '</div>';
