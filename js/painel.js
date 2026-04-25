@@ -3,6 +3,8 @@
    Barbearia do Davi
 ══════════════════════════════════════════ */
 
+import { markJustSaved } from './realtime.js';
+
 let _barbeiro          = null;
 let _agendamentos      = [];
 let _dataAtual         = _hoje();
@@ -379,6 +381,7 @@ window.salvarMinhaAgenda = async function() {
     };
 
     // Salva de volta no Firestore
+    markJustSaved(); // evita banner "atualizado" para o barbeiro que está salvando
     await window._fb.setDoc(
       window._fb.doc(window._fb.db, 'settings', 'admin'),
       { ...settings, barbeiros },
@@ -692,6 +695,7 @@ window.painelUploadFoto = async function(input) {
     if (idx < 0) throw new Error('Barbeiro não encontrado.');
 
     barbeiros[idx] = { ...barbeiros[idx], foto: url };
+    markJustSaved(); // evita banner "atualizado" para o barbeiro que está salvando
     await fb.setDoc(fb.doc(fb.db, 'settings', 'admin'), { ...settings, barbeiros }, { merge: true });
 
     // Atualiza local
@@ -722,6 +726,7 @@ window.painelRemoverFoto = async function() {
     const idx = barbeiros.findIndex(b => b.id === _barbeiro.id);
     if (idx >= 0) {
       barbeiros[idx] = { ...barbeiros[idx], foto: '' };
+      markJustSaved(); // evita banner "atualizado" para o barbeiro que está salvando
       await fb.setDoc(fb.doc(fb.db, 'settings', 'admin'), { ...settings, barbeiros }, { merge: true });
     }
     _barbeiro.foto = '';
@@ -843,6 +848,7 @@ window.adicionarDiaBloqueadoPainel = async function() {
   if (window._fb) {
     try {
       if (window._fbAuthReady) await window._fbAuthReady;
+      markJustSaved(); // evita banner "atualizado" para o barbeiro que está salvando
       const ref = await window._fb.addDoc(window._fb.collection(window._fb.db, 'dias_bloqueados'), novoDoc);
       novoDoc.id = ref.id;
     } catch(e) {
@@ -864,6 +870,7 @@ window.removerDiaBloqueadoPainel = async function(id) {
   if (window._fb && !id.startsWith('local_')) {
     try {
       if (window._fbAuthReady) await window._fbAuthReady;
+      markJustSaved(); // evita banner "atualizado" para o barbeiro que está removendo
       await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'dias_bloqueados', id));
     } catch(e) { _mostrarToast('❌ Erro: '+e.message); return; }
   }
@@ -1067,6 +1074,7 @@ window.salvarInstagramBarbeiro = async function() {
     const idx   = barbs.findIndex(b => b.id === _barbeiro.id);
     if (idx < 0) throw new Error('Barbeiro não encontrado.');
     barbs[idx] = { ...barbs[idx], instagram: handle };
+    markJustSaved(); // evita banner "atualizado" para o barbeiro que está salvando
     await fb.setDoc(fb.doc(fb.db,'settings','admin'), { ...sets, barbeiros: barbs }, { merge: true });
     _barbeiro.instagram = handle;
     const disp = document.getElementById('painelInstagramDisplay');
