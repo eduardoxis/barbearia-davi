@@ -788,3 +788,20 @@
 /* ══════════════════════════════════════════
    MODO CLARO — overrides galeria
 ══════════════════════════════════════════ */
+
+/* ── Instagram handle na galeria do barbeiro ── */
+.gale-insta-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #E1306C;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  margin-top: 0.2rem;
+  margin-bottom: 0.3rem;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+.gale-insta-handle:hover { opacity: 1; text-decoration: underline; }
