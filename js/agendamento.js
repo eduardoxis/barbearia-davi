@@ -292,39 +292,52 @@ function selectDate(el, ds) {
   el.classList.add('selected');
   booking.date = ds; booking.time = '';
   saveCartToStorage();
-  renderSlots(); checkStep2();
+  renderSlots().then(checkStep2);
 }
 
 /* ── Slots ── */
-export function renderSlots() {
+export async function renderSlots() {
   const b = booking.barbeiro;
   const grid = document.getElementById('slotsGrid');
-  grid.innerHTML = '';
-  const slots   = b ? gerarHorariosBarbeiro(b) : adminSettings.slots;
-  const ocupados = b ? (b.takenSlots || []) : adminSettings.takenSlots;
+  grid.innerHTML = '<p class="slots-empty" style="opacity:.5">Carregando horários...</p>';
+  const slots = b ? gerarHorariosBarbeiro(b) : adminSettings.slots;
   if (!slots.length) {
-    const emp = document.createElement('p'); emp.className = 'slots-empty'; emp.textContent = 'Sem horários.'; grid.appendChild(emp); return;
+    grid.innerHTML = '<p class="slots-empty">Sem horários.</p>'; return;
   }
+
+  // Busca agendamentos do Firestore para a data e barbeiro selecionados
+  let ocupados = [];
+  const dataSel = booking.date;
+  if (dataSel && window._fb) {
+    try {
+      const { collection, getDocs, query, where, db } = window._fb;
+      const q = b
+        ? query(collection(db, 'agendamentos'), where('data', '==', dataSel), where('barbeiroId', '==', b.id))
+        : query(collection(db, 'agendamentos'), where('data', '==', dataSel));
+      const snap = await getDocs(q);
+      snap.forEach(d => { const h = d.data().horario; if (h) ocupados.push(h); });
+    } catch (_) {
+      // fallback: usa takenSlots em memória se Firestore falhar
+      ocupados = b ? (b.takenSlots || []) : adminSettings.takenSlots;
+    }
+  }
+
+  grid.innerHTML = '';
   const hoje = new Date();
-  const dataSelecionada = booking.date; // formato 'DD/MM/YYYY'
-  const d = hoje.getDate().toString().padStart(2,'0');
+  const d  = hoje.getDate().toString().padStart(2,'0');
   const mo = (hoje.getMonth()+1).toString().padStart(2,'0');
   const hojeStr = d + '/' + mo + '/' + hoje.getFullYear();
-  const isHoje = dataSelecionada === hojeStr;
+  const isHoje = dataSel === hojeStr;
   const horaAtual = hoje.getHours() * 60 + hoje.getMinutes();
 
   slots.forEach(slot => {
     const el = document.createElement('div');
     const taken = ocupados.includes(slot);
-
-    // Se for hoje, bloquear horários que já passaram
     let passado = false;
     if (isHoje) {
       const [h, m] = slot.split(':').map(Number);
-      const slotMinutos = h * 60 + m;
-      passado = slotMinutos <= horaAtual;
+      passado = (h * 60 + m) <= horaAtual;
     }
-
     el.className = 'slot' + (taken || passado ? ' taken' : '');
     el.textContent = slot;
     if (!taken && !passado) el.onclick = () => selectSlot(el, slot);
