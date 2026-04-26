@@ -103,6 +103,7 @@ export async function loadAdminSettings() {
 /* ── Salva configurações ── */
 export async function saveAdminSettings() {
   const btn = document.getElementById('globalSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
   try {
     markJustSaved(); // evita que o próprio admin receba o banner de "atualizado"
     await window._fb.setDoc(window._fb.doc(window._fb.db, 'settings', 'admin'), {
@@ -120,7 +121,7 @@ export async function saveAdminSettings() {
   } catch (e) {
     showToast('❌ Erro ao salvar: ' + e.message);
   } finally {
-    setTimeout(() => { if (btn) { btn.textContent = '💾 Salvar tudo'; btn.classList.remove('saved'); } }, 2000);
+    setTimeout(() => { if (btn) { btn.textContent = '💾 Salvar tudo'; btn.classList.remove('saved'); btn.disabled = false; } }, 2000);
   }
 }
 
