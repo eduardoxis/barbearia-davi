@@ -421,7 +421,9 @@ export async function irParaPagamentoComTermo() {
       termoAceitoEm: booking.termoAceitoEm,
     });
   } catch (e) {
-    console.warn('Erro ao salvar agendamento:', e);
+    console.error('Erro ao salvar agendamento:', e);
+    showToast('❌ Erro ao salvar: ' + (e?.message || e));
+    return; // impede avançar até o erro ser resolvido
   }
 
   fillConfirm();
