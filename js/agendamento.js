@@ -392,7 +392,7 @@ function resetTermoCheckbox() {
   if (lb)  lb.classList.remove('aceito');
 }
 
-export function irParaPagamentoComTermo() {
+export async function irParaPagamentoComTermo() {
   const cb = document.getElementById('termoCheckbox');
   if (!cb?.checked) {
     document.getElementById('termoAviso')?.classList.add('visivel');
@@ -402,11 +402,40 @@ export function irParaPagamentoComTermo() {
   booking.termoAceito   = true;
   booking.termoAceitoEm = new Date().toISOString();
   booking.remarcacoes   = 0;
-  goBookStep(4);
+
+  // ── PAGAMENTO TEMPORARIAMENTE DESABILITADO ──
+  // O agendamento é salvo diretamente sem passar pelo Cakto/Pix
+  try {
+    await criarAgendamento({
+      cliente:       booking.client,
+      telefone:      booking.phone,
+      email:         window.fbUser?.email || document.getElementById('clientEmail')?.value || '',
+      servicos:      cart.map(c => (_svcIconText(c) + ' ' + c.name).trim()).join(', '),
+      total:         cart.reduce((s, c) => s + c.price, 0),
+      data:          booking.date,
+      horario:       booking.time,
+      barbeiro:      booking.barbeiro?.nome || '',
+      barbeiroId:    booking.barbeiro?.id || '',
+      pedidoId:      gerarPedidoId(),
+      termoAceito:   booking.termoAceito,
+      termoAceitoEm: booking.termoAceitoEm,
+    });
+  } catch (e) {
+    console.warn('Erro ao salvar agendamento:', e);
+  }
+
+  fillConfirm();
+  document.querySelectorAll('.step-tab').forEach(t => { t.classList.remove('active'); t.classList.add('done'); });
+  booking.step = 5;
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('bStep5')?.classList.add('active');
+  document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth' });
+  showToast('✅ Agendamento confirmado!');
 }
 
 /* ── Pagamento (step 4) ── */
-function fillPayment() { iniciarPagamentoCakto(); }
+// DESABILITADO TEMPORARIAMENTE — pagamento via Cakto será ativado em breve
+function fillPayment() { /* iniciarPagamentoCakto(); */ }
 
 async function iniciarPagamentoCakto(renovar = false) {
   clearInterval(pollingInt); clearInterval(timerInt);
