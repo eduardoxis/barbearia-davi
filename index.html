@@ -12,7 +12,7 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-           signOut, onAuthStateChanged, updateProfile }
+           signOut, onAuthStateChanged, updateProfile, signInAnonymously }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc,
            getDocs, query, where, orderBy, onSnapshot, deleteDoc }
@@ -34,7 +34,7 @@
   window._fb = {
     auth, db, storage,
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    signOut, onAuthStateChanged, updateProfile,
+    signOut, onAuthStateChanged, updateProfile, signInAnonymously,
     doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc,
     storageRef, uploadBytes, getDownloadURL
   };
