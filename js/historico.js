@@ -142,6 +142,7 @@ export function abrirModalRemarcacao(agendOverride) {
   if (!verificarPrazo24h(ag.date || ag.data, ag.time || ag.horario)) { showToast('⚠ Não é possível remarcar: faltam menos de 24 horas.'); return; }
 
   solAgendamentoAtual = {
+    id:          ag.id || ag.firestoreId || '',
     cliente:     ag.client  || ag.cliente,
     telefone:    ag.phone   || ag.telefone,
     data:        ag.date    || ag.data,
@@ -295,6 +296,7 @@ export function remarcarDoHistorico(id) {
   const a = _histCache.find(x => x.id === id);
   if (!a) return;
   solAgendamentoAtual = {
+    id:          a.id || '',
     cliente:     a.cliente,
     telefone:    a.telefone || a.whatsapp || '',
     data:        a.data,
