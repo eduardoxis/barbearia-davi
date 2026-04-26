@@ -5,6 +5,7 @@
 
 import {
   adminSettings, cart, addToCartArr, removeFromCartArr,
+  saveCartToStorage, clearCartStorage, restoreCartFromStorage,
   showToast, updateHeroStatus, updateNavUserFb, showAdminNavBtn
 } from './global.js';
 import { startRealtimeSync } from './realtime.js';
@@ -45,6 +46,7 @@ export function addToCart(id, e) {
   const svc = adminSettings.services.find(s => s.id === id);
   if (!svc || cart.find(c => c.id === id)) return;
   addToCartArr({ ...svc });
+  saveCartToStorage();
   updateCartUI();
   renderGallery();
   showToast('✓ ' + svc.name + ' adicionado!');
@@ -54,6 +56,7 @@ export function addToCart(id, e) {
 export function removeFromCart(id, e) {
   e && e.stopPropagation();
   removeFromCartArr(id);
+  saveCartToStorage();
   updateCartUI();
   renderGallery();
 }
@@ -222,11 +225,21 @@ export async function initSite() {
   }));
 
   renderGallery();
+
+  // Restaura carrinho e estado do agendamento salvos antes do F5
+  const restored = restoreCartFromStorage(adminSettings);
+
   updateCartUI();
   updateHeroStatus();
 
-  const { renderBarbeiroGrid } = await import('./agendamento.js');
+  const { renderBarbeiroGrid, goBookStep, renderSlots } = await import('./agendamento.js');
   renderBarbeiroGrid();
+
+  // Se havia sessão salva, navega direto para o step correto
+  if (restored && booking.step > 0) {
+    goBookStep(booking.step);
+    if (booking.date) renderSlots();
+  }
 
   // Inicia sincronização em tempo real — todos os usuários recebem
   // atualizações do admin/barbeiro automaticamente, sem precisar de F5
