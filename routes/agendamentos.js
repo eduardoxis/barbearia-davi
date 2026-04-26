@@ -115,7 +115,7 @@ export async function cancelarAgendamento(agendamentoId) {
 /* ── Confirma remarcação ── */
 export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, motivo }) {
   if (!window._fb) throw new Error('Firebase não disponível.');
-  const { doc, setDoc, collection, db } = window._fb;
+  const { doc, setDoc, db } = window._fb;
 
   const pol = adminSettings.politicaReembolso || {};
   const maxRemarc = pol.maxRemarcacoes ?? 2;
@@ -133,34 +133,45 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
   const novasFeitas = feitas + 1;
   const id = 'sol_' + Date.now();
 
+  // 1. Registra a solicitação de remarcação
   await setDoc(doc(db, 'solicitacoes', id), {
     id, tipo: 'remarcacao', status: 'aprovado',
-    cliente:       agendamento.cliente,
-    telefone:      agendamento.telefone,
-    servicos:      agendamento.servicos,
-    total:         agendamento.total,
-    dataOriginal:  agendamento.data,
-    horarioOriginal: agendamento.horario,
+    cliente:          agendamento.cliente,
+    telefone:         agendamento.telefone,
+    servicos:         agendamento.servicos,
+    total:            agendamento.total,
+    dataOriginal:     agendamento.data,
+    horarioOriginal:  agendamento.horario,
     novaData,
     novoHorario,
     remarcacoesTotal: novasFeitas,
-    prazoValidado: true,
-    termoAceito:   true,
-    motivo:        motivo || '',
-    criadoEm:      new Date().toISOString(),
+    prazoValidado:    true,
+    termoAceito:      true,
+    motivo:           motivo || '',
+    criadoEm:         new Date().toISOString(),
     criadoEmFormatado: new Date().toLocaleString('pt-BR'),
   });
 
-  // Atualiza horários
+  // 2. Atualiza o documento do agendamento com nova data, horário e contador
+  if (agendamento.id) {
+    await setDoc(doc(db, 'agendamentos', agendamento.id), {
+      data:        novaData,
+      horario:     novoHorario,
+      remarcacoes: novasFeitas,
+    }, { merge: true });
+  }
+
+  // 3. Atualiza takenSlots em memória e persiste no Firestore
   if (agendamento.barbeiroId) {
     liberarHorarioBarbeiro(agendamento.barbeiroId, agendamento.horario);
     bloquearHorarioBarbeiro(agendamento.barbeiroId, novoHorario);
+    // Salva o array de barbeiros atualizado dentro de settings/admin
+    await setDoc(doc(db, 'settings', 'admin'), { barbeiros: adminSettings.barbeiros || [] }, { merge: true });
   } else {
     adminSettings.takenSlots = adminSettings.takenSlots.filter(h => h !== agendamento.horario);
     if (!adminSettings.takenSlots.includes(novoHorario)) adminSettings.takenSlots.push(novoHorario);
+    await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
   }
-
-  await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
 
   return { novasFeitas, maxRemarc };
 }
