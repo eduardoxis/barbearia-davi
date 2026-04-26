@@ -436,9 +436,11 @@ export async function irParaPagamentoComTermo() {
   // ── PAGAMENTO TEMPORARIAMENTE DESABILITADO ──
   // Salva diretamente no Firestore sem passar pelo Cakto/Pix
   try {
-    if (!window._fb) throw new Error('Firebase não inicializado.');
+    if (!window._fb) throw new Error('Firebase não inicializado (window._fb ausente).');
+    const { addDoc, collection, db } = window._fb;
+    if (!addDoc || !collection || !db) throw new Error('Firebase incompleto: addDoc/collection/db ausente.');
 
-    await criarAgendamento({
+    const agendamentoData = {
       cliente:       clienteNome,
       telefone:      clienteTel,
       email:         clienteEmail,
@@ -448,14 +450,24 @@ export async function irParaPagamentoComTermo() {
       horario:       booking.time,
       barbeiro:      booking.barbeiro.nome,
       barbeiroId:    booking.barbeiro.id,
+      formaPagamento:'SEM_PAGAMENTO',
+      status:        'confirmado',
       pedidoId:      gerarPedidoId(),
       termoAceito:   booking.termoAceito,
       termoAceitoEm: booking.termoAceitoEm,
-    });
+      remarcacoes:   0,
+      criadoEm:      new Date().toISOString(),
+    };
+
+    console.log('[AGENDAMENTO] Tentando salvar:', agendamentoData);
+    const ref = await addDoc(collection(db, 'agendamentos'), agendamentoData);
+    console.log('[AGENDAMENTO] Salvo com sucesso! ID:', ref.id);
+
   } catch (e) {
-    console.error('[AGENDAMENTO] Erro ao salvar:', e);
-    showToast('❌ Erro ao salvar agendamento: ' + (e?.message || String(e)));
-    return; // NÃO avança enquanto o save falhar
+    const msg = `ERRO AO SALVAR AGENDAMENTO\n\nCódigo: ${e?.code || 'sem código'}\nMensagem: ${e?.message || String(e)}\n\nMostre isso para o desenvolvedor.`;
+    console.error('[AGENDAMENTO] Falha:', e);
+    alert(msg); // alert garante visibilidade total
+    return;
   }
 
   // ── Atualiza o booking com os dados lidos para o step 5 exibir corretamente ──
