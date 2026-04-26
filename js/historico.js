@@ -221,16 +221,32 @@ function selectDataSol(el, ds) {
   if (btnConf) btnConf.disabled = true;
 }
 
-function renderHorariosSol() {
+async function renderHorariosSol() {
   const grid = document.getElementById('solHorariosGrid');
   if (!grid) return;
   const barbeiro = adminSettings.barbeiros?.find(b => b.id === solAgendamentoAtual?.barbeiroId);
   const slots = barbeiro ? gerarHorariosBarbeiro(barbeiro) : adminSettings.slots;
-  const ocupados = barbeiro ? (barbeiro.takenSlots || []) : adminSettings.takenSlots;
-  grid.innerHTML = '';
+  grid.innerHTML = '<p class="slots-empty" style="opacity:.5">Carregando horários...</p>';
   if (!slots.length) {
     grid.innerHTML = '<p class="slots-empty">Sem horários disponíveis.</p>'; return;
   }
+
+  // Busca agendamentos do Firestore para a nova data selecionada
+  let ocupados = [];
+  if (solNovaData && window._fb) {
+    try {
+      const { collection, getDocs, query, where, db } = window._fb;
+      const q = barbeiro
+        ? query(collection(db, 'agendamentos'), where('data', '==', solNovaData), where('barbeiroId', '==', barbeiro.id))
+        : query(collection(db, 'agendamentos'), where('data', '==', solNovaData));
+      const snap = await getDocs(q);
+      snap.forEach(d => { const h = d.data().horario; if (h) ocupados.push(h); });
+    } catch (_) {
+      ocupados = barbeiro ? (barbeiro.takenSlots || []) : adminSettings.takenSlots;
+    }
+  }
+
+  grid.innerHTML = '';
   slots.forEach(slot => {
     const taken = ocupados.includes(slot) && slot !== solAgendamentoAtual?.horario;
     const el = document.createElement('div');
