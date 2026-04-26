@@ -286,6 +286,8 @@ export async function confirmarSolicitacaoRemarcacao() {
     fecharModalSolicitacao();
     atualizarTelaAposRemarcacao(solNovaData, solNovoHorario, novasFeitas, maxRemarc);
     showToast('✅ Remarcação realizada com sucesso!');
+    // Recarrega o histórico do Firestore para refletir a nova data/horário
+    await carregarHistoricoCliente();
   } catch (e) {
     showToast('❌ Erro: ' + e.message);
     if (btnConf) { btnConf.disabled = false; btnConf.textContent = '🔄 Confirmar Remarcação'; }
