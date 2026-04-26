@@ -1434,6 +1434,7 @@
   /* Swipe para fechar */
   (function() {
     var sheet     = document.getElementById('profileSheet');
+    if (!sheet) return;
     var startY    = 0;
     var dragging  = false;
     sheet.addEventListener('touchstart', function(e) {
