@@ -4,7 +4,7 @@
 ══════════════════════════════════════════ */
 
 import {
-  adminSettings, cart, addToCartArr, removeFromCartArr,
+  adminSettings, booking, cart, addToCartArr, removeFromCartArr,
   saveCartToStorage, clearCartStorage, restoreCartFromStorage,
   showToast, updateHeroStatus, updateNavUserFb, showAdminNavBtn
 } from './global.js';
