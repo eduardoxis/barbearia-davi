@@ -67,9 +67,61 @@ export const booking = {
 };
 
 export let cart = [];
-export const setCart = (newCart) => { cart = newCart; };
-export const addToCartArr = (item) => { cart.push(item); };
-export const removeFromCartArr = (id) => { cart = cart.filter(c => c.id !== id); };
+
+/* ── Persistência do carrinho no localStorage ── */
+const CART_KEY    = 'bbdavi_cart';    // salva IDs dos serviços
+const BOOKING_KEY = 'bbdavi_booking'; // salva barbeiro, data, hora, step
+
+export function saveCartToStorage() {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart.map(c => c.id)));
+    localStorage.setItem(BOOKING_KEY, JSON.stringify({
+      barbeiroId: booking.barbeiro?.id || null,
+      date:       booking.date,
+      time:       booking.time,
+      step:       booking.step,
+      client:     booking.client,
+      phone:      booking.phone,
+    }));
+  } catch (_) {}
+}
+
+export function clearCartStorage() {
+  try { localStorage.removeItem(CART_KEY); localStorage.removeItem(BOOKING_KEY); } catch (_) {}
+}
+
+/** Chamado após adminSettings estar pronto — restaura carrinho e estado do booking */
+export function restoreCartFromStorage(adminSettings) {
+  try {
+    const ids     = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    const saved   = JSON.parse(localStorage.getItem(BOOKING_KEY) || '{}');
+    if (!ids.length) return false;
+
+    // Restaura serviços do carrinho
+    const restoredCart = ids
+      .map(id => adminSettings.services?.find(s => s.id === id))
+      .filter(Boolean);
+    if (!restoredCart.length) return false;
+    cart = restoredCart;
+
+    // Restaura dados do booking
+    if (saved.barbeiroId) {
+      const barb = (adminSettings.barbeiros || []).find(b => b.id === saved.barbeiroId);
+      if (barb) booking.barbeiro = barb;
+    }
+    if (saved.date)   booking.date   = saved.date;
+    if (saved.time)   booking.time   = saved.time;
+    if (saved.step)   booking.step   = Math.min(saved.step, 3); // nunca restaura além da revisão
+    if (saved.client) booking.client = saved.client;
+    if (saved.phone)  booking.phone  = saved.phone;
+
+    return true;
+  } catch (_) { return false; }
+}
+
+export const setCart          = (newCart) => { cart = newCart; };
+export const addToCartArr     = (item)    => { cart.push(item); };
+export const removeFromCartArr = (id)     => { cart = cart.filter(c => c.id !== id); };
 
 /* ── Constantes ── */
 export const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
