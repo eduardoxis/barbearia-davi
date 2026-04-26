@@ -110,6 +110,13 @@ export async function initSite() {
   while (!window._fb && attempts < 40) { await new Promise(r => setTimeout(r, 100)); attempts++; }
 
   if (window._fb) {
+    // Garante autenticação mínima para leitura do Firestore (usuários sem conta)
+    try {
+      if (!window._fb.auth.currentUser && window._fb.signInAnonymously) {
+        await window._fb.signInAnonymously(window._fb.auth);
+      }
+    } catch (_) { /* falha silenciosa — Firestore tenta mesmo assim */ }
+
     try {
       const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
       if (snap.exists()) {
@@ -147,6 +154,9 @@ export async function initSite() {
     // Monitora autenticação
     window._fb.onAuthStateChanged(window._fb.auth, async (user) => {
       if (user) {
+        // Usuário anônimo — apenas autenticação de infraestrutura, não exibe como logado
+        if (user.isAnonymous) return;
+
         // Verifica primeiro se este Firebase user corresponde a um barbeiro cadastrado
         // (barbeiros fazem signIn com email/senha no Firebase, mas não ficam em users/{uid})
         const settingsSnap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin')).catch(() => null);
