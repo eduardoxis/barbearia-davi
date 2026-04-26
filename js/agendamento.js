@@ -132,8 +132,8 @@ export function selecionarBarbeiroComServico(id) {
   renderBarbeiroGrid();
   const hint = document.getElementById('step0Hint');
   if (hint) { hint.textContent = '✓ ' + b.nome + ' selecionado! Avançando...'; hint.style.color = '#6FCF97'; }
-  // Pula direto para data/hora (step 2) — serviço já está no carrinho
-  setTimeout(() => goBookStep(2), 600);
+  // Vai para dados do cliente (step 1) — serviço já está no carrinho, mas nome/WhatsApp ainda são necessários
+  setTimeout(() => goBookStep(1), 600);
 }
 
 /* ── Navega entre steps ── */
