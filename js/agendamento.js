@@ -437,8 +437,13 @@ export async function irParaPagamentoComTermo() {
   // Salva diretamente no Firestore sem passar pelo Cakto/Pix
   try {
     if (!window._fb) throw new Error('Firebase não inicializado (window._fb ausente).');
-    const { addDoc, collection, db } = window._fb;
+    const { addDoc, collection, db, auth, signInAnonymously } = window._fb;
     if (!addDoc || !collection || !db) throw new Error('Firebase incompleto: addDoc/collection/db ausente.');
+
+    // Garante autenticação — faz login anônimo se o cliente não estiver logado
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
 
     const agendamentoData = {
       cliente:       clienteNome,
