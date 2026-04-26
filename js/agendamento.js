@@ -468,6 +468,16 @@ export async function irParaPagamentoComTermo() {
     const ref = await addDoc(collection(db, 'agendamentos'), agendamentoData);
     console.log('[AGENDAMENTO] Salvo com sucesso! ID:', ref.id);
 
+    // Atualiza takenSlots do barbeiro no Firestore para bloquear o horário para outros clientes
+    try {
+      const { doc: fbDoc, setDoc: fbSetDoc } = window._fb;
+      const barb = booking.barbeiro;
+      const novosSlots = [...new Set([...(barb.takenSlots || []), booking.time])];
+      barb.takenSlots = novosSlots; // atualiza em memória também
+      await fbSetDoc(fbDoc(db, 'barbeiros', barb.id), { takenSlots: novosSlots }, { merge: true });
+      console.log('[AGENDAMENTO] takenSlots atualizado:', novosSlots);
+    } catch (e) { console.warn('[AGENDAMENTO] Não foi possível atualizar takenSlots:', e); }
+
   } catch (e) {
     const msg = `ERRO AO SALVAR AGENDAMENTO\n\nCódigo: ${e?.code || 'sem código'}\nMensagem: ${e?.message || String(e)}\n\nMostre isso para o desenvolvedor.`;
     console.error('[AGENDAMENTO] Falha:', e);
