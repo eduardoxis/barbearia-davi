@@ -403,28 +403,64 @@ export async function irParaPagamentoComTermo() {
   booking.termoAceitoEm = new Date().toISOString();
   booking.remarcacoes   = 0;
 
+  // ── Leitura robusta dos dados do cliente ──
+  // Prioridade: booking já preenchido → campo do formulário → fbUser
+  const clienteNome =
+    booking.client ||
+    document.getElementById('clientName')?.value?.trim() ||
+    window.fbUser?.name || '';
+
+  const clienteTel =
+    booking.phone ||
+    document.getElementById('clientPhone')?.value?.trim() ||
+    window.fbUser?.phone || '';
+
+  const clienteEmail =
+    window.fbUser?.email ||
+    document.getElementById('clientEmail')?.value?.trim() || '';
+
+  // ── Validação mínima antes de salvar ──
+  if (!clienteNome) {
+    showToast('⚠ Nome do cliente não encontrado. Volte e preencha seus dados.');
+    return;
+  }
+  if (!booking.barbeiro?.id) {
+    showToast('⚠ Barbeiro não selecionado. Volte ao início.');
+    return;
+  }
+  if (!booking.date || !booking.time) {
+    showToast('⚠ Data ou horário não selecionado.');
+    return;
+  }
+
   // ── PAGAMENTO TEMPORARIAMENTE DESABILITADO ──
-  // O agendamento é salvo diretamente sem passar pelo Cakto/Pix
+  // Salva diretamente no Firestore sem passar pelo Cakto/Pix
   try {
+    if (!window._fb) throw new Error('Firebase não inicializado.');
+
     await criarAgendamento({
-      cliente:       booking.client,
-      telefone:      booking.phone,
-      email:         window.fbUser?.email || document.getElementById('clientEmail')?.value || '',
+      cliente:       clienteNome,
+      telefone:      clienteTel,
+      email:         clienteEmail,
       servicos:      cart.map(c => (_svcIconText(c) + ' ' + c.name).trim()).join(', '),
       total:         cart.reduce((s, c) => s + c.price, 0),
       data:          booking.date,
       horario:       booking.time,
-      barbeiro:      booking.barbeiro?.nome || '',
-      barbeiroId:    booking.barbeiro?.id || '',
+      barbeiro:      booking.barbeiro.nome,
+      barbeiroId:    booking.barbeiro.id,
       pedidoId:      gerarPedidoId(),
       termoAceito:   booking.termoAceito,
       termoAceitoEm: booking.termoAceitoEm,
     });
   } catch (e) {
-    console.error('Erro ao salvar agendamento:', e);
-    showToast('❌ Erro ao salvar: ' + (e?.message || e));
-    return; // impede avançar até o erro ser resolvido
+    console.error('[AGENDAMENTO] Erro ao salvar:', e);
+    showToast('❌ Erro ao salvar agendamento: ' + (e?.message || String(e)));
+    return; // NÃO avança enquanto o save falhar
   }
+
+  // ── Atualiza o booking com os dados lidos para o step 5 exibir corretamente ──
+  booking.client = clienteNome;
+  booking.phone  = clienteTel;
 
   fillConfirm();
   document.querySelectorAll('.step-tab').forEach(t => { t.classList.remove('active'); t.classList.add('done'); });
