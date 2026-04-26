@@ -231,7 +231,7 @@ export async function initSite() {
   // Se havia sessão salva, navega direto para o step correto
   if (restored && booking.step > 0) {
     goBookStep(booking.step);
-    if (booking.date) renderSlots();
+    if (booking.date) await renderSlots();
   }
 
   // Inicia sincronização em tempo real — todos os usuários recebem
