@@ -468,14 +468,27 @@ export async function irParaPagamentoComTermo() {
     const ref = await addDoc(collection(db, 'agendamentos'), agendamentoData);
     console.log('[AGENDAMENTO] Salvo com sucesso! ID:', ref.id);
 
-    // Atualiza takenSlots do barbeiro no Firestore para bloquear o horário para outros clientes
+    // Bloqueia o horário no takenSlots do barbeiro (dentro de settings/admin)
     try {
-      const { doc: fbDoc, setDoc: fbSetDoc } = window._fb;
-      const barb = booking.barbeiro;
-      const novosSlots = [...new Set([...(barb.takenSlots || []), booking.time])];
-      barb.takenSlots = novosSlots; // atualiza em memória também
-      await fbSetDoc(fbDoc(db, 'barbeiros', barb.id), { takenSlots: novosSlots }, { merge: true });
-      console.log('[AGENDAMENTO] takenSlots atualizado:', novosSlots);
+      const { doc: fbDoc, setDoc: fbSetDoc, getDoc: fbGetDoc } = window._fb;
+      const settingsRef = fbDoc(db, 'settings', 'admin');
+      const settingsSnap = await fbGetDoc(settingsRef);
+      if (settingsSnap.exists()) {
+        const settingsData = settingsSnap.data();
+        const barbeiros = settingsData.barbeiros || [];
+        const idx = barbeiros.findIndex(b => b.id === booking.barbeiro.id);
+        if (idx !== -1) {
+          const novosSlots = [...new Set([...(barbeiros[idx].takenSlots || []), booking.time])];
+          barbeiros[idx].takenSlots = novosSlots;
+          booking.barbeiro.takenSlots = novosSlots; // atualiza em memória também
+          // Atualiza adminSettings em memória para refletir imediatamente
+          const { adminSettings } = await import('./global.js');
+          const barbIdx = (adminSettings.barbeiros || []).findIndex(b => b.id === booking.barbeiro.id);
+          if (barbIdx !== -1) adminSettings.barbeiros[barbIdx].takenSlots = novosSlots;
+          await fbSetDoc(settingsRef, { barbeiros }, { merge: true });
+          console.log('[AGENDAMENTO] takenSlots atualizado em settings/admin:', novosSlots);
+        }
+      }
     } catch (e) { console.warn('[AGENDAMENTO] Não foi possível atualizar takenSlots:', e); }
 
   } catch (e) {
