@@ -5,7 +5,8 @@
 
 import {
   adminSettings, booking, cart,
-  showToast, MONTHS_PT, DAYS_SHORT_PT
+  showToast, MONTHS_PT, DAYS_SHORT_PT,
+  saveCartToStorage, clearCartStorage,
 } from './global.js';
 import { gerarHorariosBarbeiro, buscarBarbeiros } from '../routes/barbeiros.js';
 import { criarCheckoutCakto, gerarPedidoId, iniciarTimerPix, verificarStatusPedido } from '../routes/pagamentos.js';
@@ -113,6 +114,7 @@ export function selecionarBarbeiro(id) {
   if (!b) return;
   booking.barbeiro = b;
   booking.date = ''; booking.time = '';
+  saveCartToStorage();
   renderBarbeiroGrid();
   const hint = document.getElementById('step0Hint');
   if (hint) { hint.textContent = '✓ ' + b.nome + ' selecionado! Avançando...'; hint.style.color = '#6FCF97'; }
@@ -129,6 +131,7 @@ export function selecionarBarbeiroComServico(id) {
   if (!b) return;
   booking.barbeiro = b;
   booking.date = ''; booking.time = '';
+  saveCartToStorage();
   renderBarbeiroGrid();
   const hint = document.getElementById('step0Hint');
   if (hint) { hint.textContent = '✓ ' + b.nome + ' selecionado! Avançando...'; hint.style.color = '#6FCF97'; }
@@ -288,6 +291,7 @@ function selectDate(el, ds) {
   document.querySelectorAll('#calGrid .cal-day').forEach(d => d.classList.remove('selected'));
   el.classList.add('selected');
   booking.date = ds; booking.time = '';
+  saveCartToStorage();
   renderSlots(); checkStep2();
 }
 
@@ -332,7 +336,7 @@ export function renderSlots() {
 function selectSlot(el, slot) {
   document.querySelectorAll('#slotsGrid .slot').forEach(s => s.classList.remove('selected'));
   el.classList.add('selected');
-  booking.time = slot; checkStep2();
+  booking.time = slot; saveCartToStorage(); checkStep2();
 }
 
 function checkStep2() {
@@ -501,6 +505,8 @@ export async function irParaPagamentoComTermo() {
   // ── Atualiza o booking com os dados lidos para o step 5 exibir corretamente ──
   booking.client = clienteNome;
   booking.phone  = clienteTel;
+
+  clearCartStorage(); // limpa sessão salva — agendamento concluído
 
   fillConfirm();
   document.querySelectorAll('.step-tab').forEach(t => { t.classList.remove('active'); t.classList.add('done'); });
