@@ -115,7 +115,7 @@ export async function cancelarAgendamento(agendamentoId) {
 /* ── Confirma remarcação ── */
 export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, motivo }) {
   if (!window._fb) throw new Error('Firebase não disponível.');
-  const { doc, setDoc, db } = window._fb;
+  const { doc, setDoc, deleteDoc, addDoc, collection, db } = window._fb;
 
   const pol = adminSettings.politicaReembolso || {};
   const maxRemarc = pol.maxRemarcacoes ?? 2;
@@ -131,41 +131,59 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
   if (diffHoras < 24) throw new Error('Não é possível remarcar: faltam menos de 24 horas.');
 
   const novasFeitas = feitas + 1;
-  const id = 'sol_' + Date.now();
+  const solId = 'sol_' + Date.now();
 
-  // 1. Registra a solicitação de remarcação
-  await setDoc(doc(db, 'solicitacoes', id), {
-    id, tipo: 'remarcacao', status: 'aprovado',
-    cliente:          agendamento.cliente,
-    telefone:         agendamento.telefone,
-    servicos:         agendamento.servicos,
-    total:            agendamento.total,
-    dataOriginal:     agendamento.data,
-    horarioOriginal:  agendamento.horario,
+  // 1. Registra a solicitação de remarcação (log histórico interno)
+  await setDoc(doc(db, 'solicitacoes', solId), {
+    id: solId, tipo: 'remarcacao', status: 'aprovado',
+    cliente:           agendamento.cliente,
+    telefone:          agendamento.telefone,
+    servicos:          agendamento.servicos,
+    total:             agendamento.total,
+    dataOriginal:      agendamento.data,
+    horarioOriginal:   agendamento.horario,
+    agendamentoIdOriginal: agendamento.id || '',
     novaData,
     novoHorario,
-    remarcacoesTotal: novasFeitas,
-    prazoValidado:    true,
-    termoAceito:      true,
-    motivo:           motivo || '',
-    criadoEm:         new Date().toISOString(),
+    remarcacoesTotal:  novasFeitas,
+    prazoValidado:     true,
+    termoAceito:       true,
+    motivo:            motivo || '',
+    criadoEm:          new Date().toISOString(),
     criadoEmFormatado: new Date().toLocaleString('pt-BR'),
   });
 
-  // 2. Atualiza o documento do agendamento com nova data, horário e contador
+  // 2. Remove o agendamento antigo do Firestore (libera do histórico)
   if (agendamento.id) {
-    await setDoc(doc(db, 'agendamentos', agendamento.id), {
-      data:        novaData,
-      horario:     novoHorario,
-      remarcacoes: novasFeitas,
-    }, { merge: true });
+    await deleteDoc(doc(db, 'agendamentos', agendamento.id));
   }
 
-  // 3. Atualiza takenSlots em memória e persiste no Firestore
+  // 3. Cria novo agendamento com o novo horário
+  const novoAgendamento = {
+    cliente:        agendamento.cliente,
+    telefone:       agendamento.telefone,
+    email:          agendamento.email || '',
+    servicos:       agendamento.servicos,
+    total:          agendamento.total,
+    data:           novaData,
+    horario:        novoHorario,
+    barbeiro:       agendamento.barbeiro || '',
+    barbeiroId:     agendamento.barbeiroId || '',
+    formaPagamento: agendamento.formaPagamento || 'PIX',
+    status:         'confirmado',
+    pedidoId:       agendamento.pedidoId || '',
+    termoAceito:    agendamento.termoAceito || false,
+    termoAceitoEm:  agendamento.termoAceitoEm || '',
+    remarcacoes:    novasFeitas,
+    criadoEm:       new Date().toISOString(),
+  };
+  const novoRef = await addDoc(collection(db, 'agendamentos'), novoAgendamento);
+  const novoId = novoRef.id;
+
+  // 4. Libera slot antigo e bloqueia slot novo
   if (agendamento.barbeiroId) {
     liberarHorarioBarbeiro(agendamento.barbeiroId, agendamento.horario);
     bloquearHorarioBarbeiro(agendamento.barbeiroId, novoHorario);
-    // Salva o array de barbeiros atualizado dentro de settings/admin
     await setDoc(doc(db, 'settings', 'admin'), { barbeiros: adminSettings.barbeiros || [] }, { merge: true });
   } else {
     adminSettings.takenSlots = adminSettings.takenSlots.filter(h => h !== agendamento.horario);
@@ -173,7 +191,7 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
   }
 
-  return { novasFeitas, maxRemarc };
+  return { novasFeitas, maxRemarc, novoId };
 }
 
 /* ── Verificar prazo 24h ── */
