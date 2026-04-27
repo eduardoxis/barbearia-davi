@@ -81,8 +81,16 @@ function renderHistoricoFiltrado() {
     } else if (_histFiltroAtual === '90') {
       const lim = new Date(hoje); lim.setDate(lim.getDate()-90);
       dados = dados.filter(a => new Date(a.criadoEm || 0) >= lim);
-    } else if (_histFiltroAtual === 'realizado' || _histFiltroAtual === 'remarcado') {
-      dados = dados.filter(a => (a.status || 'realizado') === _histFiltroAtual);
+    } else if (_histFiltroAtual === 'realizado') {
+      dados = dados.filter(a => {
+        const st = a.status || 'confirmado';
+        const dt = parseDateBR(a.data);
+        const isFuturo = dt && dt >= hoje;
+        // "Realizados" = passados e não cancelados
+        return !isFuturo && st !== 'cancelado' && st !== 'remarcado';
+      });
+    } else if (_histFiltroAtual === 'remarcado') {
+      dados = dados.filter(a => (a.status || '') === 'remarcado');
     }
   }
 
@@ -100,8 +108,15 @@ function renderHistoricoFiltrado() {
 }
 
 function renderCartaoAtendimento(a) {
-  const status = a.status || 'realizado';
-  const statusLabel = { realizado:'✓ Realizado', cancelado:'✕ Cancelado', remarcado:'🔄 Remarcado', pendente:'⏳ Pendente' }[status] || status;
+  const status = a.status || 'confirmado';
+  const statusLabel = {
+    confirmado: '⏳ Agendado',
+    agendado:   '⏳ Agendado',
+    realizado:  '✓ Realizado',
+    cancelado:  '✕ Cancelado',
+    remarcado:  '🔄 Remarcado',
+    pendente:   '⏳ Pendente',
+  }[status] || status;
   const barbNome = a.barbeiro || '—';
   const pagamento = a.formaPagamento || 'PIX';
   const servicos  = a.servicos || '—';
