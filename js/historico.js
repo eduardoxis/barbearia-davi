@@ -302,11 +302,12 @@ export async function confirmarSolicitacaoRemarcacao() {
 
     fecharModalSolicitacao();
     atualizarTelaAposRemarcacao(solNovaData, solNovoHorario, novasFeitas, maxRemarc);
-    // Renderiza imediatamente com o cache já atualizado
+    // Renderiza IMEDIATAMENTE com o cache local já corrigido
     renderHistoricoFiltrado();
     showToast('✅ Remarcação realizada com sucesso!');
-    // Recarrega do Firestore em segundo plano para garantir consistência
-    carregarHistoricoCliente();
+    // Aguarda 4s antes de recarregar do Firestore — dá tempo do servidor propagar
+    // o deleteDoc + addDoc antes que o SDK local sirva dados frescos
+    setTimeout(() => carregarHistoricoCliente(), 4000);
   } catch (e) {
     showToast('❌ Erro: ' + e.message);
     if (btnConf) { btnConf.disabled = false; btnConf.textContent = '🔄 Confirmar Remarcação'; }
