@@ -474,7 +474,10 @@ export async function irParaPagamentoComTermo() {
       cliente:       clienteNome,
       telefone:      clienteTel,
       email:         clienteEmail,
-      servicos:      cart.map(c => (_svcIconText(c) + ' ' + c.name).trim()).join(', '),
+      servicos:      cart.map(c => {
+        const icone = _svcIconText(c); // nunca retorna base64
+        return (icone + ' ' + c.name).trim();
+      }).join(', '),
       total:         cart.reduce((s, c) => s + c.price, 0),
       data:          booking.date,
       horario:       booking.time,
