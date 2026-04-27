@@ -38,7 +38,10 @@ export async function criarAgendamento(dados) {
 /* ── Busca agendamentos por email ou nome ── */
 export async function buscarAgendamentosCliente(email, nome) {
   if (!window._fb) return [];
-  const { collection, getDocs, query, where, orderBy, db } = window._fb;
+  // Usa getDocsFromServer quando disponível para ignorar cache local do SDK
+  // (evita mostrar documentos deletados logo após um deleteDoc)
+  const { collection, getDocs, getDocsFromServer, query, where, orderBy, db } = window._fb;
+  const fetchDocs = getDocsFromServer || getDocs;
 
   let resultados = [];
   try {
@@ -47,13 +50,13 @@ export async function buscarAgendamentosCliente(email, nome) {
       where('email', '==', email),
       orderBy('criadoEm', 'desc')
     );
-    const snap = await getDocs(q);
+    const snap = await fetchDocs(q);
     snap.forEach(d => resultados.push({ id: d.id, ...d.data() }));
   } catch (e) {
     // sem índice — tenta sem orderBy
     try {
       const q2 = query(collection(db, 'agendamentos'), where('email', '==', email));
-      const snap2 = await getDocs(q2);
+      const snap2 = await fetchDocs(q2);
       snap2.forEach(d => resultados.push({ id: d.id, ...d.data() }));
       resultados.sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
     } catch (e2) { /* ignora */ }
@@ -62,7 +65,7 @@ export async function buscarAgendamentosCliente(email, nome) {
   if (!resultados.length && nome) {
     try {
       const q3 = query(collection(db, 'agendamentos'), where('cliente', '==', nome));
-      const snap3 = await getDocs(q3);
+      const snap3 = await fetchDocs(q3);
       snap3.forEach(d => resultados.push({ id: d.id, ...d.data() }));
     } catch (e3) { /* ignora */ }
   }
