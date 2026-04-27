@@ -285,11 +285,28 @@ export async function confirmarSolicitacaoRemarcacao() {
     booking.time        = solNovoHorario;
     booking.remarcacoes = novasFeitas;
     if (novoId) booking.firestoreId = novoId;
+
+    // Atualiza o cache local IMEDIATAMENTE (evita race condition com cache do Firestore)
+    // Remove o agendamento antigo do cache
+    _histCache = _histCache.filter(x => x.id !== solAgendamentoAtual.id);
+    // Insere o novo agendamento no topo do cache
+    _histCache.unshift({
+      ...solAgendamentoAtual,
+      id:          novoId,
+      data:        solNovaData,
+      horario:     solNovoHorario,
+      remarcacoes: novasFeitas,
+      status:      'confirmado',
+      criadoEm:    new Date().toISOString(),
+    });
+
     fecharModalSolicitacao();
     atualizarTelaAposRemarcacao(solNovaData, solNovoHorario, novasFeitas, maxRemarc);
+    // Renderiza imediatamente com o cache já atualizado
+    renderHistoricoFiltrado();
     showToast('✅ Remarcação realizada com sucesso!');
-    // Recarrega o histórico do Firestore para refletir a nova data/horário
-    await carregarHistoricoCliente();
+    // Recarrega do Firestore em segundo plano para garantir consistência
+    carregarHistoricoCliente();
   } catch (e) {
     showToast('❌ Erro: ' + e.message);
     if (btnConf) { btnConf.disabled = false; btnConf.textContent = '🔄 Confirmar Remarcação'; }
