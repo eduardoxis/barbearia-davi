@@ -119,7 +119,12 @@ function renderCartaoAtendimento(a) {
   }[status] || status;
   const barbNome = a.barbeiro || '—';
   const pagamento = a.formaPagamento || 'PIX';
-  const servicos  = a.servicos || '—';
+  // Remove base64 e URLs de ícone que possam ter sido gravados no campo servicos
+  const servicos = (a.servicos || '—')
+    .split(',')
+    .map(s => s.replace(/^(data:[^\s]+|https?:\/\/\S+|\uD83D[\uDC00-\uDFFF]\uFE0F?)\s*/u, '').trim())
+    .filter(Boolean)
+    .join(', ') || '—';
   const dt = parseDateBR(a.data);
   const ehFuturo = dt && dt >= new Date(new Date().setHours(0,0,0,0));
   const podeRemarcar = ehFuturo && status !== 'cancelado';
