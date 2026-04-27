@@ -119,10 +119,12 @@ function renderCartaoAtendimento(a) {
   }[status] || status;
   const barbNome = a.barbeiro || '—';
   const pagamento = a.formaPagamento || 'PIX';
-  // Remove base64 e URLs de ícone que possam ter sido gravados no campo servicos
+  // Remove base64 e URLs de ícone ANTES de separar por vírgula
   const servicos = (a.servicos || '—')
+    .replace(/data:[^\s,]+;base64,[A-Za-z0-9+/=\r\n]*/g, '') // remove data URLs completas
+    .replace(/https?:\/\/\S+/g, '')                           // remove http URLs
     .split(',')
-    .map(s => s.replace(/^(data:[^\s]+|https?:\/\/\S+|\uD83D[\uDC00-\uDFFF]\uFE0F?)\s*/u, '').trim())
+    .map(s => s.trim())
     .filter(Boolean)
     .join(', ') || '—';
   const dt = parseDateBR(a.data);
