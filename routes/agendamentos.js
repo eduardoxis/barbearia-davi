@@ -38,38 +38,45 @@ export async function criarAgendamento(dados) {
 /* ── Busca agendamentos por email ou nome ── */
 export async function buscarAgendamentosCliente(email, nome) {
   if (!window._fb) return [];
-  // Usa getDocsFromServer quando disponível para ignorar cache local do SDK
-  // (evita mostrar documentos deletados logo após um deleteDoc)
-  const { collection, getDocs, getDocsFromServer, query, where, orderBy, db } = window._fb;
+  const { collection, getDocsFromServer, getDocs, query, where, db } = window._fb;
+  // Sempre busca direto do servidor — ignora cache local do SDK
   const fetchDocs = getDocsFromServer || getDocs;
 
-  let resultados = [];
-  try {
-    const q = query(
-      collection(db, 'agendamentos'),
-      where('email', '==', email),
-      orderBy('criadoEm', 'desc')
-    );
-    const snap = await fetchDocs(q);
-    snap.forEach(d => resultados.push({ id: d.id, ...d.data() }));
-  } catch (e) {
-    // sem índice — tenta sem orderBy
+  const mapaId = new Map(); // deduplicação por ID
+
+  const adicionarResultados = (snap) => {
+    snap.forEach(d => {
+      if (!mapaId.has(d.id)) mapaId.set(d.id, { id: d.id, ...d.data() });
+    });
+  };
+
+  // 1. Busca por email
+  if (email) {
     try {
-      const q2 = query(collection(db, 'agendamentos'), where('email', '==', email));
-      const snap2 = await fetchDocs(q2);
-      snap2.forEach(d => resultados.push({ id: d.id, ...d.data() }));
-      resultados.sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
-    } catch (e2) { /* ignora */ }
+      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('email', '==', email)));
+      adicionarResultados(snap);
+    } catch (e) { console.warn('[HIST] busca por email falhou:', e.message); }
   }
 
-  if (!resultados.length && nome) {
+  // 2. Busca por nome (cliente)
+  if (nome) {
     try {
-      const q3 = query(collection(db, 'agendamentos'), where('cliente', '==', nome));
-      const snap3 = await fetchDocs(q3);
-      snap3.forEach(d => resultados.push({ id: d.id, ...d.data() }));
-    } catch (e3) { /* ignora */ }
+      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('cliente', '==', nome)));
+      adicionarResultados(snap);
+    } catch (e) { console.warn('[HIST] busca por nome falhou:', e.message); }
   }
 
+  // 3. Busca por telefone (fallback extra)
+  const telefone = window.fbUser?.phone || window.fbUser?.telefone || '';
+  if (telefone) {
+    try {
+      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('telefone', '==', telefone)));
+      adicionarResultados(snap);
+    } catch (e) { /* ignora */ }
+  }
+
+  const resultados = Array.from(mapaId.values());
+  resultados.sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
   return resultados;
 }
 
