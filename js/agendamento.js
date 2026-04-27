@@ -409,7 +409,12 @@ function resetTermoCheckbox() {
   if (lb)  lb.classList.remove('aceito');
 }
 
+let _salvando = false; // Guard contra clique duplo
+
 export async function irParaPagamentoComTermo() {
+  // ── Proteção contra clique duplo / dupla submissão ──
+  if (_salvando) return;
+
   const cb = document.getElementById('termoCheckbox');
   if (!cb?.checked) {
     document.getElementById('termoAviso')?.classList.add('visivel');
@@ -452,6 +457,9 @@ export async function irParaPagamentoComTermo() {
 
   // ── PAGAMENTO TEMPORARIAMENTE DESABILITADO ──
   // Salva diretamente no Firestore sem passar pelo Cakto/Pix
+  _salvando = true;
+  const btnIr = document.getElementById('btnIrPagamento');
+  if (btnIr) { btnIr.disabled = true; btnIr.textContent = 'Salvando...'; }
   try {
     if (!window._fb) throw new Error('Firebase não inicializado (window._fb ausente).');
     const { addDoc, collection, db, auth, signInAnonymously } = window._fb;
@@ -511,9 +519,18 @@ export async function irParaPagamentoComTermo() {
   } catch (e) {
     const msg = `ERRO AO SALVAR AGENDAMENTO\n\nCódigo: ${e?.code || 'sem código'}\nMensagem: ${e?.message || String(e)}\n\nMostre isso para o desenvolvedor.`;
     console.error('[AGENDAMENTO] Falha:', e);
+    _salvando = false;
+    if (btnIr) { btnIr.disabled = false; btnIr.textContent = 'Confirmar Agendamento'; }
     alert(msg); // alert garante visibilidade total
     return;
   }
+
+  _salvando = false; // libera o guard após sucesso
+
+  // ── Recarrega histórico do cliente para refletir o novo agendamento ──
+  setTimeout(() => {
+    import('./historico.js').then(m => m.carregarHistoricoCliente()).catch(() => {});
+  }, 1500);
 
   // ── Atualiza o booking com os dados lidos para o step 5 exibir corretamente ──
   booking.client = clienteNome;
