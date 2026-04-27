@@ -6,7 +6,7 @@
 import { adminSettings, booking, cart, addToCartArr, showToast, MONTHS_PT, DAYS_SHORT_PT, parseDateBR } from './global.js';
 import { buscarAgendamentosCliente } from '../routes/agendamentos.js';
 import { confirmarRemarcacao, verificarPrazo24h } from '../routes/agendamentos.js';
-import { gerarHorariosBarbeiro } from '../routes/barbeiros.js';
+import { gerarHorariosBarbeiro, liberarHorarioBarbeiro } from '../routes/barbeiros.js';
 
 /* ── Estado ── */
 let _histCache = [];
@@ -274,15 +274,17 @@ export async function confirmarSolicitacaoRemarcacao() {
   if (btnConf) { btnConf.disabled = true; btnConf.textContent = 'Processando...'; }
   const motivo = document.getElementById('solMotivoRemarcacao')?.value.trim() || '';
   try {
-    const { novasFeitas, maxRemarc } = await confirmarRemarcacao({
+    const { novasFeitas, maxRemarc, novoId } = await confirmarRemarcacao({
       agendamento: solAgendamentoAtual,
       novaData:    solNovaData,
       novoHorario: solNovoHorario,
       motivo,
     });
+    // Atualiza o booking com o novo ID e datas
     booking.date        = solNovaData;
     booking.time        = solNovoHorario;
     booking.remarcacoes = novasFeitas;
+    if (novoId) booking.firestoreId = novoId;
     fecharModalSolicitacao();
     atualizarTelaAposRemarcacao(solNovaData, solNovoHorario, novasFeitas, maxRemarc);
     showToast('✅ Remarcação realizada com sucesso!');
@@ -333,6 +335,29 @@ export function remarcarDoHistorico(id) {
 export async function reagendarDoHistorico(id) {
   const a = _histCache.find(x => x.id === id);
   if (!a) return;
+
+  // 1. Remove o agendamento antigo do Firestore e libera o slot
+  if (window._fb && a.id) {
+    try {
+      const { doc, deleteDoc, setDoc, db } = window._fb;
+      await deleteDoc(doc(db, 'agendamentos', a.id));
+
+      // Libera o slot do horário antigo
+      if (a.barbeiroId) {
+        liberarHorarioBarbeiro(a.barbeiroId, a.horario);
+        await setDoc(doc(db, 'settings', 'admin'), { barbeiros: adminSettings.barbeiros || [] }, { merge: true });
+      } else if (a.horario) {
+        adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== a.horario);
+        await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
+      }
+
+      // Remove do cache local para sumir do histórico imediatamente
+      _histCache = _histCache.filter(x => x.id !== id);
+    } catch (e) {
+      console.warn('Erro ao remover agendamento antigo:', e);
+    }
+  }
+
   import('./login.js').then(m => m.closeUserModal());
   // Restaura carrinho
   window._cart = [];
