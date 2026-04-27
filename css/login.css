@@ -30,10 +30,12 @@
 .hist-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem}
 .hist-valor{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--red)}
 .hist-pagamento{font-size:0.6rem;color:var(--gray2);letter-spacing:0.06em;text-transform:uppercase}
-.hist-acoes{display:flex;gap:0.35rem;flex-wrap:wrap}
-.btn-hist-acao{background:none;border:1px solid var(--border);color:var(--gray);padding:0.25rem 0.55rem;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-radius:1px;font-family:'Inter',sans-serif;transition:all 0.2s}
+.hist-acoes{display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center}
+.btn-hist-acao{background:none;border:1px solid var(--border);color:var(--gray);padding:0.4rem 0.75rem;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border-radius:2px;font-family:'Inter',sans-serif;transition:all 0.2s;white-space:nowrap}
 .btn-hist-acao:hover{border-color:var(--red);color:var(--red)}
-.btn-hist-reagendar{background:var(--red);border-color:var(--red);color:var(--white)}
+.btn-hist-remarcar{border-color:#6495ED;color:#6495ED}
+.btn-hist-remarcar:hover{background:#6495ED;color:#fff}
+.btn-hist-reagendar{background:var(--red);border-color:var(--red);color:#fff;padding:0.4rem 0.9rem}
 .btn-hist-reagendar:hover{background:var(--red-dark)}
 .hist-vazio{text-align:center;padding:1.5rem;color:var(--gray2);font-size:0.8rem;background:var(--card2);border-radius:2px}
 .hist-loading{text-align:center;padding:1.5rem;color:var(--gray);font-size:0.8rem}
