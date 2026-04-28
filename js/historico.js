@@ -29,8 +29,21 @@ export async function carregarHistoricoCliente() {
     lista.innerHTML = '<div class="hist-vazio">Faça login para ver seu histórico.</div>';
     return;
   }
-  _histCache = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
+  const raw = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
     .filter(a => !_deletedIds.has(a.id));
+
+  // Deduplicação: mesma data + horário + serviço → mantém só o mais recente (criadoEm maior)
+  const mapa = new Map();
+  for (const a of raw) {
+    const chave = `${a.data}|${a.horario}|${(a.servicos || '').toLowerCase().trim()}`;
+    const existente = mapa.get(chave);
+    if (!existente || (a.criadoEm || '') > (existente.criadoEm || '')) {
+      mapa.set(chave, a);
+    }
+  }
+  _histCache = Array.from(mapa.values())
+    .sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
+
   renderHistoricoFiltrado();
 }
 
