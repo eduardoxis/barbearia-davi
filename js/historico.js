@@ -17,6 +17,8 @@ let solCalMes = new Date().getMonth();
 let solNovaData = '';
 let solNovoHorario = '';
 let solAgendamentoAtual = null;
+// IDs deletados localmente — filtrados mesmo que o servidor demore a propagar o deleteDoc
+const _deletedIds = new Set();
 
 /* ── Carrega histórico do cliente ── */
 export async function carregarHistoricoCliente() {
@@ -27,7 +29,8 @@ export async function carregarHistoricoCliente() {
     lista.innerHTML = '<div class="hist-vazio">Faça login para ver seu histórico.</div>';
     return;
   }
-  _histCache = await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name);
+  _histCache = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
+    .filter(a => !_deletedIds.has(a.id));
   renderHistoricoFiltrado();
 }
 
@@ -310,6 +313,7 @@ export async function confirmarSolicitacaoRemarcacao() {
 
     // Atualiza o cache local IMEDIATAMENTE (evita race condition com cache do Firestore)
     // Remove o agendamento antigo do cache
+    _deletedIds.add(solAgendamentoAtual.id); // bloqueia o ID mesmo que servidor demore
     _histCache = _histCache.filter(x => x.id !== solAgendamentoAtual.id);
     // Insere o novo agendamento no topo do cache
     _histCache.unshift({
@@ -381,6 +385,7 @@ export async function reagendarDoHistorico(id) {
     try {
       const { doc, deleteDoc, setDoc, db } = window._fb;
       await deleteDoc(doc(db, 'agendamentos', a.id));
+      _deletedIds.add(a.id); // garante que não volta no próximo reload
 
       // Libera o slot do horário antigo
       if (a.barbeiroId) {
