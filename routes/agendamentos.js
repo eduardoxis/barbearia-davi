@@ -163,10 +163,14 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     criadoEmFormatado: new Date().toLocaleString('pt-BR'),
   });
 
-  // 2. Marca o antigo como 'reagendado' E deleta — dupla garantia
+  // 2. Marca o antigo como 'remarcado' — NÃO deletar para evitar race condition com cache do SDK.
+  //    O histórico filtra status 'remarcado' na query, então o card some automaticamente.
   if (agendamento.id) {
-    await setDoc(doc(db, 'agendamentos', agendamento.id), { status: 'reagendado' }, { merge: true });
-    await deleteDoc(doc(db, 'agendamentos', agendamento.id));
+    await setDoc(doc(db, 'agendamentos', agendamento.id), {
+      status: 'remarcado',
+      remarcadoEm: new Date().toISOString(),
+      substituídoPor: '', // preenchido abaixo após criar o novo
+    }, { merge: true });
   }
 
   // 3. Cria novo agendamento com o novo horário
@@ -190,6 +194,11 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
   };
   const novoRef = await addDoc(collection(db, 'agendamentos'), novoAgendamento);
   const novoId = novoRef.id;
+
+  // Atualiza o doc antigo com a referência para o novo (rastreabilidade)
+  if (agendamento.id) {
+    await setDoc(doc(db, 'agendamentos', agendamento.id), { substituídoPor: novoId }, { merge: true });
+  }
 
   // 4. Libera slot antigo e bloqueia slot novo
   if (agendamento.barbeiroId) {
