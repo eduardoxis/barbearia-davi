@@ -163,8 +163,9 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     criadoEmFormatado: new Date().toLocaleString('pt-BR'),
   });
 
-  // 2. Remove o agendamento antigo do Firestore (libera do histórico)
+  // 2. Marca o antigo como 'reagendado' E deleta — dupla garantia
   if (agendamento.id) {
+    await setDoc(doc(db, 'agendamentos', agendamento.id), { status: 'reagendado' }, { merge: true });
     await deleteDoc(doc(db, 'agendamentos', agendamento.id));
   }
 
