@@ -30,7 +30,7 @@ export async function carregarHistoricoCliente() {
     return;
   }
   const raw = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
-    .filter(a => !_deletedIds.has(a.id));
+    .filter(a => !_deletedIds.has(a.id) && (a.status || '') !== 'reagendado');
 
   // Deduplicação: mesma data + horário + serviço → mantém só o mais recente (criadoEm maior)
   const mapa = new Map();
@@ -393,10 +393,13 @@ export async function reagendarDoHistorico(id) {
   const a = _histCache.find(x => x.id === id);
   if (!a) return;
 
-  // 1. Remove o agendamento antigo do Firestore e libera o slot
+  // 1. Marca o agendamento antigo como 'reagendado' E deleta — dupla garantia
   if (window._fb && a.id) {
     try {
       const { doc, deleteDoc, setDoc, db } = window._fb;
+      // Primeiro marca como reagendado (garante que some do histórico mesmo se deleteDoc falhar)
+      await setDoc(doc(db, 'agendamentos', a.id), { status: 'reagendado' }, { merge: true });
+      // Depois tenta deletar
       await deleteDoc(doc(db, 'agendamentos', a.id));
       _deletedIds.add(a.id); // garante que não volta no próximo reload
 
