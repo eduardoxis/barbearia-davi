@@ -145,7 +145,7 @@ function renderCartaoAtendimento(a) {
         <div class="hist-pagamento">${pagamento}</div>
       </div>
       <div class="hist-acoes">
-        ${a.pedidoId ? `<button class="btn-hist-acao" onclick="verComprovante('${a.id}')">🧾 Comprovante</button>` : ''}
+        <button class="btn-hist-acao" onclick="verComprovante('${a.id}')">🧾 Comprovante</button>
         ${podeRemarcar ? `<button class="btn-hist-acao btn-hist-remarcar" onclick="remarcarDoHistorico('${a.id}')">🔄 Remarcar</button>` : ''}
         <button class="btn-hist-acao btn-hist-reagendar" onclick="reagendarDoHistorico('${a.id}')">↻ Reagendar</button>
       </div>
