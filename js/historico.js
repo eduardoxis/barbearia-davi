@@ -29,8 +29,10 @@ export async function carregarHistoricoCliente() {
     lista.innerHTML = '<div class="hist-vazio">Faça login para ver seu histórico.</div>';
     return;
   }
+  // Filtra 'remarcado' (status atual) E 'reagendado' (status legado) para cobrir dados antigos
+  const STATUS_OCULTOS = new Set(['remarcado', 'reagendado']);
   const raw = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
-    .filter(a => !_deletedIds.has(a.id) && (a.status || '') !== 'reagendado');
+    .filter(a => !_deletedIds.has(a.id) && !STATUS_OCULTOS.has(a.status || ''));
 
   // Deduplicação: mesma data + horário + serviço → mantém só o mais recente (criadoEm maior)
   const mapa = new Map();
@@ -103,7 +105,7 @@ function renderHistoricoFiltrado() {
         const dt = parseDateBR(a.data);
         const isFuturo = dt && dt >= hoje;
         // "Realizados" = passados e não cancelados
-        return !isFuturo && st !== 'cancelado' && st !== 'remarcado';
+        return !isFuturo && st !== 'cancelado' && st !== 'remarcado' && st !== 'reagendado';
       });
     } else if (_histFiltroAtual === 'remarcado') {
       dados = dados.filter(a => (a.status || '') === 'remarcado');
@@ -397,10 +399,9 @@ export async function reagendarDoHistorico(id) {
   if (window._fb && a.id) {
     try {
       const { doc, deleteDoc, setDoc, db } = window._fb;
-      // Primeiro marca como reagendado (garante que some do histórico mesmo se deleteDoc falhar)
-      await setDoc(doc(db, 'agendamentos', a.id), { status: 'reagendado' }, { merge: true });
-      // Depois tenta deletar
-      await deleteDoc(doc(db, 'agendamentos', a.id));
+      await setDoc(doc(db, 'agendamentos', a.id), { status: 'remarcado' }, { merge: true });
+      // Tenta deletar também (limpeza de dados), mas não é crítico se falhar
+      try { await deleteDoc(doc(db, 'agendamentos', a.id)); } catch (_) { /* ok, setDoc já garantiu status */ }
       _deletedIds.add(a.id); // garante que não volta no próximo reload
 
       // Libera o slot do horário antigo
