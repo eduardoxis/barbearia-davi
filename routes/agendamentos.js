@@ -44,9 +44,13 @@ export async function buscarAgendamentosCliente(email, nome) {
 
   const mapaId = new Map(); // deduplicação por ID
 
+  const STATUS_IGNORADOS = new Set(['remarcado', 'reagendado']);
   const adicionarResultados = (snap) => {
     snap.forEach(d => {
-      if (!mapaId.has(d.id)) mapaId.set(d.id, { id: d.id, ...d.data() });
+      const dados = d.data();
+      // Ignora agendamentos já remarcados/reagendados — evita duplicatas no histórico
+      if (STATUS_IGNORADOS.has(dados.status || '')) return;
+      if (!mapaId.has(d.id)) mapaId.set(d.id, { id: d.id, ...dados });
     });
   };
 
