@@ -204,16 +204,18 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     await setDoc(doc(db, 'agendamentos', agendamento.id), { substituídoPor: novoId }, { merge: true });
   }
 
-  // 4. Libera slot antigo e bloqueia slot novo
+  // 4. Libera slot antigo e bloqueia slot novo — limpa AMBOS os lugares para evitar slots fantasmas
   if (agendamento.barbeiroId) {
     liberarHorarioBarbeiro(agendamento.barbeiroId, agendamento.horario);
     bloquearHorarioBarbeiro(agendamento.barbeiroId, novoHorario);
-    await setDoc(doc(db, 'settings', 'admin'), { barbeiros: adminSettings.barbeiros || [] }, { merge: true });
-  } else {
-    adminSettings.takenSlots = adminSettings.takenSlots.filter(h => h !== agendamento.horario);
-    if (!adminSettings.takenSlots.includes(novoHorario)) adminSettings.takenSlots.push(novoHorario);
-    await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
   }
+  // Sempre atualiza takenSlots global (independente de ter barbeiroId ou não)
+  adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== agendamento.horario);
+  if (!adminSettings.takenSlots.includes(novoHorario)) adminSettings.takenSlots.push(novoHorario);
+  await setDoc(doc(db, 'settings', 'admin'), {
+    barbeiros:  adminSettings.barbeiros  || [],
+    takenSlots: adminSettings.takenSlots,
+  }, { merge: true });
 
   return { novasFeitas, maxRemarc, novoId };
 }
