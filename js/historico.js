@@ -410,10 +410,14 @@ export async function reagendarDoHistorico(id) {
   if (window._fb && a.id) {
     try {
       const { doc, deleteDoc, setDoc, db } = window._fb;
+      // Marca como remarcado PRIMEIRO — isso garante que ele suma do histórico mesmo se deleteDoc falhar
       await setDoc(doc(db, 'agendamentos', a.id), { status: 'remarcado' }, { merge: true });
-      // Tenta deletar também (limpeza de dados), mas não é crítico se falhar
-      try { await deleteDoc(doc(db, 'agendamentos', a.id)); } catch (_) { /* ok, setDoc já garantiu status */ }
       _deletedIds.add(a.id); // garante que não volta no próximo reload
+
+      // Tenta deletar também (limpeza de dados), mas não é crítico se falhar
+      try { await deleteDoc(doc(db, 'agendamentos', a.id)); } catch (eD) {
+        console.warn('[REAGENDAR] deleteDoc falhou (ok — status já remarcado):', eD?.message);
+      }
 
       // Libera o slot do horário antigo
       if (a.barbeiroId) {
