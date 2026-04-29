@@ -419,14 +419,15 @@ export async function reagendarDoHistorico(id) {
         console.warn('[REAGENDAR] deleteDoc falhou (ok — status já remarcado):', eD?.message);
       }
 
-      // Libera o slot do horário antigo
-      if (a.barbeiroId) {
-        liberarHorarioBarbeiro(a.barbeiroId, a.horario);
-        await setDoc(doc(db, 'settings', 'admin'), { barbeiros: adminSettings.barbeiros || [] }, { merge: true });
-      } else if (a.horario) {
-        adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== a.horario);
-        await setDoc(doc(db, 'settings', 'admin'), { takenSlots: adminSettings.takenSlots }, { merge: true });
-      }
+      // Libera o slot do horário antigo — limpa AMBOS os lugares (barbeiro + global)
+      if (a.barbeiroId) liberarHorarioBarbeiro(a.barbeiroId, a.horario);
+      if (a.horario) adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== a.horario);
+      try {
+        await setDoc(doc(db, 'settings', 'admin'), {
+          barbeiros:  adminSettings.barbeiros  || [],
+          takenSlots: adminSettings.takenSlots || [],
+        }, { merge: true });
+      } catch (eS) { console.warn('[REAGENDAR] setDoc settings falhou:', eS?.message); }
 
       // Remove do cache local para sumir do histórico imediatamente
       _histCache = _histCache.filter(x => x.id !== id);
