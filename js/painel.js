@@ -125,7 +125,13 @@ async function _buscarAgendamentos() {
 
 function _agNaData(data) {
   return _agendamentos
-    .filter(a => { const d = a.data||''; return d === data || d === _dataFS(data); })
+    .filter(a => {
+      const d = a.data||'';
+      const st = a.status || '';
+      // Exclui agendamentos remarcados/cancelados — não devem aparecer como reservados
+      if (st === 'remarcado' || st === 'reagendado' || st === 'cancelado') return false;
+      return d === data || d === _dataFS(data);
+    })
     .sort((a,b) => (a.horario||'').localeCompare(b.horario||''));
 }
 
