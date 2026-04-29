@@ -315,7 +315,15 @@ export async function renderSlots() {
         ? query(collection(db, 'agendamentos'), where('data', '==', dataSel), where('barbeiroId', '==', b.id))
         : query(collection(db, 'agendamentos'), where('data', '==', dataSel));
       const snap = await getDocs(q);
-      snap.forEach(d => { const h = d.data().horario; if (h) ocupados.push(h); });
+      snap.forEach(d => {
+        const dadosDoc = d.data();
+        const h = dadosDoc.horario;
+        const st = dadosDoc.status || '';
+        // Ignora slots de agendamentos já remarcados ou cancelados
+        if (h && st !== 'remarcado' && st !== 'cancelado' && st !== 'reagendado') {
+          ocupados.push(h);
+        }
+      });
     } catch (_) {
       // fallback: usa takenSlots em memória se Firestore falhar
       ocupados = b ? (b.takenSlots || []) : adminSettings.takenSlots;
