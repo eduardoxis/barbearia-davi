@@ -206,7 +206,7 @@ export function abrirModalRemarcacao(agendOverride) {
   solNovaData = ''; solNovoHorario = '';
   solCalAno = new Date().getFullYear(); solCalMes = new Date().getMonth();
   const btnConf = document.getElementById('btnConfirmarRemarcacao');
-  if (btnConf) btnConf.disabled = true;
+  if (btnConf) { btnConf.disabled = true; btnConf.textContent = '🔄 Confirmar Remarcação'; }
   document.getElementById('solNovaDataTexto').textContent = 'Nenhuma data selecionada';
   document.getElementById('modalSolicitacao').classList.add('show');
   renderCalSolicitacao();
@@ -280,7 +280,15 @@ async function renderHorariosSol() {
         ? query(collection(db, 'agendamentos'), where('data', '==', solNovaData), where('barbeiroId', '==', barbeiro.id))
         : query(collection(db, 'agendamentos'), where('data', '==', solNovaData));
       const snap = await getDocs(q);
-      snap.forEach(d => { const h = d.data().horario; if (h) ocupados.push(h); });
+      snap.forEach(d => {
+        const dadosDoc = d.data();
+        const h = dadosDoc.horario;
+        const st = dadosDoc.status || '';
+        // Ignora slots de agendamentos já remarcados ou cancelados — evita bloquear horários fantasmas
+        if (h && st !== 'remarcado' && st !== 'cancelado' && st !== 'reagendado') {
+          ocupados.push(h);
+        }
+      });
     } catch (_) {
       ocupados = barbeiro ? (barbeiro.takenSlots || []) : adminSettings.takenSlots;
     }
@@ -313,6 +321,7 @@ export async function confirmarSolicitacaoRemarcacao() {
   const btnConf = document.getElementById('btnConfirmarRemarcacao');
   if (btnConf) { btnConf.disabled = true; btnConf.textContent = 'Processando...'; }
   const motivo = document.getElementById('solMotivoRemarcacao')?.value.trim() || '';
+  let sucesso = false;
   try {
     const { novasFeitas, maxRemarc, novoId } = await confirmarRemarcacao({
       agendamento: solAgendamentoAtual,
@@ -327,10 +336,8 @@ export async function confirmarSolicitacaoRemarcacao() {
     if (novoId) booking.firestoreId = novoId;
 
     // Atualiza o cache local IMEDIATAMENTE (evita race condition com cache do Firestore)
-    // Remove o agendamento antigo do cache
-    _deletedIds.add(solAgendamentoAtual.id); // bloqueia o ID mesmo que servidor demore
+    _deletedIds.add(solAgendamentoAtual.id);
     _histCache = _histCache.filter(x => x.id !== solAgendamentoAtual.id);
-    // Insere o novo agendamento no topo do cache
     _histCache.unshift({
       ...solAgendamentoAtual,
       id:          novoId,
@@ -341,17 +348,21 @@ export async function confirmarSolicitacaoRemarcacao() {
       criadoEm:    new Date().toISOString(),
     });
 
+    sucesso = true;
     fecharModalSolicitacao();
     atualizarTelaAposRemarcacao(solNovaData, solNovoHorario, novasFeitas, maxRemarc);
-    // Renderiza IMEDIATAMENTE com o cache local já corrigido
     renderHistoricoFiltrado();
     showToast('✅ Remarcação realizada com sucesso!');
-    // Aguarda 4s antes de recarregar do Firestore — dá tempo do servidor propagar
-    // o deleteDoc + addDoc antes que o SDK local sirva dados frescos
     setTimeout(() => carregarHistoricoCliente(), 4000);
   } catch (e) {
     showToast('❌ Erro: ' + e.message);
-    if (btnConf) { btnConf.disabled = false; btnConf.textContent = '🔄 Confirmar Remarcação'; }
+  } finally {
+    // Garante que o botão SEMPRE volta ao estado original em caso de erro
+    // (o bloco finally executa mesmo que o catch não cubra todos os casos)
+    if (!sucesso) {
+      const btn = document.getElementById('btnConfirmarRemarcacao');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Confirmar Remarcação'; }
+    }
   }
 }
 
