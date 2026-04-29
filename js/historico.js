@@ -296,7 +296,7 @@ async function renderHorariosSol() {
 
   grid.innerHTML = '';
   slots.forEach(slot => {
-    const taken = ocupados.includes(slot) && slot !== solAgendamentoAtual?.horario;
+    const taken = ocupados.includes(slot);
     const el = document.createElement('div');
     el.className = 'slot' + (taken ? ' taken' : '');
     el.textContent = slot;
