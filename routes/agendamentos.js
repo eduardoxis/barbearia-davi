@@ -39,49 +39,41 @@ export async function criarAgendamento(dados) {
 export async function buscarAgendamentosCliente(email, nome) {
   if (!window._fb) return [];
   const { collection, getDocsFromServer, getDocs, query, where, db } = window._fb;
-  // Sempre busca direto do servidor — ignora cache local do SDK
   const fetchDocs = getDocsFromServer || getDocs;
 
-  const mapaId = new Map(); // deduplicação por ID
+  // Coleta TODOS os documentos primeiro (sem filtrar status ainda)
+  const mapaId = new Map();
+  const adicionar = (snap) => snap.forEach(d => {
+    if (!mapaId.has(d.id)) mapaId.set(d.id, { id: d.id, ...d.data() });
+  });
 
-  const STATUS_IGNORADOS = new Set(['remarcado', 'reagendado']);
-  const adicionarResultados = (snap) => {
-    snap.forEach(d => {
-      const dados = d.data();
-      // Ignora agendamentos já remarcados/reagendados — evita duplicatas no histórico
-      if (STATUS_IGNORADOS.has(dados.status || '')) return;
-      if (!mapaId.has(d.id)) mapaId.set(d.id, { id: d.id, ...dados });
-    });
-  };
-
-  // 1. Busca por email
   if (email) {
-    try {
-      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('email', '==', email)));
-      adicionarResultados(snap);
-    } catch (e) { console.warn('[HIST] busca por email falhou:', e.message); }
+    try { adicionar(await fetchDocs(query(collection(db, 'agendamentos'), where('email', '==', email)))); }
+    catch (e) { console.warn('[HIST] busca por email falhou:', e.message); }
   }
-
-  // 2. Busca por nome (cliente)
   if (nome) {
-    try {
-      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('cliente', '==', nome)));
-      adicionarResultados(snap);
-    } catch (e) { console.warn('[HIST] busca por nome falhou:', e.message); }
+    try { adicionar(await fetchDocs(query(collection(db, 'agendamentos'), where('cliente', '==', nome)))); }
+    catch (e) { console.warn('[HIST] busca por nome falhou:', e.message); }
   }
-
-  // 3. Busca por telefone (fallback extra)
   const telefone = window.fbUser?.phone || window.fbUser?.telefone || '';
   if (telefone) {
-    try {
-      const snap = await fetchDocs(query(collection(db, 'agendamentos'), where('telefone', '==', telefone)));
-      adicionarResultados(snap);
-    } catch (e) { /* ignora */ }
+    try { adicionar(await fetchDocs(query(collection(db, 'agendamentos'), where('telefone', '==', telefone)))); }
+    catch (_) {}
   }
 
-  const resultados = Array.from(mapaId.values());
-  resultados.sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
-  return resultados;
+  // Deduplicacao dupla (robusta contra race conditions de propagacao do Firebase)
+  // Camada 1: filtra por status (remarcado/reagendado)
+  // Camada 2: filtra pelo campo substituiId — o novo agendamento salva o ID do antigo.
+  //   Mesmo que o status nao propagou ainda, o link ja existe no novo doc.
+  const STATUS_OCULTOS = new Set(['remarcado', 'reagendado', 'cancelado_pelo_sistema']);
+  const idsSubstituidos = new Set();
+  for (const a of mapaId.values()) {
+    if (a.substituiId) idsSubstituidos.add(a.substituiId);
+  }
+
+  return Array.from(mapaId.values())
+    .filter(a => !STATUS_OCULTOS.has(a.status || '') && !idsSubstituidos.has(a.id))
+    .sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
 }
 
 /* ── Busca agendamentos de uma data específica ── */
@@ -194,6 +186,8 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     termoAceito:    agendamento.termoAceito || false,
     termoAceitoEm:  agendamento.termoAceitoEm || '',
     remarcacoes:    novasFeitas,
+    // Referência explícita ao agendamento substituído — usada para deduplicação no histórico
+    substituiId:    agendamento.id || '',
     criadoEm:       new Date().toISOString(),
   };
   const novoRef = await addDoc(collection(db, 'agendamentos'), novoAgendamento);
