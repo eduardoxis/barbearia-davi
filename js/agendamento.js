@@ -506,6 +506,24 @@ export async function irParaPagamentoComTermo() {
     const ref = await addDoc(collection(db, 'agendamentos'), agendamentoData);
     console.log('[AGENDAMENTO] Salvo com sucesso! ID:', ref.id);
 
+    // ── Garante que o agendamento anterior suma do histórico (fluxo REAGENDAR) ──
+    // Se booking.substituiId está preenchido, marca o doc antigo como 'remarcado'
+    // e registra substituídoPor — mesmo que reagendarDoHistorico já tenha tentado,
+    // esta segunda tentativa cobre falhas de rede/permissão na primeira.
+    if (booking.substituiId) {
+      try {
+        const { doc: fbDoc, setDoc: fbSetDoc } = window._fb;
+        await fbSetDoc(fbDoc(db, 'agendamentos', booking.substituiId), {
+          status:         'remarcado',
+          remarcadoEm:    new Date().toISOString(),
+          substituídoPor: ref.id,
+        }, { merge: true });
+        console.log('[AGENDAMENTO] Agendamento anterior marcado como remarcado:', booking.substituiId);
+      } catch (eM) {
+        console.warn('[AGENDAMENTO] Não foi possível marcar agendamento anterior como remarcado:', eM?.message);
+      }
+    }
+
     // Bloqueia o horário no takenSlots do barbeiro (dentro de settings/admin)
     try {
       const { doc: fbDoc, setDoc: fbSetDoc, getDoc: fbGetDoc } = window._fb;
@@ -634,6 +652,8 @@ async function verificarConfirmacao() {
           pedidoId,
           termoAceito:  booking.termoAceito,
           termoAceitoEm: booking.termoAceitoEm,
+          // Preserva o link ao agendamento substituído mesmo no fluxo PIX
+          substituiId:  booking.substituiId || '',
         });
       } catch (e) { console.warn('Erro ao salvar agendamento:', e); }
 
