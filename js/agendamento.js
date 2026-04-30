@@ -497,6 +497,8 @@ export async function irParaPagamentoComTermo() {
       termoAceito:   booking.termoAceito,
       termoAceitoEm: booking.termoAceitoEm,
       remarcacoes:   0,
+      // Liga ao agendamento substituído (reagendamento) — ativa deduplicação por substituiId
+      substituiId:   booking.substituiId || '',
       criadoEm:      new Date().toISOString(),
     };
 
@@ -537,6 +539,7 @@ export async function irParaPagamentoComTermo() {
   }
 
   _salvando = false; // libera o guard após sucesso
+  booking.substituiId = ''; // limpa o link de substituição após usar
 
   // ── Recarrega histórico do cliente para refletir o novo agendamento ──
   setTimeout(() => {
