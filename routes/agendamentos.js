@@ -28,6 +28,8 @@ export async function criarAgendamento(dados) {
     termoAceito:   dados.termoAceito || false,
     termoAceitoEm: dados.termoAceitoEm || '',
     remarcacoes:   0,
+    // Liga ao agendamento substituído — ativa deduplicação por substituiId
+    substituiId:   dados.substituiId || '',
     criadoEm:      new Date().toISOString(),
   };
 
@@ -121,7 +123,7 @@ export async function cancelarAgendamento(agendamentoId) {
 /* ── Confirma remarcação ── */
 export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, motivo }) {
   if (!window._fb) throw new Error('Firebase não disponível.');
-  const { doc, setDoc, deleteDoc, addDoc, collection, db } = window._fb;
+  const { doc, setDoc, collection, db, writeBatch } = window._fb;
 
   const pol = adminSettings.politicaReembolso || {};
   const maxRemarc = pol.maxRemarcacoes ?? 2;
@@ -137,6 +139,7 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
   if (diffHoras < 24) throw new Error('Não é possível remarcar: faltam menos de 24 horas.');
 
   const novasFeitas = feitas + 1;
+  const agora = new Date().toISOString();
   const solId = 'sol_' + Date.now();
 
   // 1. Registra a solicitação de remarcação (log histórico interno)
@@ -155,21 +158,29 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     prazoValidado:     true,
     termoAceito:       true,
     motivo:            motivo || '',
-    criadoEm:          new Date().toISOString(),
+    criadoEm:          agora,
     criadoEmFormatado: new Date().toLocaleString('pt-BR'),
   });
 
-  // 2. Marca o antigo como 'remarcado' — NÃO deletar para evitar race condition com cache do SDK.
-  //    O histórico filtra status 'remarcado' na query, então o card some automaticamente.
+  // 2. Batch atômico: marca antigo como 'remarcado' E cria novo num único commit.
+  //    Se qualquer parte falhar, nenhuma alteração persiste no Firestore.
+  //    Isso elimina a race condition que causava duplicidade no histórico.
+  const batch = writeBatch(db);
+
+  // 2a. Prepara ref para o NOVO agendamento (ID gerado antes do commit)
+  const novoRef = doc(collection(db, 'agendamentos'));
+  const novoId = novoRef.id;
+
+  // 2b. Marca o ANTIGO como 'remarcado' (não deletar para manter rastreabilidade)
   if (agendamento.id) {
-    await setDoc(doc(db, 'agendamentos', agendamento.id), {
-      status: 'remarcado',
-      remarcadoEm: new Date().toISOString(),
-      substituídoPor: '', // preenchido abaixo após criar o novo
-    }, { merge: true });
+    batch.update(doc(db, 'agendamentos', agendamento.id), {
+      status:         'remarcado',
+      remarcadoEm:    agora,
+      substituídoPor: novoId,
+    });
   }
 
-  // 3. Cria novo agendamento com o novo horário
+  // 2c. Cria o NOVO agendamento com referência explícita ao antigo
   const novoAgendamento = {
     cliente:        agendamento.cliente,
     telefone:       agendamento.telefone,
@@ -186,24 +197,20 @@ export async function confirmarRemarcacao({ agendamento, novaData, novoHorario, 
     termoAceito:    agendamento.termoAceito || false,
     termoAceitoEm:  agendamento.termoAceitoEm || '',
     remarcacoes:    novasFeitas,
-    // Referência explícita ao agendamento substituído — usada para deduplicação no histórico
+    // Referência explícita — deduplicação camada 2 (substituiId) sempre presente
     substituiId:    agendamento.id || '',
-    criadoEm:       new Date().toISOString(),
+    criadoEm:       agora,
   };
-  const novoRef = await addDoc(collection(db, 'agendamentos'), novoAgendamento);
-  const novoId = novoRef.id;
+  batch.set(novoRef, novoAgendamento);
 
-  // Atualiza o doc antigo com a referência para o novo (rastreabilidade)
-  if (agendamento.id) {
-    await setDoc(doc(db, 'agendamentos', agendamento.id), { substituídoPor: novoId }, { merge: true });
-  }
+  // Commit único — antigo+novo mudam juntos ou nenhum muda
+  await batch.commit();
 
-  // 4. Libera slot antigo e bloqueia slot novo — limpa AMBOS os lugares para evitar slots fantasmas
+  // 3. Libera slot antigo e bloqueia slot novo
   if (agendamento.barbeiroId) {
     liberarHorarioBarbeiro(agendamento.barbeiroId, agendamento.horario);
     bloquearHorarioBarbeiro(agendamento.barbeiroId, novoHorario);
   }
-  // Sempre atualiza takenSlots global (independente de ter barbeiroId ou não)
   adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== agendamento.horario);
   if (!adminSettings.takenSlots.includes(novoHorario)) adminSettings.takenSlots.push(novoHorario);
   await setDoc(doc(db, 'settings', 'admin'), {
