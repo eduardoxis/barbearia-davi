@@ -451,6 +451,9 @@ export async function reagendarDoHistorico(id) {
     if (barb) booking.barbeiro = barb;
   }
   booking.date = ''; booking.time = '';
+  // Guarda o ID do agendamento substituído para ser salvo no novo doc
+  // — ativa a camada 2 de deduplicação (substituiId) para o fluxo REAGENDAR também
+  booking.substituiId = a.id || '';
   const { updateCartUI, renderGallery } = await import('./index.js');
   updateCartUI(); renderGallery();
   const { renderBarbeiroGrid, goBookStep } = await import('./agendamento.js');
