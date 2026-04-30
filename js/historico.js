@@ -400,20 +400,15 @@ export async function reagendarDoHistorico(id) {
   const a = _histCache.find(x => x.id === id);
   if (!a) return;
 
-  // 1. Marca o agendamento antigo como 'reagendado' E deleta — dupla garantia
+  // 1. Marca o agendamento antigo como 'remarcado' ANTES de navegar.
+  //    Se falhar, aborta com mensagem — não deixa o usuário criar um novo
+  //    agendamento com o antigo ainda ativo no Firestore.
   if (window._fb && a.id) {
     try {
-      const { doc, deleteDoc, setDoc, db } = window._fb;
-      // Marca como remarcado PRIMEIRO — isso garante que ele suma do histórico mesmo se deleteDoc falhar
+      const { doc, setDoc, db } = window._fb;
       await setDoc(doc(db, 'agendamentos', a.id), { status: 'remarcado' }, { merge: true });
-      _deletedIds.add(a.id); // garante que não volta no próximo reload
 
-      // Tenta deletar também (limpeza de dados), mas não é crítico se falhar
-      try { await deleteDoc(doc(db, 'agendamentos', a.id)); } catch (eD) {
-        console.warn('[REAGENDAR] deleteDoc falhou (ok — status já remarcado):', eD?.message);
-      }
-
-      // Libera o slot do horário antigo — limpa AMBOS os lugares (barbeiro + global)
+      // Libera o slot do horário antigo
       if (a.barbeiroId) liberarHorarioBarbeiro(a.barbeiroId, a.horario);
       if (a.horario) adminSettings.takenSlots = (adminSettings.takenSlots || []).filter(h => h !== a.horario);
       try {
@@ -423,10 +418,13 @@ export async function reagendarDoHistorico(id) {
         }, { merge: true });
       } catch (eS) { console.warn('[REAGENDAR] setDoc settings falhou:', eS?.message); }
 
-      // Remove do cache local para sumir do histórico imediatamente
+      // Remove do cache local imediatamente — safety net para UI
+      _deletedIds.add(a.id);
       _histCache = _histCache.filter(x => x.id !== id);
     } catch (e) {
-      console.warn('Erro ao remover agendamento antigo:', e);
+      console.error('[REAGENDAR] Não foi possível marcar agendamento antigo como remarcado:', e);
+      showToast('❌ Erro ao iniciar reagendamento. Tente novamente.');
+      return; // ← aborta: não deixa criar novo sem apagar o antigo
     }
   }
 
