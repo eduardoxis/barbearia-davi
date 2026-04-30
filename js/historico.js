@@ -29,23 +29,14 @@ export async function carregarHistoricoCliente() {
     lista.innerHTML = '<div class="hist-vazio">Faça login para ver seu histórico.</div>';
     return;
   }
-  // Filtra 'remarcado' (status atual) E 'reagendado' (status legado) para cobrir dados antigos
-  const STATUS_OCULTOS = new Set(['remarcado', 'reagendado']);
-  const raw = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.name))
-    .filter(a => !_deletedIds.has(a.id) && !STATUS_OCULTOS.has(a.status || ''));
 
-  // Deduplicação: mesma data + horário + serviço → mantém só o mais recente (criadoEm maior)
-  const mapa = new Map();
-  for (const a of raw) {
-    const chave = `${a.data}|${a.horario}|${(a.servicos || '').toLowerCase().trim()}`;
-    const existente = mapa.get(chave);
-    if (!existente || (a.criadoEm || '') > (existente.criadoEm || '')) {
-      mapa.set(chave, a);
-    }
-  }
-  _histCache = Array.from(mapa.values())
-    .sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
+  // buscarAgendamentosCliente já faz a deduplicação dupla (status + substituiId).
+  // _deletedIds serve apenas como safety net para IDs que o cliente acabou de
+  // deletar/remarcar e o Firebase ainda não propagou na resposta seguinte.
+  const raw = (await buscarAgendamentosCliente(window.fbUser.email, window.fbUser.displayName || window.fbUser.name))
+    .filter(a => !_deletedIds.has(a.id));
 
+  _histCache = raw;
   renderHistoricoFiltrado();
 }
 
@@ -335,7 +326,9 @@ export async function confirmarSolicitacaoRemarcacao() {
     booking.remarcacoes = novasFeitas;
     if (novoId) booking.firestoreId = novoId;
 
-    // Atualiza o cache local IMEDIATAMENTE (evita race condition com cache do Firestore)
+    // Atualiza o cache local IMEDIATAMENTE
+    // O ID antigo vai para _deletedIds (safety net) E o novo doc inclui substituiId
+    // — as duas camadas de deduplicação ficam cobertas mesmo antes do próximo fetch
     _deletedIds.add(solAgendamentoAtual.id);
     _histCache = _histCache.filter(x => x.id !== solAgendamentoAtual.id);
     _histCache.unshift({
@@ -345,6 +338,7 @@ export async function confirmarSolicitacaoRemarcacao() {
       horario:     solNovoHorario,
       remarcacoes: novasFeitas,
       status:      'confirmado',
+      substituiId: solAgendamentoAtual.id, // link explícito — espelha o que foi salvo no Firestore
       criadoEm:    new Date().toISOString(),
     });
 
