@@ -63,19 +63,73 @@ export async function buscarAgendamentosCliente(email, nome) {
     catch (_) {}
   }
 
-  // Deduplicacao dupla (robusta contra race conditions de propagacao do Firebase)
-  // Camada 1: filtra por status (remarcado/reagendado)
-  // Camada 2: filtra pelo campo substituiId — o novo agendamento salva o ID do antigo.
-  //   Mesmo que o status nao propagou ainda, o link ja existe no novo doc.
+  // ── Deduplicação tripla ──────────────────────────────────────────────────
+  // Camada 1: status 'remarcado'/'reagendado' → filtrado
+  // Camada 2: substituiId → o novo doc aponta para o ID do antigo → antigo filtrado
+  // Camada 3: AUTO-REPARO — detecta pares duplicados com estado inconsistente
+  //   no Firestore (antigo ainda 'confirmado' sem substituiId) e corrige na hora.
   const STATUS_OCULTOS = new Set(['remarcado', 'reagendado', 'cancelado_pelo_sistema']);
+
+  // Camada 2 — monta o set de IDs já substituídos via link explícito
   const idsSubstituidos = new Set();
   for (const a of mapaId.values()) {
     if (a.substituiId) idsSubstituidos.add(a.substituiId);
   }
 
-  return Array.from(mapaId.values())
+  // Camada 3 — Auto-reparo de dados inconsistentes ─────────────────────────
+  // Para cada doc com substituiId que aponta para outro doc AINDA ATIVO
+  // (status != remarcado), corrige o Firestore em background silencioso.
+  // Isso cobre agendamentos criados ANTES do fix atômico ser implantado.
+  if (window._fb?.doc && window._fb?.setDoc) {
+    const { doc: fbDoc, setDoc: fbSetDoc, db: fbDb } = window._fb;
+    for (const a of mapaId.values()) {
+      if (!a.substituiId) continue;
+      const antigo = mapaId.get(a.substituiId);
+      if (!antigo) continue;
+      const statusAntigo = antigo.status || 'confirmado';
+      if (STATUS_OCULTOS.has(statusAntigo)) continue; // já correto, pula
+      // Antigo ainda está ativo → corrige em background (não bloqueia a UI)
+      console.warn('[HIST] Auto-reparo: marcando agendamento duplicado como remarcado:', antigo.id);
+      fbSetDoc(fbDoc(fbDb, 'agendamentos', antigo.id), {
+        status:         'remarcado',
+        remarcadoEm:    new Date().toISOString(),
+        substituídoPor: a.id,
+        _autoReparado:  true,
+      }, { merge: true }).catch(e => console.warn('[HIST] Auto-reparo falhou:', e?.message));
+    }
+  }
+
+  // Camada 3b — Heurística de horário: se dois agendamentos do mesmo cliente têm
+  // o mesmo serviço+barbeiro no mesmo dia e ambos estão 'confirmado', o mais antigo
+  // é o duplicado. Garante cobertura mesmo quando substituiId não foi salvo.
+  const ativos = Array.from(mapaId.values())
     .filter(a => !STATUS_OCULTOS.has(a.status || '') && !idsSubstituidos.has(a.id))
     .sort((a, b) => (b.criadoEm || '') > (a.criadoEm || '') ? 1 : -1);
+
+  const vistos = new Map(); // chave: "data|servicos|barbeiroId"
+  const idsDescartados = new Set();
+  for (const a of ativos) {
+    const chave = [a.data || '', (a.servicos || '').substring(0, 40), a.barbeiroId || ''].join('|');
+    if (vistos.has(chave)) {
+      // Já existe um mais recente com a mesma chave → este é o duplicado
+      idsDescartados.add(a.id);
+      // Corrige em background
+      if (window._fb?.doc && window._fb?.setDoc) {
+        const { doc: fbDoc, setDoc: fbSetDoc, db: fbDb } = window._fb;
+        console.warn('[HIST] Auto-reparo heurístico: descartando duplicata mais antiga:', a.id);
+        fbSetDoc(fbDoc(fbDb, 'agendamentos', a.id), {
+          status:        'remarcado',
+          remarcadoEm:   new Date().toISOString(),
+          _autoReparado: true,
+        }, { merge: true }).catch(e => console.warn('[HIST] Auto-reparo heurístico falhou:', e?.message));
+      }
+    } else {
+      vistos.set(chave, a.id);
+    }
+  }
+
+  return ativos
+    .filter(a => !idsDescartados.has(a.id));
 }
 
 /* ── Busca agendamentos de uma data específica ── */
