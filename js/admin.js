@@ -1837,11 +1837,30 @@ export async function carregarDashboard() {
   const grafico = document.getElementById('graficoDias');
   if (grafico) grafico.innerHTML = `<div class="dash-bar-wrap">${conts.map((c,i)=>`<div class="dash-bar-row"><span class="dash-bar-label">${nomes[i]}</span><div class="dash-bar-track"><div class="dash-bar-fill" style="width:${(c/maxC*100).toFixed(0)}%"></div></div><span class="dash-bar-val">${c}</span></div>`).join('')}</div>`;
   // Serviços
+  // Limpa o nome do serviço antes de usar como chave/exibição —
+  // agendamentos antigos podem ter base64, URLs ou HTML embutido no campo servicos.
+  function _limparNomeSvc(raw) {
+    return raw
+      .replace(/data:[^\s,;]+;base64,[A-Za-z0-9+/=\r\n]*/g, '') // remove data URLs
+      .replace(/https?:\/\/\S+/g, '')                             // remove http URLs
+      .replace(/<[^>]*>/g, '')                                    // remove tags HTML
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   const svcMap = {};
-  pagos.forEach(a => { (a.servicos||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(sv=>{ svcMap[sv]=(svcMap[sv]||0)+1; }); });
+  pagos.forEach(a => {
+    (a.servicos||'').split(',').map(s => _limparNomeSvc(s)).filter(Boolean).forEach(sv => {
+      svcMap[sv] = (svcMap[sv] || 0) + 1;
+    });
+  });
   const rankSvcs = Object.entries(svcMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const dashSvcs = document.getElementById('dashServicos');
-  if (dashSvcs) dashSvcs.innerHTML = rankSvcs.map(([nome,cont],i)=>`<div class="dash-svc-item"><span class="dash-svc-pos">${i+1}</span><span class="dash-svc-nome">${nome}</span><div class="dash-svc-barra"><div class="dash-svc-barra-fill" style="width:${(cont/rankSvcs[0][1]*100).toFixed(0)}%"></div></div><span class="dash-svc-cont">${cont}x</span></div>`).join('');
+  if (dashSvcs) dashSvcs.innerHTML = rankSvcs.map(([nome,cont],i) => {
+    const nomeSeguro = nome.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const largura = (cont / rankSvcs[0][1] * 100).toFixed(0);
+    return `<div class="dash-svc-item"><span class="dash-svc-pos">${i+1}</span><span class="dash-svc-nome">${nomeSeguro}</span><div class="dash-svc-barra"><div class="dash-svc-barra-fill" style="width:${largura}%"></div></div><span class="dash-svc-cont">${cont}x</span></div>`;
+  }).join('');
   const graficoFat = document.getElementById('graficoFaturamento');
   if (graficoFat) graficoFat.innerHTML = '<div class="dash-loading" style="font-size:0.75rem">Dados do período carregados acima ↑</div>';
   const dashHor = document.getElementById('dashHorarios');
