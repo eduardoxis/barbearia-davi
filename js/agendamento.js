@@ -338,9 +338,15 @@ export async function renderSlots() {
   const isHoje = dataSel === hojeStr;
   const horaAtual = hoje.getHours() * 60 + hoje.getMinutes();
 
+  // Slots bloqueados manualmente pelo admin (global e por barbeiro)
+  const manualBloqueados = [
+    ...(adminSettings.takenSlots || []),
+    ...(b ? (b.takenSlots || []) : [])
+  ];
+
   slots.forEach(slot => {
     const el = document.createElement('div');
-    const taken = ocupados.includes(slot);
+    const taken = ocupados.includes(slot) || manualBloqueados.includes(slot);
     let passado = false;
     if (isHoje) {
       const [h, m] = slot.split(':').map(Number);
