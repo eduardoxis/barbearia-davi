@@ -664,6 +664,7 @@
         <button class="adm-tab"        onclick="switchAdmTab('solicitacoes')">🔔 Solicitações</button>
         <button class="adm-tab"        onclick="switchAdmTab('clientes')">👥 Clientes</button>
         <button class="adm-tab"        onclick="switchAdmTab('instagram')">📸 Instagram</button>
+        <button class="adm-tab"        onclick="switchAdmTab('log')">📜 Log</button>
       </div>
       <!-- painéis renderizados via JS — mantidos intactos -->
       <div class="adm-panel" id="admTab-dashboard">
@@ -926,6 +927,47 @@
           </div>
         </div>
       </div>
+
+      <!-- ═══ LOG DE AÇÕES ═══ -->
+      <div class="adm-panel" id="admTab-log">
+        <div class="log-header">
+          <div class="log-header-left">
+            <div class="log-titulo">📜 Log de Ações</div>
+            <div class="log-subtitulo">Registro completo de tudo que foi alterado no painel</div>
+          </div>
+          <div class="log-acoes">
+            <button class="log-btn log-btn-reload" onclick="carregarLogs()">🔄 Atualizar</button>
+            <button class="log-btn log-btn-export" onclick="exportarLogs()">⬇ Exportar</button>
+            <button class="log-btn log-btn-clear"  onclick="limparLogs()">🗑 Limpar</button>
+          </div>
+        </div>
+
+        <div class="log-search-wrap">
+          <input
+            type="text"
+            class="log-search"
+            placeholder="🔍 Buscar por ação, detalhe ou responsável..."
+            oninput="setLogBusca(this.value)"
+          />
+          <span class="log-total" id="logTotal">0 registros</span>
+        </div>
+
+        <div class="log-filtros">
+          <button class="log-filtro-btn active" data-cat="todos"       onclick="setLogFiltroCategoria('todos')">Todos</button>
+          <button class="log-filtro-btn"        data-cat="servico"     onclick="setLogFiltroCategoria('servico')">✂ Serviço</button>
+          <button class="log-filtro-btn"        data-cat="barbeiro"    onclick="setLogFiltroCategoria('barbeiro')">💈 Barbeiro</button>
+          <button class="log-filtro-btn"        data-cat="horario"     onclick="setLogFiltroCategoria('horario')">🕐 Horário</button>
+          <button class="log-filtro-btn"        data-cat="status"      onclick="setLogFiltroCategoria('status')">🔴 Status</button>
+          <button class="log-filtro-btn"        data-cat="bloqueio"    onclick="setLogFiltroCategoria('bloqueio')">🔒 Bloqueio</button>
+          <button class="log-filtro-btn"        data-cat="agendamento" onclick="setLogFiltroCategoria('agendamento')">📋 Agendamento</button>
+          <button class="log-filtro-btn"        data-cat="config"      onclick="setLogFiltroCategoria('config')">⚙ Config</button>
+        </div>
+
+        <div class="log-lista" id="logLista">
+          <div class="log-loading">📭 Abra esta aba para carregar os registros.</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
