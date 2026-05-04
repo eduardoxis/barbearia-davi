@@ -1201,3 +1201,214 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
   font-size: 0.85rem;
   color: var(--gray2);
 }
+
+/* ══════════════════════════════════════════
+   CUPONS — Admin
+══════════════════════════════════════════ */
+
+.cupons-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.cupom-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.7rem 1.4rem;
+  min-width: 80px;
+}
+.cupom-stat-n {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem;
+  color: var(--white);
+  line-height: 1;
+}
+.cupom-stat-l {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray2);
+  margin-top: 0.2rem;
+}
+
+.cupons-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cupom-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  transition: border-color 0.2s;
+  border-left: 3px solid var(--red);
+}
+.cupom-card:hover { border-color: rgba(224,32,32,0.4); }
+.cupom-card.cupom-inativo {
+  opacity: 0.55;
+  border-left-color: var(--gray2);
+}
+
+.cupom-card-left { flex: 1; min-width: 0; }
+
+.cupom-codigo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: var(--white);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.15rem;
+}
+.cupom-descricao {
+  font-size: 0.78rem;
+  color: var(--gray);
+  margin-bottom: 0.5rem;
+}
+.cupom-meta {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.cupom-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 50px;
+  border: 1px solid;
+}
+.cupom-tag.percentual {
+  background: rgba(46,204,113,0.12);
+  color: #6ee19b;
+  border-color: rgba(46,204,113,0.25);
+}
+.cupom-tag.fixo {
+  background: rgba(52,152,219,0.12);
+  color: #7ec8f0;
+  border-color: rgba(52,152,219,0.25);
+}
+.cupom-tag.neutro {
+  background: rgba(255,255,255,0.04);
+  color: var(--gray2);
+  border-color: var(--border);
+}
+
+.cupom-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+.cupom-status-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 50px;
+}
+.cupom-status-badge.ativo {
+  background: rgba(46,204,113,0.15);
+  color: #6ee19b;
+  border: 1px solid rgba(46,204,113,0.3);
+}
+.cupom-status-badge.inativo {
+  background: rgba(255,255,255,0.04);
+  color: var(--gray2);
+  border: 1px solid var(--border);
+}
+.cupom-acoes {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* ══════════════════════════════════════════
+   CUPOM — Campo no checkout (cliente)
+══════════════════════════════════════════ */
+.cupom-wrap {
+  margin: 0.4rem 0 0.6rem;
+}
+.cupom-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+.cupom-input {
+  flex: 1;
+  background: var(--card2);
+  border: 1px dashed rgba(255,255,255,0.15);
+  color: var(--white);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  font-family: 'Bebas Neue', monospace;
+  letter-spacing: 0.1em;
+  border-radius: 3px;
+  outline: none;
+  text-transform: uppercase;
+  transition: border-color 0.2s;
+}
+.cupom-input:focus { border-color: var(--red); border-style: solid; }
+.cupom-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.cupom-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--white);
+  padding: 0.6rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.cupom-btn:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+}
+.cupom-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cupom-feedback {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  min-height: 0;
+  transition: all 0.2s;
+}
+.cupom-feedback.sucesso {
+  color: #6ee19b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.cupom-feedback.erro { color: #ff8080; }
+.cupom-remover {
+  background: none;
+  border: none;
+  color: #ff8080;
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Linha de desconto no resumo */
+.sum-desconto .sum-val-desconto {
+  color: #6ee19b;
+  font-weight: 700;
+}
