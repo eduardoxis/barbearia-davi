@@ -964,3 +964,240 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 /* ══════════════════════════════════════════
    MODO CLARO — overrides admin
 ══════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   LOG DE AÇÕES — Admin
+══════════════════════════════════════════ */
+
+/* ── Cabeçalho do log ── */
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+.log-header-left { display: flex; flex-direction: column; gap: 0.2rem; }
+.log-titulo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+.log-subtitulo { font-size: 0.72rem; color: var(--gray); }
+.log-total {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gray2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Barra de busca ── */
+.log-search-wrap {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+.log-search {
+  flex: 1;
+  min-width: 200px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--white);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.83rem;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.log-search:focus { border-color: var(--red); }
+
+/* ── Botões de ação ── */
+.log-acoes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.log-btn {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+.log-btn-export {
+  background: rgba(255,255,255,0.06);
+  color: var(--gray);
+  border: 1px solid var(--border);
+}
+.log-btn-export:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+.log-btn-clear {
+  background: rgba(224,32,32,0.12);
+  color: var(--red);
+  border: 1px solid rgba(224,32,32,0.25);
+}
+.log-btn-clear:hover { background: rgba(224,32,32,0.22); }
+.log-btn-reload {
+  background: rgba(255,255,255,0.04);
+  color: var(--gray);
+  border: 1px solid var(--border);
+}
+.log-btn-reload:hover { color: var(--white); }
+
+/* ── Filtros por categoria ── */
+.log-filtros {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.log-filtro-btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 50px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--gray);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+.log-filtro-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--white); }
+.log-filtro-btn.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+/* ── Lista de logs ── */
+.log-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 540px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+}
+.log-lista::-webkit-scrollbar { width: 4px; }
+.log-lista::-webkit-scrollbar-thumb { background: var(--gray2); border-radius: 2px; }
+
+/* ── Item de log ── */
+.log-item {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.15s;
+  position: relative;
+}
+.log-item:last-child { border-bottom: none; }
+.log-item:hover { background: rgba(255,255,255,0.025); }
+
+/* Barra lateral colorida por categoria */
+.log-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0;
+}
+.log-cat-servico::before    { background: var(--red); }
+.log-cat-barbeiro::before   { background: #6c63ff; }
+.log-cat-horario::before    { background: #2ecc71; }
+.log-cat-status::before     { background: #f39c12; }
+.log-cat-bloqueio::before   { background: #e74c3c; }
+.log-cat-config::before     { background: #3498db; }
+.log-cat-agendamento::before{ background: #1abc9c; }
+.log-cat-backup::before     { background: #95a5a6; }
+
+.log-item-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+  margin-top: 0.1rem;
+  opacity: 0.85;
+}
+
+.log-item-body { flex: 1; min-width: 0; }
+
+.log-item-acao {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-item-detalhes {
+  font-size: 0.75rem;
+  color: var(--gray);
+  margin-bottom: 0.3rem;
+  line-height: 1.4;
+}
+
+.log-item-meta {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.log-cat-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.06);
+  color: var(--gray);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.log-cat-badge-servico    { background: rgba(224,32,32,0.12);  color: #ff8080; border-color: rgba(224,32,32,0.2); }
+.log-cat-badge-barbeiro   { background: rgba(108,99,255,0.12); color: #a09aff; border-color: rgba(108,99,255,0.2); }
+.log-cat-badge-horario    { background: rgba(46,204,113,0.12); color: #6ee19b; border-color: rgba(46,204,113,0.2); }
+.log-cat-badge-status     { background: rgba(243,156,18,0.12); color: #f7c35f; border-color: rgba(243,156,18,0.2); }
+.log-cat-badge-bloqueio   { background: rgba(231,76,60,0.12);  color: #ff9090; border-color: rgba(231,76,60,0.2); }
+.log-cat-badge-config     { background: rgba(52,152,219,0.12); color: #7ec8f0; border-color: rgba(52,152,219,0.2); }
+.log-cat-badge-agendamento{ background: rgba(26,188,156,0.12); color: #6edec8; border-color: rgba(26,188,156,0.2); }
+.log-cat-badge-backup     { background: rgba(149,165,166,0.1); color: #bbb;    border-color: rgba(149,165,166,0.15); }
+
+.log-item-quem {
+  font-size: 0.65rem;
+  color: var(--gray2);
+}
+.log-item-quando {
+  font-size: 0.65rem;
+  color: var(--gray2);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Estados vazios / loading ── */
+.log-empty,
+.log-loading {
+  padding: 2.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--gray2);
+}
