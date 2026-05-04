@@ -610,6 +610,34 @@
   </div>
 </div>
 
+<!-- ═══ MODAL AVALIAÇÃO PÓS-CORTE ═══ -->
+<div class="modal-overlay" id="modalAvaliacao" style="z-index:465">
+  <div class="modal-avaliacao">
+    <button class="modal-close" onclick="fecharModalAvaliacao()">✕</button>
+    <div style="font-family:'Oswald',sans-serif;font-size:1.2rem;font-weight:700;color:var(--white);margin-bottom:0.2rem">
+      ⭐ Avaliar <span style="color:var(--red)">Atendimento</span>
+    </div>
+    <div style="font-size:0.75rem;color:var(--gray);margin-bottom:0.8rem" id="avalInfoServicos">—</div>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:0.6rem 0.9rem;font-size:0.75rem;color:var(--gray);margin-bottom:0.4rem">
+      💈 <span id="avalInfoBarbeiro">—</span> &nbsp;·&nbsp; 📅 <span id="avalInfoData">—</span>
+    </div>
+    <!-- Estrelas -->
+    <div class="aval-stars-row" id="avalStarsRow">
+      <span class="aval-star" data-n="1" onclick="selecionarEstrela(1)">★</span>
+      <span class="aval-star" data-n="2" onclick="selecionarEstrela(2)">★</span>
+      <span class="aval-star" data-n="3" onclick="selecionarEstrela(3)">★</span>
+      <span class="aval-star" data-n="4" onclick="selecionarEstrela(4)">★</span>
+      <span class="aval-star" data-n="5" onclick="selecionarEstrela(5)">★</span>
+    </div>
+    <div class="aval-label" id="avalLabel">Toque nas estrelas para avaliar</div>
+    <!-- Comentário -->
+    <textarea class="aval-textarea" id="avalComentario" rows="3"
+      placeholder="Conta como foi o atendimento (opcional)..."></textarea>
+    <button class="btn-aval-enviar" id="btnEnviarAvaliacao"
+      onclick="enviarAvaliacao()" disabled>Enviar Avaliação</button>
+  </div>
+</div>
+
 <!-- ═══ ADMIN PANEL (conteúdo idêntico ao original) ═══ -->
 <div id="admin-panel">
   <div class="admin-container">
