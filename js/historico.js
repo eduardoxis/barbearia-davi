@@ -139,6 +139,11 @@ function renderCartaoAtendimento(a) {
   const dt = parseDateBR(a.data);
   const ehFuturo = dt && dt >= new Date(new Date().setHours(0,0,0,0));
   const podeRemarcar = ehFuturo && status !== 'cancelado';
+  const podeAvaliar  = !ehFuturo && status !== 'cancelado' && status !== 'remarcado' && status !== 'reagendado';
+  const jaAvaliou    = podeAvaliar && !!a.avaliacao;
+  const avalBadge    = jaAvaliou
+    ? `<span class="hist-avaliacao-badge" title="${a.avaliacao.comentario || ''}">${'★'.repeat(a.avaliacao.nota)}${'☆'.repeat(5 - a.avaliacao.nota)}${a.avaliacao.comentario ? `<span class="aval-comentario-mini">"${a.avaliacao.comentario}"</span>` : ''}</span>`
+    : '';
   return `<div class="hist-card ${status}">
     <div class="hist-card-topo">
       <div>
@@ -148,6 +153,7 @@ function renderCartaoAtendimento(a) {
       <span class="hist-status-badge ${status}">${statusLabel}</span>
     </div>
     <div class="hist-servicos">${servicos}</div>
+    ${jaAvaliou ? `<div style="padding:0.3rem 0 0.1rem">${avalBadge}</div>` : ''}
     <div class="hist-footer">
       <div>
         <div class="hist-valor">R$ ${parseFloat(a.total||0).toFixed(2).replace('.',',')}</div>
@@ -157,6 +163,7 @@ function renderCartaoAtendimento(a) {
         <button class="btn-hist-acao" onclick="verComprovante('${a.id}')">🧾 Comprovante</button>
         ${podeRemarcar ? `<button class="btn-hist-acao btn-hist-remarcar" onclick="remarcarDoHistorico('${a.id}')">🔄 Remarcar</button>` : ''}
         <button class="btn-hist-acao btn-hist-reagendar" onclick="reagendarDoHistorico('${a.id}')">↻ Reagendar</button>
+        ${podeAvaliar && !jaAvaliou ? `<button class="btn-hist-acao btn-hist-avaliar" onclick="abrirModalAvaliacao('${a.id}')">⭐ Avaliar</button>` : ''}
       </div>
     </div>
   </div>`;
@@ -500,6 +507,95 @@ export async function verComprovante(id) {
   } catch (e) { showToast('Erro ao gerar comprovante.'); }
 }
 
+/* ══════════════════════════════════════════
+   AVALIAÇÃO PÓS-CORTE
+══════════════════════════════════════════ */
+
+let _avalAgendId = null;
+let _avalNota    = 0;
+
+const _avalLabels = ['', 'Ruim 😕', 'Regular 😐', 'Bom 😊', 'Ótimo 😄', 'Excelente 🔥'];
+
+export function abrirModalAvaliacao(id) {
+  const a = _histCache.find(x => x.id === id);
+  if (!a) return;
+  _avalAgendId = id;
+  _avalNota    = 0;
+
+  const el = s => document.getElementById(s);
+  el('avalInfoServicos').textContent  = (a.servicos || '—').split(',')[0].replace(/^[^\w]+/, '').trim();
+  el('avalInfoBarbeiro').textContent  = a.barbeiro || '—';
+  el('avalInfoData').textContent      = (a.data || '—') + (a.horario ? ' às ' + a.horario : '');
+  el('avalComentario').value          = '';
+  el('btnEnviarAvaliacao').disabled   = true;
+  el('avalLabel').textContent         = 'Toque nas estrelas para avaliar';
+  el('avalLabel').className           = 'aval-label';
+  _renderStars(0);
+  el('modalAvaliacao').classList.add('show');
+}
+
+export function fecharModalAvaliacao() {
+  document.getElementById('modalAvaliacao')?.classList.remove('show');
+  _avalAgendId = null;
+  _avalNota    = 0;
+}
+
+export function selecionarEstrela(n) {
+  _avalNota = n;
+  _renderStars(n);
+  const labelEl = document.getElementById('avalLabel');
+  if (labelEl) { labelEl.textContent = _avalLabels[n] || ''; labelEl.className = 'aval-label filled'; }
+  const btn = document.getElementById('btnEnviarAvaliacao');
+  if (btn) btn.disabled = false;
+}
+
+function _renderStars(n) {
+  document.querySelectorAll('#avalStarsRow .aval-star').forEach((el, i) => {
+    el.classList.toggle('on', i < n);
+  });
+}
+
+export async function enviarAvaliacao() {
+  if (!_avalNota || !_avalAgendId) return;
+  const btn = document.getElementById('btnEnviarAvaliacao');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  const comentario = document.getElementById('avalComentario')?.value.trim() || '';
+  const avaliacao  = { nota: _avalNota, comentario, criadoEm: new Date().toISOString() };
+
+  try {
+    if (window._fb) {
+      const { doc, setDoc, db } = window._fb;
+      // Persiste no doc do agendamento
+      await setDoc(doc(db, 'agendamentos', _avalAgendId), { avaliacao }, { merge: true });
+
+      // Atualiza também o array avaliacoes do barbeiro (para stats no admin)
+      const agend = _histCache.find(x => x.id === _avalAgendId);
+      if (agend?.barbeiroId) {
+        const barbeiros = window.adminSettings?.barbeiros || [];
+        const barb      = barbeiros.find(b => b.id === agend.barbeiroId);
+        if (barb) {
+          if (!Array.isArray(barb.avaliacoes)) barb.avaliacoes = [];
+          barb.avaliacoes.push({ nota: _avalNota, comentario, agendId: _avalAgendId, criadoEm: avaliacao.criadoEm });
+          try {
+            await setDoc(doc(db, 'settings', 'admin'), { barbeiros }, { merge: true });
+          } catch (_) { /* não crítico */ }
+        }
+      }
+    }
+
+    // Atualiza cache local
+    const idx = _histCache.findIndex(x => x.id === _avalAgendId);
+    if (idx >= 0) _histCache[idx] = { ..._histCache[idx], avaliacao };
+
+    fecharModalAvaliacao();
+    renderHistoricoFiltrado();
+    showToast('✅ Avaliação enviada! Obrigado 🙏');
+  } catch (e) {
+    showToast('❌ Erro ao enviar avaliação. Tente novamente.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar Avaliação'; }
+  }
+}
+
 /* ── Expõe globais ── */
 window.switchHistAba               = switchHistAba;
 window.filtrarHistorico            = filtrarHistorico;
@@ -512,3 +608,7 @@ window.remarcarDoHistorico         = remarcarDoHistorico;
 window.reagendarDoHistorico        = reagendarDoHistorico;
 window.verComprovante              = verComprovante;
 window.abrirModalSolicitacao       = (tipo) => { if (tipo === 'reembolso') { showToast('❌ Não há reembolso. Você pode remarcar o horário.'); return; } abrirModalRemarcacao(); };
+window.abrirModalAvaliacao         = abrirModalAvaliacao;
+window.fecharModalAvaliacao        = fecharModalAvaliacao;
+window.selecionarEstrela           = selecionarEstrela;
+window.enviarAvaliacao             = enviarAvaliacao;
