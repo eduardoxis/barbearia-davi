@@ -991,9 +991,9 @@
 </div>
 
 <!-- ═══ MODAL NOVO CUPOM ═══ -->
-<div class="overlay-modal" id="overlayNovoCupom" onclick="if(event.target===this)fecharModalNovoCupom()">
-  <div class="modal-box" style="max-width:440px">
-    <div class="modal-title">🎟 Novo Cupom</div>
+<div class="adm-modal-overlay" id="overlayNovoCupom" onclick="if(event.target===this)fecharModalNovoCupom()">
+  <div class="adm-modal" style="max-width:460px">
+    <div class="adm-modal-title">🎟 Novo Cupom</div>
     <div class="form-group">
       <label class="form-label">Código do Cupom *</label>
       <input class="form-input" id="novoCupomCodigo" placeholder="Ex: BEMVINDO20" maxlength="20"
@@ -1030,10 +1030,10 @@
       <label class="form-label">Válido até <span style="color:var(--gray)">(opcional)</span></label>
       <input class="form-input" id="novoCupomValidade" type="date">
     </div>
-    <div class="form-err" id="novoCupomErr"></div>
-    <div style="display:flex;gap:0.6rem;margin-top:0.5rem">
-      <button class="btn-back" onclick="fecharModalNovoCupom()">Cancelar</button>
-      <button class="btn-next" onclick="confirmarNovoCupom()" style="flex:1">✓ Criar Cupom</button>
+    <div class="admin-err-msg" id="novoCupomErr"></div>
+    <div style="display:flex;gap:0.6rem;margin-top:1rem">
+      <button class="btn-ghost" style="flex:1;text-align:center" onclick="fecharModalNovoCupom()">Cancelar</button>
+      <button class="btn-red"   style="flex:1;justify-content:center" onclick="confirmarNovoCupom()">✓ Criar Cupom</button>
     </div>
   </div>
 </div>
