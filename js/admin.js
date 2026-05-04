@@ -5,6 +5,7 @@
 
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
 import { registrarLog, carregarLogs } from './admin-log.js';
+import { criarCupom, desativarCupom } from '../routes/cupons.js';
 import { markJustSaved } from './realtime.js';
 import {
   renderPortfolioAdmin,
@@ -142,7 +143,7 @@ function renderAdminDash() {
 
 /* ── Tabs ── */
 export function switchAdmTab(tab) {
-  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram','log'];
+  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram','log','cupons'];
   document.querySelectorAll('.adm-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
   document.querySelectorAll('.adm-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('admTab-' + tab)?.classList.add('active');
@@ -157,6 +158,7 @@ export function switchAdmTab(tab) {
   if (tab === 'clientes')      carregarCRM();
   if (tab === 'instagram')     renderInstagramTab();
   if (tab === 'log')           carregarLogs();
+  if (tab === 'cupons')        carregarCuponsAdmin();
 }
 
 /* ── Stats ── */
@@ -2341,7 +2343,171 @@ export async function removerBloqueioBarb(id) {
   registrarLog('Dia de barbeiro desbloqueado', `ID do bloqueio: ${id}`, 'bloqueio');
 }
 
-/* ── Expõe todos os globais ── */
+/* ══════════════════════════════════════════
+   CUPONS — Painel Admin
+══════════════════════════════════════════ */
+
+let _cuponsCache = [];
+
+export async function carregarCuponsAdmin() {
+  const lista = document.getElementById('cuponsAdmLista');
+  if (lista) lista.innerHTML = '<div class="log-loading">⏳ Carregando cupons...</div>';
+
+  _cuponsCache = [];
+  if (window._fb) {
+    try {
+      const { collection, getDocs, db } = window._fb;
+      const snap = await getDocs(collection(db, 'cupons'));
+      snap.forEach(doc => _cuponsCache.push({ _id: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.warn('[cupons] Firestore indisponível, usando locais:', e.message);
+    }
+  }
+
+  // Se não veio nada do Firestore, usa banco local do routes/cupons.js
+  if (!_cuponsCache.length) {
+    _cuponsCache = [
+      { _id:'BEMVINDO10', codigo:'BEMVINDO10', tipo:'percentual', valor:10, minimo:0,  ativo:true,  descricao:'10% de desconto', usos:0 },
+      { _id:'FIDELIDADE', codigo:'FIDELIDADE', tipo:'fixo',       valor:5,  minimo:30, ativo:true,  descricao:'R$ 5 de desconto', usos:0 },
+      { _id:'COMBO20',    codigo:'COMBO20',    tipo:'percentual', valor:20, minimo:45, ativo:true,  descricao:'20% em combos', usos:0 },
+    ];
+  }
+
+  renderCuponsAdmin();
+}
+
+function renderCuponsAdmin() {
+  const lista = document.getElementById('cuponsAdmLista');
+  if (!lista) return;
+
+  const ativos   = _cuponsCache.filter(c => c.ativo).length;
+  const inativos = _cuponsCache.filter(c => !c.ativo).length;
+  const statsEl  = document.getElementById('cuponsStats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div class="cupom-stat"><span class="cupom-stat-n">${_cuponsCache.length}</span><span class="cupom-stat-l">Total</span></div>
+      <div class="cupom-stat"><span class="cupom-stat-n" style="color:#2ecc71">${ativos}</span><span class="cupom-stat-l">Ativos</span></div>
+      <div class="cupom-stat"><span class="cupom-stat-n" style="color:var(--gray2)">${inativos}</span><span class="cupom-stat-l">Inativos</span></div>`;
+  }
+
+  if (!_cuponsCache.length) {
+    lista.innerHTML = '<div class="log-empty">📭 Nenhum cupom cadastrado. Crie o primeiro!</div>';
+    return;
+  }
+
+  lista.innerHTML = '';
+  _cuponsCache.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'cupom-card' + (!c.ativo ? ' cupom-inativo' : '');
+    const valorTxt = c.tipo === 'percentual' ? c.valor + '%' : 'R$ ' + c.valor;
+    const minimoTxt = c.minimo ? `Mínimo R$ ${c.minimo}` : 'Sem mínimo';
+    const usosTxt  = c.usos ? `${c.usos} uso${c.usos !== 1 ? 's' : ''}` : 'Nunca usado';
+    const valTxt   = c.validade ? `Válido até ${c.validade}` : 'Sem validade';
+    row.innerHTML = `
+      <div class="cupom-card-left">
+        <div class="cupom-codigo">${c.codigo}</div>
+        <div class="cupom-descricao">${c.descricao || '—'}</div>
+        <div class="cupom-meta">
+          <span class="cupom-tag ${c.tipo}">${valorTxt} ${c.tipo === 'percentual' ? 'off' : 'off'}</span>
+          <span class="cupom-tag neutro">${minimoTxt}</span>
+          <span class="cupom-tag neutro">${valTxt}</span>
+          <span class="cupom-tag neutro">🔢 ${usosTxt}</span>
+        </div>
+      </div>
+      <div class="cupom-card-right">
+        <span class="cupom-status-badge ${c.ativo ? 'ativo' : 'inativo'}">${c.ativo ? '🟢 Ativo' : '⚫ Inativo'}</span>
+        <div class="cupom-acoes">
+          <button class="svc-ed-btn" onclick="toggleCupomAtivo('${c.codigo}')">${c.ativo ? '⏸ Desativar' : '▶ Ativar'}</button>
+          <button class="svc-ed-btn svc-ed-btn-del" onclick="excluirCupom('${c.codigo}')">🗑</button>
+        </div>
+      </div>`;
+    lista.appendChild(row);
+  });
+}
+
+export function abrirModalNovoCupom() {
+  ['novoCupomCodigo','novoCupomDesc','novoCupomValor','novoCupomMinimo','novoCupomValidade','novoCupomLimite'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('novoCupomTipo').value = 'percentual';
+  document.getElementById('novoCupomErr')?.classList.remove('show');
+  document.getElementById('overlayNovoCupom')?.classList.add('show');
+}
+
+export function fecharModalNovoCupom() {
+  document.getElementById('overlayNovoCupom')?.classList.remove('show');
+}
+
+export async function confirmarNovoCupom() {
+  const get = id => document.getElementById(id)?.value?.trim();
+  const codigo    = get('novoCupomCodigo')?.toUpperCase();
+  const tipo      = get('novoCupomTipo') || 'percentual';
+  const valor     = parseFloat(get('novoCupomValor'));
+  const descricao = get('novoCupomDesc');
+  const minimo    = parseFloat(get('novoCupomMinimo') || '0') || 0;
+  const validade  = get('novoCupomValidade') || null;
+  const limite    = parseInt(get('novoCupomLimite') || '0') || 0;
+  const errEl     = document.getElementById('novoCupomErr');
+
+  if (!codigo || codigo.length < 3) {
+    if (errEl) { errEl.textContent = 'Código deve ter pelo menos 3 caracteres.'; errEl.classList.add('show'); } return;
+  }
+  if (isNaN(valor) || valor <= 0) {
+    if (errEl) { errEl.textContent = 'Informe um valor válido.'; errEl.classList.add('show'); } return;
+  }
+  if (tipo === 'percentual' && valor > 100) {
+    if (errEl) { errEl.textContent = 'Percentual não pode ser maior que 100%.'; errEl.classList.add('show'); } return;
+  }
+  if (errEl) errEl.classList.remove('show');
+
+  const dados = { codigo, tipo, valor, descricao: descricao || `${valor}${tipo === 'percentual' ? '%' : ' R$'} de desconto`, minimo, validade, limite, ativo: true, usos: 0 };
+
+  try {
+    await criarCupom(dados);
+    _cuponsCache.unshift({ _id: codigo, ...dados });
+    fecharModalNovoCupom();
+    renderCuponsAdmin();
+    showToast('🎟 Cupom "' + codigo + '" criado!');
+    registrarLog('Cupom criado', `${codigo} — ${dados.descricao}`, 'config');
+  } catch (e) {
+    if (errEl) { errEl.textContent = '❌ Erro ao salvar: ' + e.message; errEl.classList.add('show'); }
+  }
+}
+
+export async function toggleCupomAtivo(codigo) {
+  const c = _cuponsCache.find(x => x.codigo === codigo); if (!c) return;
+  const novoAtivo = !c.ativo;
+  try {
+    if (window._fb) {
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'cupons', codigo), { ativo: novoAtivo }, { merge: true });
+    }
+    c.ativo = novoAtivo;
+    renderCuponsAdmin();
+    showToast(novoAtivo ? '🟢 Cupom ativado!' : '⚫ Cupom desativado.');
+    registrarLog(novoAtivo ? 'Cupom ativado' : 'Cupom desativado', codigo, 'config');
+  } catch (e) { showToast('❌ Erro: ' + e.message); }
+}
+
+export async function excluirCupom(codigo) {
+  if (!confirm(`Excluir o cupom "${codigo}"? Esta ação não pode ser desfeita.`)) return;
+  try {
+    if (window._fb) {
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'cupons', codigo));
+    }
+    _cuponsCache = _cuponsCache.filter(c => c.codigo !== codigo);
+    renderCuponsAdmin();
+    showToast('🗑 Cupom excluído.');
+    registrarLog('Cupom excluído', codigo, 'config');
+  } catch (e) { showToast('❌ Erro: ' + e.message); }
+}
+
+/* ── Expõe globais ── */
+window.carregarCuponsAdmin   = carregarCuponsAdmin;
+window.abrirModalNovoCupom   = abrirModalNovoCupom;
+window.fecharModalNovoCupom  = fecharModalNovoCupom;
+window.confirmarNovoCupom    = confirmarNovoCupom;
+window.toggleCupomAtivo      = toggleCupomAtivo;
+window.excluirCupom          = excluirCupom;
 window.openAdmin           = openAdmin;
 window.closeAdmin          = closeAdmin;
 window.doAdminLogin        = doAdminLogin;
