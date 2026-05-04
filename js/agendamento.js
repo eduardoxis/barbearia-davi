@@ -14,6 +14,8 @@ import { criarAgendamento, verificarPrazo24h } from '../routes/agendamentos.js';
 import { compartilharWhatsApp } from '../routes/notificacoes.js';
 import { renderDestaquesThumbs, renderContadorCortes, abrirGaleriaBarbeiro } from './galeria.js';
 
+import { validarCupom } from '../routes/cupons.js';
+
 /* ── Estado do calendário ── */
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -21,6 +23,9 @@ let calMonth = new Date().getMonth();
 let pedidoId  = null;
 let pollingInt = null;
 let timerInt   = null;
+
+/* ── Estado do cupom ── */
+let _cupomAplicado = null; // { codigo, desconto, totalFinal, descricao }
 
 /* ── Renderiza seleção de barbeiro (Step 0) ── */
 export function renderBarbeiroGrid() {
@@ -381,7 +386,9 @@ function fillReview() {
   set('sumPhone',  phone);
   set('sumDate',   booking.date);
   set('sumTime',   booking.time);
-  set('sumTotal',  'R$ ' + cart.reduce((s, c) => s + c.price, 0));
+
+  const subtotal = cart.reduce((s, c) => s + c.price, 0);
+  set('sumTotal', 'R$ ' + subtotal);
 
   // Linha do barbeiro (cria se não existir)
   let sumBarb = document.getElementById('sumBarbeiro');
@@ -399,10 +406,116 @@ function fillReview() {
 
   const svcsEl = document.getElementById('sumServices');
   if (svcsEl) svcsEl.innerHTML = cart.map(c => `<span class="service-tag">${_svcIconHtml(c)} ${c.name}</span>`).join('');
+
+  // Injeta campo de cupom se ainda não existir
+  _renderCupomUI();
+  // Se já havia cupom aplicado, re-renderiza o desconto
+  if (_cupomAplicado) _renderCupomAplicado(_cupomAplicado);
 }
 
-/* ── Termo de aceite ── */
-export function verificarTermoAceito() {
+/* ──────────────────────────────────────────
+   CUPOM DE DESCONTO — checkout
+────────────────────────────────────────── */
+function _renderCupomUI() {
+  if (document.getElementById('cupomWrap')) return; // já existe
+  const totalRow = document.querySelector('#bStep3 .sum-total');
+  if (!totalRow) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'cupomWrap';
+  wrap.className = 'cupom-wrap';
+  wrap.innerHTML = `
+    <div class="cupom-input-row">
+      <input
+        type="text"
+        id="cupomInput"
+        class="cupom-input"
+        placeholder="🎟 Tem um cupom? Digite aqui"
+        maxlength="30"
+        oninput="this.value = this.value.toUpperCase()"
+      />
+      <button class="cupom-btn" onclick="aplicarCupomCheckout()">Aplicar</button>
+    </div>
+    <div id="cupomFeedback" class="cupom-feedback"></div>`;
+
+  totalRow.before(wrap);
+}
+
+function _renderCupomAplicado(resultado) {
+  const totalRow = document.querySelector('#bStep3 .sum-total .sum-val');
+  if (totalRow) totalRow.textContent = 'R$ ' + resultado.totalFinal.toFixed(2);
+
+  // Linha de desconto
+  let descRow = document.getElementById('cupomDescontoRow');
+  if (!descRow) {
+    const totalEl = document.querySelector('#bStep3 .sum-total');
+    descRow = document.createElement('div');
+    descRow.id = 'cupomDescontoRow';
+    descRow.className = 'sum-row sum-desconto';
+    totalEl.before(descRow);
+  }
+  descRow.innerHTML = `<span class="sum-label">🎟 Cupom (${resultado.codigo})</span><span class="sum-val sum-val-desconto">− R$ ${resultado.desconto.toFixed(2)}</span>`;
+
+  // Feedback
+  const fb = document.getElementById('cupomFeedback');
+  if (fb) {
+    fb.className = 'cupom-feedback sucesso';
+    fb.innerHTML = `✅ ${resultado.descricao} aplicado! Você economizou R$ ${resultado.desconto.toFixed(2)}.
+      <button class="cupom-remover" onclick="removerCupomCheckout()">✕ Remover</button>`;
+  }
+  // Desabilita input
+  const inp = document.getElementById('cupomInput');
+  if (inp) { inp.disabled = true; inp.value = resultado.codigo; }
+  const btn = document.querySelector('.cupom-btn');
+  if (btn) btn.disabled = true;
+}
+
+export async function aplicarCupomCheckout() {
+  const inp = document.getElementById('cupomInput');
+  const fb  = document.getElementById('cupomFeedback');
+  const codigo = inp?.value?.trim().toUpperCase();
+
+  if (!codigo) {
+    if (fb) { fb.className = 'cupom-feedback erro'; fb.textContent = '⚠ Digite um código de cupom.'; }
+    return;
+  }
+
+  const subtotal = cart.reduce((s, c) => s + c.price, 0);
+  const btn = document.querySelector('.cupom-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  try {
+    const resultado = await validarCupom(codigo, subtotal);
+    _cupomAplicado = resultado;
+    _renderCupomAplicado(resultado);
+    showToast('🎟 Cupom aplicado! − R$ ' + resultado.desconto.toFixed(2));
+  } catch (e) {
+    if (fb) { fb.className = 'cupom-feedback erro'; fb.textContent = '❌ ' + e.message; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Aplicar'; }
+  }
+}
+
+export function removerCupomCheckout() {
+  _cupomAplicado = null;
+
+  // Remove linha de desconto
+  document.getElementById('cupomDescontoRow')?.remove();
+
+  // Restaura total original
+  const subtotal = cart.reduce((s, c) => s + c.price, 0);
+  const totalEl  = document.querySelector('#bStep3 .sum-total .sum-val');
+  if (totalEl) totalEl.textContent = 'R$ ' + subtotal;
+
+  // Reset UI
+  const inp = document.getElementById('cupomInput');
+  if (inp) { inp.disabled = false; inp.value = ''; inp.focus(); }
+  const btn = document.querySelector('.cupom-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Aplicar'; }
+  const fb  = document.getElementById('cupomFeedback');
+  if (fb)  { fb.className = 'cupom-feedback'; fb.innerHTML = ''; }
+
+  showToast('🎟 Cupom removido.');
+}
   const cb  = document.getElementById('termoCheckbox');
   const btn = document.getElementById('btnIrPagamento');
   if (btn) btn.disabled = !cb?.checked;
@@ -491,7 +604,9 @@ export async function irParaPagamentoComTermo() {
         const icone = _svcIconText(c); // nunca retorna base64
         return (icone + ' ' + c.name).trim();
       }).join(', '),
-      total:         cart.reduce((s, c) => s + c.price, 0),
+      total:         _cupomAplicado ? _cupomAplicado.totalFinal : cart.reduce((s, c) => s + c.price, 0),
+      totalOriginal: cart.reduce((s, c) => s + c.price, 0),
+      cupom:         _cupomAplicado ? { codigo: _cupomAplicado.codigo, desconto: _cupomAplicado.desconto } : null,
       data:          booking.date,
       horario:       booking.time,
       barbeiro:      booking.barbeiro.nome,
@@ -837,3 +952,5 @@ window.shareWhatsApp          = shareWhatsApp;
 window.adicionarGoogleCalendar = adicionarGoogleCalendar;
 window.resetBooking           = resetBooking;
 window.iniciarPagamentoCakto  = iniciarPagamentoCakto;
+window.aplicarCupomCheckout   = aplicarCupomCheckout;
+window.removerCupomCheckout   = removerCupomCheckout;
