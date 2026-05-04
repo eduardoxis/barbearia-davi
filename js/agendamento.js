@@ -516,6 +516,9 @@ export function removerCupomCheckout() {
 
   showToast('🎟 Cupom removido.');
 }
+
+/* ── Termo de aceite ── */
+export function verificarTermoAceito() {
   const cb  = document.getElementById('termoCheckbox');
   const btn = document.getElementById('btnIrPagamento');
   if (btn) btn.disabled = !cb?.checked;
