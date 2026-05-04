@@ -665,6 +665,7 @@
         <button class="adm-tab"        onclick="switchAdmTab('clientes')">👥 Clientes</button>
         <button class="adm-tab"        onclick="switchAdmTab('instagram')">📸 Instagram</button>
         <button class="adm-tab"        onclick="switchAdmTab('log')">📜 Log</button>
+        <button class="adm-tab"        onclick="switchAdmTab('cupons')">🎟 Cupons</button>
       </div>
       <!-- painéis renderizados via JS — mantidos intactos -->
       <div class="adm-panel" id="admTab-dashboard">
@@ -968,6 +969,71 @@
         </div>
       </div>
 
+      <!-- ═══ CUPONS ═══ -->
+      <div class="adm-panel" id="admTab-cupons">
+        <div class="log-header">
+          <div class="log-header-left">
+            <div class="log-titulo">🎟 Cupons &amp; Promoções</div>
+            <div class="log-subtitulo">Crie e gerencie códigos de desconto para seus clientes</div>
+          </div>
+          <button class="btn-red" style="padding:0.55rem 1.2rem;font-size:0.78rem" onclick="abrirModalNovoCupom()">+ Novo Cupom</button>
+        </div>
+
+        <div id="cuponsStats" class="cupons-stats"></div>
+
+        <div id="cuponsAdmLista" class="cupons-lista">
+          <div class="log-loading">📭 Abra esta aba para ver os cupons.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL NOVO CUPOM ═══ -->
+<div class="overlay-modal" id="overlayNovoCupom" onclick="if(event.target===this)fecharModalNovoCupom()">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-title">🎟 Novo Cupom</div>
+    <div class="form-group">
+      <label class="form-label">Código do Cupom *</label>
+      <input class="form-input" id="novoCupomCodigo" placeholder="Ex: BEMVINDO20" maxlength="20"
+             oninput="this.value=this.value.toUpperCase().replace(/\s/g,'')">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrição</label>
+      <input class="form-input" id="novoCupomDesc" placeholder="Ex: 20% de desconto para novos clientes">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+      <div class="form-group">
+        <label class="form-label">Tipo de desconto</label>
+        <select class="form-input" id="novoCupomTipo">
+          <option value="percentual">Percentual (%)</option>
+          <option value="fixo">Valor fixo (R$)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor *</label>
+        <input class="form-input" id="novoCupomValor" type="number" min="1" placeholder="Ex: 20">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+      <div class="form-group">
+        <label class="form-label">Valor mínimo do pedido</label>
+        <input class="form-input" id="novoCupomMinimo" type="number" min="0" placeholder="0 = sem mínimo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Limite de usos <span style="color:var(--gray)">(0 = ilimitado)</span></label>
+        <input class="form-input" id="novoCupomLimite" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Válido até <span style="color:var(--gray)">(opcional)</span></label>
+      <input class="form-input" id="novoCupomValidade" type="date">
+    </div>
+    <div class="form-err" id="novoCupomErr"></div>
+    <div style="display:flex;gap:0.6rem;margin-top:0.5rem">
+      <button class="btn-back" onclick="fecharModalNovoCupom()">Cancelar</button>
+      <button class="btn-next" onclick="confirmarNovoCupom()" style="flex:1">✓ Criar Cupom</button>
     </div>
   </div>
 </div>
