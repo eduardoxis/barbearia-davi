@@ -24,3 +24,26 @@
 .item-historico-status.pendente{background:rgba(255,165,0,0.12);color:#FFA500}
 .item-historico-status.remarcado{background:rgba(100,149,237,0.12);color:#6495ED}
 .item-historico-detalhe{color:var(--gray);font-size:0.72rem}
+
+/* ── Botão avaliar ── */
+.btn-hist-avaliar{background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.35);color:#FFC107}
+.btn-hist-avaliar:hover{background:rgba(255,193,7,0.22)}
+
+/* ── Badge de avaliação já feita no card ── */
+.hist-avaliacao-badge{display:inline-flex;align-items:center;gap:0.15rem;font-size:0.82rem;color:#FFC107;letter-spacing:0.05em;padding:0.2rem 0.5rem;background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.2);border-radius:2px}
+.hist-avaliacao-badge .aval-comentario-mini{font-size:0.65rem;color:var(--gray);margin-left:0.3rem;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Modal de avaliação ── */
+.modal-avaliacao{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1.5rem;width:100%;max-width:420px;position:relative}
+.aval-stars-row{display:flex;justify-content:center;gap:0.5rem;margin:1.2rem 0}
+.aval-star{font-size:2.2rem;cursor:pointer;color:var(--gray3);transition:color .15s,transform .12s;user-select:none;line-height:1}
+.aval-star.on{color:#FFC107}
+.aval-star:hover{transform:scale(1.15)}
+.aval-label{text-align:center;font-size:0.78rem;color:var(--gray);min-height:1.2em;margin-bottom:1rem;transition:color .15s}
+.aval-label.filled{color:#FFC107}
+.aval-textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:2px;color:var(--white);font-size:0.82rem;padding:0.7rem 0.9rem;resize:none;font-family:inherit;line-height:1.5;box-sizing:border-box}
+.aval-textarea:focus{outline:none;border-color:rgba(255,193,7,0.5)}
+.aval-textarea::placeholder{color:var(--gray3)}
+.btn-aval-enviar{width:100%;margin-top:1rem;padding:0.75rem;background:var(--red);border:none;border-radius:2px;color:#fff;font-family:'Oswald',sans-serif;font-size:1rem;letter-spacing:0.05em;cursor:pointer;transition:background .15s}
+.btn-aval-enviar:hover:not(:disabled){background:#c0392b}
+.btn-aval-enviar:disabled{opacity:0.45;cursor:not-allowed}
