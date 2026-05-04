@@ -121,14 +121,14 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   margin-bottom: 1.5rem;
 }
 @media (max-width: 600px) {
-  .barb-stats { grid-template-columns: repeat(2, 1fr); }
+  .barb-stats { grid-template-columns: repeat(3, 1fr) !important; }
   .barb-topbar-title { font-size: 1.5rem; }
 }
 
-/* Tabs igual ao admin — 3 abas */
+/* Tabs igual ao admin — 7 abas */
 .barb-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
@@ -137,14 +137,14 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   margin-bottom: 1.5rem;
 }
 .barb-tab {
-  padding: 0.65rem 0.4rem;
+  padding: 0.65rem 0.2rem;
   background: var(--card);
   border: none;
   color: var(--gray);
   font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.2s;
@@ -492,7 +492,7 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
   </div>
 
   <!-- ── Stats ── -->
-  <div class="barb-stats">
+  <div class="barb-stats" style="grid-template-columns:repeat(3,1fr) repeat(3,1fr)">
     <div class="adm-stat">
       <span class="adm-stat-n" id="statTotal">—</span>
       <span class="adm-stat-l">Hoje</span>
@@ -509,14 +509,23 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
       <span class="adm-stat-n" id="statSemana">—</span>
       <span class="adm-stat-l">Esta semana</span>
     </div>
+    <div class="adm-stat">
+      <span class="adm-stat-n" id="statMesCortes">—</span>
+      <span class="adm-stat-l">✂️ Cortes/mês</span>
+    </div>
+    <div class="adm-stat">
+      <span class="adm-stat-n" style="color:#27ae60;font-size:1rem" id="statMesGanhos">—</span>
+      <span class="adm-stat-l">💰 Mês</span>
+    </div>
   </div>
 
   <!-- ── Tabs ── -->
-  <div class="barb-tabs" style="grid-template-columns:repeat(6,1fr)">
+  <div class="barb-tabs" style="grid-template-columns:repeat(7,1fr)">
     <button class="barb-tab active" id="tabHoje"       onclick="barb_switchTab('hoje')">📅 Hoje</button>
     <button class="barb-tab"        id="tabAmanha"     onclick="barb_switchTab('amanha')">🗓 Amanhã</button>
     <button class="barb-tab"        id="tabSemana"     onclick="barb_switchTab('semana')">📆 Semana</button>
     <button class="barb-tab"        id="tabCalendario" onclick="barb_switchTab('calendario')">🗓 Calendário</button>
+    <button class="barb-tab"        id="tabHistorico"  onclick="barb_switchTab('historico')">📊 Histórico</button>
     <button class="barb-tab"        id="tabStory"      onclick="barb_switchTab('story')">📸 Story</button>
     <button class="barb-tab"        id="tabAgenda"     onclick="barb_switchTab('agenda')">⚙️ Agenda</button>
   </div>
@@ -725,6 +734,45 @@ body { background: #0D0D0D; color: var(--light); font-family: 'Inter', sans-seri
         <canvas id="painelStoryCanvas" style="max-width:100%;height:auto;display:block"></canvas>
       </div>
     </div>
+  </div>
+
+  <!-- ── Painel: Histórico ── -->
+  <div class="barb-panel" id="panel-historico">
+    <!-- Nav do mês -->
+    <div class="barb-nav-data" id="histNavMes">
+      <button class="barb-nav-btn" id="histBtnPrev">‹</button>
+      <div class="barb-nav-data-label" id="histMesLabel">—</div>
+      <button class="barb-nav-btn" id="histBtnNext">›</button>
+    </div>
+
+    <!-- Cards de resumo do mês -->
+    <div class="barb-stats" style="margin-bottom:1.5rem" id="histStats">
+      <div class="adm-stat" style="grid-column:span 2">
+        <span class="adm-stat-n" id="histTotalCortes" style="font-size:2.2rem">—</span>
+        <span class="adm-stat-l">✂️ Cortes no Mês</span>
+      </div>
+      <div class="adm-stat" style="grid-column:span 2">
+        <span class="adm-stat-n" id="histTotalGanhos" style="font-size:1.7rem;color:#27ae60">—</span>
+        <span class="adm-stat-l">💰 Faturado no Mês</span>
+      </div>
+    </div>
+
+    <!-- Barra de progresso dias trabalhados -->
+    <div id="histBarraWrap" style="margin-bottom:1.5rem;display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+        <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray)">Dias trabalhados</span>
+        <span id="histDiasTrabalhados" style="font-size:0.8rem;font-weight:700;color:var(--white)"></span>
+      </div>
+      <div style="background:var(--card2);border-radius:2px;height:6px;overflow:hidden">
+        <div id="histBarraProg" style="height:100%;background:var(--red);border-radius:2px;transition:width 0.4s ease;width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Lista de cortes -->
+    <div style="font-family:'Oswald',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)">
+      Todos os atendimentos
+    </div>
+    <div id="histLista" class="barb-agend-list"></div>
   </div>
 
   <!-- ── Painel: Semana ── -->
