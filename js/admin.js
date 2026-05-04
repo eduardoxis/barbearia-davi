@@ -5,7 +5,7 @@
 
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
 import { registrarLog, carregarLogs } from './admin-log.js';
-import { criarCupom, desativarCupom } from '../routes/cupons.js';
+import { criarCupom } from '../routes/cupons.js';
 import { markJustSaved } from './realtime.js';
 import {
   renderPortfolioAdmin,
