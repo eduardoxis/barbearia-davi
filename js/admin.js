@@ -4,6 +4,7 @@
 ══════════════════════════════════════════ */
 
 import { adminSettings, showToast, MONTHS_PT, DAYS_SHORT_PT, DAYS_FULL } from './global.js';
+import { registrarLog, carregarLogs } from './admin-log.js';
 import { markJustSaved } from './realtime.js';
 import {
   renderPortfolioAdmin,
@@ -63,6 +64,7 @@ export async function doAdminLogin() {
     document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminDash').style.display  = 'block';
     await loadAdminSettings();
+    registrarLog('Login no painel admin', 'Acesso autenticado com sucesso', 'config');
   } else {
     document.getElementById('adminErr').classList.add('show');
     document.getElementById('adminPass').value = '';
@@ -115,6 +117,7 @@ export async function saveAdminSettings() {
     });
     if (btn) { btn.textContent = '✓ Salvo!'; btn.classList.add('saved'); }
     showToast('💾 Configurações salvas!');
+    registrarLog('Configurações salvas', 'Todas as configurações do painel foram salvas no Firestore', 'config');
     // Backup automático
     const dados = gerarDadosBackup();
     salvarBackupFirestore(dados);
@@ -139,7 +142,7 @@ function renderAdminDash() {
 
 /* ── Tabs ── */
 export function switchAdmTab(tab) {
-  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram'];
+  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram','log'];
   document.querySelectorAll('.adm-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
   document.querySelectorAll('.adm-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('admTab-' + tab)?.classList.add('active');
@@ -153,6 +156,7 @@ export function switchAdmTab(tab) {
   if (tab === 'barbeiros')     renderBarbeirosAdmin();
   if (tab === 'clientes')      carregarCRM();
   if (tab === 'instagram')     renderInstagramTab();
+  if (tab === 'log')           carregarLogs();
 }
 
 /* ── Stats ── */
@@ -169,7 +173,9 @@ export function toggleShopStatus() {
   adminSettings.shopOpen = document.getElementById('shopOpenToggle').checked;
   updateShopStatusUI();
   import('./global.js').then(m => m.updateHeroStatus());
+  const statusTxt = adminSettings.shopOpen ? 'ABERTA' : 'FECHADA';
   showToast(adminSettings.shopOpen ? '🟢 ABERTA' : '⚫ FECHADA');
+  registrarLog('Status da barbearia alterado', `Barbearia marcada como ${statusTxt}`, 'status');
 }
 
 function updateShopStatusUI() {
@@ -280,10 +286,12 @@ export function confirmAddBlockedDate() {
   }
   adminSettings.blockedDates.push({ date: ds, reason });
   renderBlockedDates(); closeAddBlockedDate(); showToast('🔒 ' + ds + ' bloqueado!');
+  registrarLog('Data bloqueada', `${ds}${reason ? ' — ' + reason : ''}`, 'bloqueio');
 }
 export function removeBlockedDate(ds) {
   adminSettings.blockedDates = adminSettings.blockedDates.filter(b => b.date !== ds);
   renderBlockedDates(); showToast('✓ Bloqueio de ' + ds + ' removido.');
+  registrarLog('Data desbloqueada', ds, 'bloqueio');
 }
 
 /* ── Slots ── */
@@ -342,9 +350,11 @@ export function toggleSlot(slot, btn) {
   if (adminSettings.takenSlots.includes(slot)) {
     adminSettings.takenSlots = adminSettings.takenSlots.filter(s => s !== slot);
     card.classList.remove('blocked'); badge.className = 'slot-status-badge ok'; badge.textContent = '🟢 Livre'; btn.textContent = 'Bloquear';
+    registrarLog('Horário liberado', slot, 'horario');
   } else {
     adminSettings.takenSlots.push(slot);
     card.classList.add('blocked'); badge.className = 'slot-status-badge blocked'; badge.textContent = '🔴 Bloqueado'; btn.textContent = 'Liberar';
+    registrarLog('Horário bloqueado', slot, 'horario');
   }
   updateAdminStats();
 }
@@ -353,6 +363,7 @@ export function deleteSlot(slot) {
   adminSettings.slots = adminSettings.slots.filter(s => s !== slot);
   adminSettings.takenSlots = adminSettings.takenSlots.filter(s => s !== slot);
   renderAdminSlots(); showToast('🗑 ' + slot + ' removido.');
+  registrarLog('Horário removido', slot, 'horario');
 }
 export function openAddSlotModal()  { document.getElementById('slotErr').classList.remove('show'); document.getElementById('addSlotOverlay').classList.add('show'); }
 export function closeAddSlotModal() { document.getElementById('addSlotOverlay').classList.remove('show'); }
@@ -361,6 +372,7 @@ export function confirmAddSlot() {
   if (!v) return;
   if (adminSettings.slots.includes(v)) { document.getElementById('slotErr').classList.add('show'); return; }
   adminSettings.slots.push(v); renderAdminSlots(); closeAddSlotModal(); showToast('✓ ' + v + ' adicionado!');
+  registrarLog('Horário adicionado', v, 'horario');
 }
 
 /* ── Serviços ── */
@@ -427,12 +439,14 @@ export function toggleSvcVis(id) {
   svc.hidden = !svc.hidden; renderAdminServices();
   import('./index.js').then(m => m.renderGallery());
   showToast(svc.hidden ? '🙈 Ocultado' : '👁 Visível');
+  registrarLog(svc.hidden ? 'Serviço ocultado' : 'Serviço exibido', svc.name, 'servico');
 }
 export function deleteSvc(id) {
   const svc = adminSettings.services.find(s => s.id === id);
   if (!svc || !confirm('Remover "' + svc.name + '"?')) return;
   adminSettings.services = adminSettings.services.filter(s => s.id !== id);
   renderAdminServices(); import('./index.js').then(m => m.renderGallery()); showToast('🗑 Removido.');
+  registrarLog('Serviço excluído', `"${svc.name}" — R$ ${svc.price}`, 'servico');
 }
 
 let editingSvcId   = null;
@@ -629,8 +643,10 @@ export async function confirmSaveService() {
   if (editingSvcId) {
     const svc = adminSettings.services.find(s => s.id === editingSvcId);
     if (svc) Object.assign(svc, { icon, name, desc, price, time });
+    registrarLog('Serviço editado', `"${name}" — R$ ${price}`, 'servico');
   } else {
     adminSettings.services.push({ id:'svc_'+Date.now(), name, desc, price, time, icon, bg:'gi-corte', hidden:false });
+    registrarLog('Serviço adicionado', `"${name}" — R$ ${price} · ${time}`, 'servico');
   }
   closeAddSvcModal(); renderAdminServices(); import('./index.js').then(m => m.renderGallery());
   await saveAdminSettings();
@@ -839,7 +855,8 @@ export async function confirmarSalvarBarbeiro() {
   };
   if (!adminSettings.barbeiros) adminSettings.barbeiros = [];
   const idx = adminSettings.barbeiros.findIndex(b => b.id === id);
-  if (idx >= 0) adminSettings.barbeiros[idx] = barbeiro; else adminSettings.barbeiros.push(barbeiro);
+  if (idx >= 0) { adminSettings.barbeiros[idx] = barbeiro; registrarLog('Barbeiro editado', nome, 'barbeiro'); }
+  else { adminSettings.barbeiros.push(barbeiro); registrarLog('Barbeiro adicionado', nome, 'barbeiro'); }
   fecharModalBarbeiro(); renderBarbeirosAdmin();
   import('./agendamento.js').then(m => m.renderBarbeiroGrid());
   await saveAdminSettings();
@@ -847,12 +864,14 @@ export async function confirmarSalvarBarbeiro() {
 export function toggleAtivoBarbeiro(id) {
   const b = (adminSettings.barbeiros||[]).find(x=>x.id===id); if (!b) return;
   b.ativo = !b.ativo; renderBarbeirosAdmin(); showToast(b.ativo ? '▶ Ativado!' : '⏸ Desativado!');
+  registrarLog(b.ativo ? 'Barbeiro ativado' : 'Barbeiro desativado', b.nome, 'barbeiro');
 }
 export function excluirBarbeiro(id) {
   const b = (adminSettings.barbeiros||[]).find(x=>x.id===id);
   if (!b || !confirm('Excluir "' + b.nome + '"?')) return;
   adminSettings.barbeiros = adminSettings.barbeiros.filter(x=>x.id!==id);
   renderBarbeirosAdmin(); showToast('🗑 Barbeiro excluído.');
+  registrarLog('Barbeiro excluído', b.nome, 'barbeiro');
 }
 
 /* ── Atendimentos do dia ── */
@@ -2301,6 +2320,7 @@ export async function confirmarBloqueioBarb() {
   closeModalBloqueioBarb();
   renderBloqueiosBarb();
   showToast(`🔒 ${barb?.nome || 'Barbeiro'} bloqueado em ${d.toString().padStart(2,'0')}/${m.toString().padStart(2,'0')}/${y}!`);
+  registrarLog('Dia de barbeiro bloqueado', `${barb?.nome || 'Barbeiro'} — ${d.toString().padStart(2,'0')}/${m.toString().padStart(2,'0')}/${y}${reason ? ' · ' + reason : ''}`, 'bloqueio');
 }
 
 /* ── Remove um bloqueio ── */
@@ -2318,6 +2338,7 @@ export async function removerBloqueioBarb(id) {
   adminSettings.diasBloqueadosBarbeiro = (adminSettings.diasBloqueadosBarbeiro || []).filter(b => b.id !== id);
   renderBloqueiosBarb();
   showToast('✓ Dia desbloqueado com sucesso.');
+  registrarLog('Dia de barbeiro desbloqueado', `ID do bloqueio: ${id}`, 'bloqueio');
 }
 
 /* ── Expõe todos os globais ── */
@@ -2398,6 +2419,8 @@ export async function marcarAtendimentoRealizado(agendId, barbId, btn) {
     incrementarContadorCortes(barbId);
     await saveAdminSettings();
     showToast('✅ Atendimento concluído! Contador atualizado.');
+    const barbNome = (adminSettings.barbeiros||[]).find(b=>b.id===barbId)?.nome || barbId;
+    registrarLog('Atendimento concluído', `ID: ${agendId || '—'} · Barbeiro: ${barbNome}`, 'agendamento');
     if (btn) { btn.textContent = '✓ Realizado'; btn.classList.add('done'); }
     import('./agendamento.js').then(m => m.renderBarbeiroGrid());
   } catch(e) {
