@@ -154,6 +154,14 @@ function _renderStats() {
     const d = a.data||''; return semana.some(s => s===d || _dataFS(s)===d);
   }).length;
   _set('statSemana', totalSemana);
+
+  // Mês atual — cortes e faturamento
+  const agMes = _agDoMes(new Date().getMonth(), new Date().getFullYear());
+  const concMes = agMes.filter(a => a.status==='realizado'||a.status==='concluido');
+  _set('statMesCortes', concMes.length);
+  const ganhoMes = concMes.reduce((s, a) => s + _parseTotalValor(a.total), 0);
+  const elGanho = document.getElementById('statMesGanhos');
+  if (elGanho) elGanho.textContent = ganhoMes > 0 ? _fmtMoeda(ganhoMes) : '0';
 }
 
 /* ─── Nav Data ── */
@@ -219,6 +227,18 @@ function _renderTab(tab) {
   if (tab === 'amanha')    _renderPainelAmanha();
   if (tab === 'semana')    _renderPainelSemana();
   if (tab === 'story')     _initStoryTab();
+  if (tab === 'historico') {
+    _renderPainelHistorico();
+    if (!_histNavRegistrado) {
+      document.getElementById('histBtnPrev')?.addEventListener('click', () => {
+        _histMes--; if (_histMes < 0) { _histMes = 11; _histAno--; } _renderPainelHistorico();
+      });
+      document.getElementById('histBtnNext')?.addEventListener('click', () => {
+        _histMes++; if (_histMes > 11) { _histMes = 0; _histAno++; } _renderPainelHistorico();
+      });
+      _histNavRegistrado = true;
+    }
+  }
   if (tab === 'calendario') {
     _renderCalendarioBarbeiro();
     if (!_calNavRegistrado) {
@@ -430,6 +450,128 @@ let _calMes          = new Date().getMonth();
 let _calAno          = new Date().getFullYear();
 let _calDiaSel       = null;
 let _calNavRegistrado = false;
+
+/* ══════════════════════════════════════════
+   HISTÓRICO DE CORTES E GANHOS
+══════════════════════════════════════════ */
+let _histMes          = new Date().getMonth();
+let _histAno          = new Date().getFullYear();
+let _histNavRegistrado = false;
+
+function _parseTotalValor(total) {
+  if (!total && total !== 0) return 0;
+  if (typeof total === 'number') return total;
+  // "R$ 50,00" → 50 | "50.00" → 50
+  const s = String(total).replace(/R\$\s*/,'').replace(/\./g,'').replace(',','.').trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function _fmtMoeda(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function _agDoMes(mes, ano) {
+  return _agendamentos.filter(a => {
+    const st = a.status || '';
+    if (st === 'remarcado' || st === 'reagendado' || st === 'cancelado') return false;
+    const d = a.data || '';
+    // Suporta formatos "DD/MM/YYYY" e "YYYY-MM-DD"
+    let m, y;
+    if (d.includes('/')) { const p = d.split('/'); m = parseInt(p[1])-1; y = parseInt(p[2]); }
+    else if (d.includes('-')) { const p = d.split('-'); m = parseInt(p[1])-1; y = parseInt(p[0]); }
+    else return false;
+    return m === mes && y === ano;
+  }).sort((a,b) => {
+    const da = a.data||'', db = b.data||'';
+    const ha = a.horario||'', hb = b.horario||'';
+    return (da+ha).localeCompare(db+hb);
+  });
+}
+
+function _renderPainelHistorico() {
+  // Label do mês
+  const label = document.getElementById('histMesLabel');
+  if (label) label.textContent = (_MESES[_histMes] + ' · ' + _histAno).toUpperCase();
+
+  const todos      = _agDoMes(_histMes, _histAno);
+  const concluidos = todos.filter(a => a.status === 'realizado' || a.status === 'concluido');
+  const totalCortes = concluidos.length;
+  const totalValor  = concluidos.reduce((s, a) => s + _parseTotalValor(a.total), 0);
+
+  // Dias distintos trabalhados
+  const diasSet = new Set(concluidos.map(a => a.data || ''));
+  const diasTrab = diasSet.size;
+  const diasNoMes = new Date(_histAno, _histMes + 1, 0).getDate();
+
+  _set('histTotalCortes', totalCortes);
+  document.getElementById('histTotalGanhos').textContent = totalValor > 0 ? _fmtMoeda(totalValor) : '—';
+
+  // Barra de dias trabalhados
+  const barraWrap = document.getElementById('histBarraWrap');
+  if (barraWrap) {
+    if (diasTrab > 0) {
+      barraWrap.style.display = 'block';
+      const pct = Math.round((diasTrab / diasNoMes) * 100);
+      document.getElementById('histDiasTrabalhados').textContent = `${diasTrab} de ${diasNoMes} dias`;
+      const barra = document.getElementById('histBarraProg');
+      if (barra) setTimeout(() => { barra.style.width = pct + '%'; }, 50);
+    } else {
+      barraWrap.style.display = 'none';
+    }
+  }
+
+  // Lista de atendimentos
+  const container = document.getElementById('histLista');
+  if (!container) return;
+
+  if (!todos.length) {
+    container.innerHTML = _htmlVazio('Nenhum atendimento<br>neste mês');
+    return;
+  }
+
+  container.innerHTML = todos.map(a => {
+    const concluido = a.status === 'realizado' || a.status === 'concluido';
+    const cancelado = a.status === 'cancelado';
+    const valor = _parseTotalValor(a.total);
+    const valorHtml = valor > 0
+      ? `<span style="font-size:0.88rem;font-weight:700;color:#27ae60;white-space:nowrap">${_fmtMoeda(valor)}</span>`
+      : `<span style="font-size:0.75rem;color:var(--gray2)">—</span>`;
+
+    // Data amigável
+    let dataExib = a.data || '';
+    if (dataExib.includes('-')) {
+      const [y,m,d] = dataExib.split('-');
+      dataExib = `${d}/${m}`;
+    } else if (dataExib.includes('/')) {
+      const [d,m] = dataExib.split('/');
+      dataExib = `${d}/${m}`;
+    }
+
+    const badge = concluido
+      ? '<span class="bag-badge badge-feito">✓ Feito</span>'
+      : cancelado
+        ? '<span class="bag-badge badge-cancelado">Cancelado</span>'
+        : '<span class="bag-badge badge-agendado">Agendado</span>';
+
+    const cardClass = concluido ? 'card-feito' : cancelado ? 'card-cancelado' : '';
+
+    return `<div class="barb-agend-card ${cardClass}">
+      <div class="bag-hora" style="font-size:1.4rem;line-height:1.1">
+        <div>${a.horario||'—'}</div>
+        <div style="font-size:0.65rem;font-weight:400;color:var(--gray);margin-top:0.15rem;font-family:'Inter',sans-serif">${dataExib}</div>
+      </div>
+      <div class="bag-info">
+        <div class="bag-cliente">${a.cliente||'Cliente'}</div>
+        <div class="bag-svc">${a.servicos||'Serviço não informado'}</div>
+      </div>
+      <div class="bag-actions">
+        ${badge}
+        ${valorHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function _renderCalendarioBarbeiro() {
   const label = document.getElementById('calBarbLabel');
