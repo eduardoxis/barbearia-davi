@@ -528,6 +528,36 @@ let _svcFotoObjUrl = null;   // URL.createObjectURL para preview
 let _svcFotoUrl    = null;   // URL final (Firebase Storage ou existente)
 
 /* ─── Redimensionamento de imagem via Canvas ─── */
+/* ─── Mensagem de erro amigável para Firebase Storage ─── */
+function _storageErrMsg(err) {
+  const code = err?.code || '';
+  if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
+    return '🔒 Sem permissão no Firebase Storage.\n\n' +
+      'Acesse: console.firebase.google.com → Storage → Rules\n' +
+      'Cole as regras abaixo e clique em "Publish":\n\n' +
+      'rules_version = \'2\';\n' +
+      'service firebase.storage {\n' +
+      '  match /b/{bucket}/o {\n' +
+      '    match /{allPaths=**} {\n' +
+      '      allow read: if true;\n' +
+      '      allow write: if request.auth != null;\n' +
+      '    }\n' +
+      '  }\n' +
+      '}';
+  }
+  if (code === 'storage/timeout' || (err?.message || '').includes('Tempo limite')) {
+    return '⏱ Tempo limite excedido ao enviar a foto.\n\n' +
+      'Possíveis causas:\n' +
+      '1. Regras do Storage bloqueando o upload — acesse console.firebase.google.com → Storage → Rules e verifique.\n' +
+      '2. Conexão lenta — tente uma imagem menor.\n' +
+      '3. storageBucket incorreto no firebaseConfig.';
+  }
+  if (code === 'storage/quota-exceeded') {
+    return '📦 Cota do Firebase Storage esgotada. Verifique seu plano no console Firebase.';
+  }
+  return 'Erro no Firebase Storage (' + (code || err?.message || 'desconhecido') + ').\nVerifique as regras de segurança em: console.firebase.google.com → Storage → Rules';
+}
+
 async function resizeImage(file, maxPx) {
   return new Promise((resolve) => {
     if (!maxPx || maxPx === 0) { resolve(file); return; }
@@ -682,13 +712,13 @@ export async function confirmSaveService() {
           const ref    = fb.storageRef(fb.storage, path);
           const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Tempo limite excedido (15s)')), 15000)
+            setTimeout(() => reject({ code: 'storage/timeout' }), 30000)
           );
           await Promise.race([uploadPromise, timeoutPromise]);
           icon      = await fb.getDownloadURL(ref);
           uploadOk  = true;
         } catch(storageErr) {
-          throw new Error('Falha no Firebase Storage: ' + (storageErr.message || storageErr.code || 'erro desconhecido') + '. Verifique as regras de segurança do Storage no console Firebase.');
+          throw new Error(_storageErrMsg(storageErr));
         }
       } else {
         throw new Error('Firebase Storage não disponível. A foto não pode ser salva sem o Storage configurado.');
@@ -829,12 +859,12 @@ export async function onBarbFotoChange(input) {
       const blob   = await (await fetch(base64)).blob();
       const ref    = fb.storageRef(fb.storage, path);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tempo limite excedido (15s)')), 15000)
+        setTimeout(() => reject({ code: 'storage/timeout' }), 30000)
       );
       await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeoutPromise]);
       url = await fb.getDownloadURL(ref);
     } catch (storageErr) {
-      throw new Error('Falha no Firebase Storage: ' + (storageErr.message || storageErr.code || 'erro desconhecido') + '. Verifique as regras de segurança do Storage.');
+      throw new Error(_storageErrMsg(storageErr));
     }
 
     const urlInput = document.getElementById('barbFotoUrl');
