@@ -59,22 +59,23 @@ h1 .red{color:var(--red)}
 
 .hero-btns{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2.5rem}
 
-.hero-stats{display:flex;flex-direction:column;gap:1rem;padding-top:1.8rem;border-top:1px solid var(--border)}
+.hero-stats{display:flex;flex-direction:row;gap:2.5rem;flex-wrap:wrap;padding-top:1.8rem;border-top:1px solid var(--border)}
 .hero-stat-item{display:flex;align-items:center;gap:0.9rem}
 .hero-stat-item svg{flex-shrink:0;opacity:0.5}
 .stat-n{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--red);display:block;line-height:1}
 .stat-l{font-size:0.62rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray)}
 
-/* Lado direito */
+/* Lado direito — oculto até ter foto */
 .hero-right{
   position:relative;
   z-index:2;
-  display:flex;
+  display:none;
   align-items:center;
   justify-content:center;
   height:100%;
   min-height:70vh;
 }
+.hero-right.tem-foto{display:flex}
 
 /* Orb vermelho */
 .hero-orb{
