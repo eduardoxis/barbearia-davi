@@ -162,14 +162,12 @@ export function updateHeroStatus() {
   if (!tag) return;
 
   const autoOpen   = adminSettings.shopOpen && isWithinWorkHours();
-  const forcedOpen = adminSettings.shopOpen;   // admin ligou o toggle manualmente
+  const forcedOpen = adminSettings.shopOpen;
 
-  // Aberto apenas se: toggle ligado E dentro do horário de funcionamento
   if (autoOpen) {
     tag.className   = 'hero-tag open';
     tag.textContent = '🔴 Aberto agora · Luziânia, GO';
   } else if (forcedOpen) {
-    // Toggle ligado mas fora do horário → mostra "abre às X"
     const dow = new Date().getDay();
     const h   = adminSettings.workHours[dow];
     const msg = adminSettings.workDays.includes(dow) && h
@@ -182,17 +180,76 @@ export function updateHeroStatus() {
     tag.textContent = '⚫ Fechado no momento';
   }
 
+  // Badge ABERTO HOJE
+  const badge = document.getElementById('heroBadge');
+  if (badge) {
+    const mainEl = badge.querySelector('.hero-badge-main');
+    if (autoOpen) {
+      badge.style.display = 'flex';
+      if (mainEl) mainEl.innerHTML = 'ABERTO<br><span>HOJE</span>';
+    } else {
+      if (mainEl) mainEl.innerHTML = 'FECHADO<br><span>AGORA</span>';
+    }
+  }
+
   // Sincroniza o toggle do painel admin
   const toggle = document.getElementById('shopOpenToggle');
   if (toggle && toggle.checked !== adminSettings.shopOpen) toggle.checked = adminSettings.shopOpen;
 
-  // Sincroniza título/subtítulo do painel Status
   const title = document.getElementById('statusToggleTitle');
   const sub   = document.getElementById('statusToggleSub');
   if (title) title.textContent = autoOpen ? '🟢 Aberto Agora' : '⚫ Fechado no Momento';
   if (sub)   sub.textContent   = autoOpen
     ? 'A barbearia está recebendo clientes'
     : (!adminSettings.shopOpen ? 'A barbearia está fechada (manual)' : 'Fora do horário de funcionamento');
+
+  // Foto do barbeiro no hero (usa o primeiro barbeiro com foto)
+  _updateHeroPhoto();
+
+  // Cards de serviços no hero
+  _updateHeroSvcCards();
+}
+
+function _updateHeroPhoto() {
+  const img = document.getElementById('heroPhotoPrincipal');
+  if (!img) return;
+  const barbs = adminSettings.barbeiros || [];
+  // Procura barbeiro ativo com foto no portfolio ou foto de perfil
+  for (const b of barbs) {
+    if (b.ativo === false) continue;
+    const url = (b.portfolio || []).find(f => f.destaque)?.url
+             || b.portfolio?.[0]?.url
+             || b.foto || '';
+    if (url && url.startsWith('http')) {
+      img.src = url;
+      img.style.display = 'block';
+      return;
+    }
+  }
+  img.style.display = 'none';
+  const ph = img.nextElementSibling;
+  if (ph) ph.style.display = 'flex';
+}
+
+function _updateHeroSvcCards() {
+  const wrap = document.getElementById('heroSvcCards');
+  if (!wrap) return;
+  const svcs = (adminSettings.services || []).filter(s => !s.hidden).slice(0, 3);
+  if (!svcs.length) return;
+  const icons = ['✂️','🪒','✨','💆','💈','🔥'];
+  wrap.innerHTML = svcs.map((s, i) => {
+    const fotoHtml = s.foto
+      ? `<img src="${s.foto}" style="width:44px;height:44px;border-radius:4px;object-fit:cover;flex-shrink:0;margin-left:auto" alt="${s.name}" onerror="this.style.display='none'">`
+      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'}"></div>`;
+    return `<div class="hero-svc-card">
+      <div class="hero-svc-icon">${icons[i] || '✂️'}</div>
+      <div>
+        <div class="hero-svc-nome">${s.name}</div>
+        <div class="hero-svc-desc">${s.desc || ''}</div>
+      </div>
+      ${fotoHtml}
+    </div>`;
+  }).join('');
 }
 
 /* ── Inicia a atualização automática a cada 60 s ── */
