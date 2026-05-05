@@ -528,6 +528,15 @@ let _svcFotoObjUrl = null;   // URL.createObjectURL para preview
 let _svcFotoUrl    = null;   // URL final (Firebase Storage ou existente)
 
 /* ─── Redimensionamento de imagem via Canvas ─── */
+/* ─── Garante autenticação Firebase antes de usar o Storage ─── */
+async function _ensureAuth() {
+  const fb = window._fb;
+  if (!fb?.auth) return;
+  if (!fb.auth.currentUser) {
+    try { await fb.signInAnonymously(fb.auth); } catch (e) { /* ignora */ }
+  }
+}
+
 /* ─── Mensagem de erro amigável para Firebase Storage ─── */
 function _storageErrMsg(err) {
   const code = err?.code || '';
@@ -706,6 +715,7 @@ export async function confirmSaveService() {
       const fb = window._fb;
       if (fb?.storage) {
         try {
+          await _ensureAuth(); // garante que auth.currentUser não é null
           const svcId  = editingSvcId || ('svc_' + Date.now());
           const ext    = arquivo.type === 'image/png' ? 'png' : 'jpg';
           const path   = `servicos/${svcId}.${ext}`;
@@ -855,6 +865,7 @@ export async function onBarbFotoChange(input) {
       throw new Error('Firebase Storage não disponível.');
     }
     try {
+      await _ensureAuth(); // garante que auth.currentUser não é null
       const path   = `barbeiros/${barbId}/foto.jpg`;
       const blob   = await (await fetch(base64)).blob();
       const ref    = fb.storageRef(fb.storage, path);
