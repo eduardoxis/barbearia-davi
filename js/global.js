@@ -220,6 +220,8 @@ function _updateHeroPhoto() {
   if (urlDireta && urlDireta.startsWith('http')) {
     img.src = urlDireta;
     img.style.display = 'block';
+    const ph = document.getElementById('heroPhotoPlaceholder');
+    if (ph) ph.style.display = 'none';
     if (right) right.classList.add('tem-foto');
     return;
   }
@@ -234,14 +236,18 @@ function _updateHeroPhoto() {
     if (url && url.startsWith('http')) {
       img.src = url;
       img.style.display = 'block';
+      const ph = document.getElementById('heroPhotoPlaceholder');
+      if (ph) ph.style.display = 'none';
       if (right) right.classList.add('tem-foto');
       return;
     }
   }
 
-  // Sem foto: esconde o lado direito
+  // Sem foto: mostra placeholder mas mantém hero-right visível
   img.style.display = 'none';
-  if (right) right.classList.remove('tem-foto');
+  const placeholder = document.getElementById('heroPhotoPlaceholder');
+  if (placeholder) placeholder.style.display = 'flex';
+  // hero-right sempre visível agora (display:flex no CSS)
 }
 
 function _updateHeroSvcCards() {
@@ -249,13 +255,20 @@ function _updateHeroSvcCards() {
   if (!wrap) return;
   const svcs = (adminSettings.services || []).filter(s => !s.hidden).slice(0, 3);
   if (!svcs.length) return;
-  const icons = ['✂️','🪒','✨','💆','💈','🔥'];
+  const svgIcons = [
+    `<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>`,
+    `<svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5c0 3-2 5-5 7-3-2-5-4-5-7a5 5 0 0 1 5-5z"/><path d="M4 22c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
+    `<svg viewBox="0 0 24 24"><path d="M3 10 Q12 4 21 10"/><path d="M3 10 Q5 14 12 13 Q19 14 21 10"/><circle cx="12" cy="11.5" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+    `<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/></svg>`,
+    `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`,
+    `<svg viewBox="0 0 24 24"><path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z"/></svg>`,
+  ];
   wrap.innerHTML = svcs.map((s, i) => {
     const fotoHtml = s.foto
-      ? `<img src="${s.foto}" style="width:44px;height:44px;border-radius:4px;object-fit:cover;flex-shrink:0;margin-left:auto" alt="${s.name}" onerror="this.style.display='none'">`
-      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'}"></div>`;
+      ? `<div class="hero-svc-foto"><img src="${s.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}" onerror="this.parentElement.style.display='none'"></div>`
+      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'};display:flex;align-items:center;justify-content:center"></div>`;
     return `<div class="hero-svc-card">
-      <div class="hero-svc-icon">${icons[i] || '✂️'}</div>
+      <div class="hero-svc-icon">${svgIcons[i] || svgIcons[0]}</div>
       <div>
         <div class="hero-svc-nome">${s.name}</div>
         <div class="hero-svc-desc">${s.desc || ''}</div>
