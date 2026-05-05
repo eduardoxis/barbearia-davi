@@ -264,9 +264,10 @@ function _updateHeroSvcCards() {
     `<svg viewBox="0 0 24 24"><path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z"/></svg>`,
   ];
   wrap.innerHTML = svcs.map((s, i) => {
-    const fotoHtml = s.foto
-      ? `<div class="hero-svc-foto"><img src="${s.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}" onerror="this.parentElement.style.display='none'"></div>`
-      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'};display:flex;align-items:center;justify-content:center"></div>`;
+    const iconIsImg = s.icon && (s.icon.startsWith('http') || s.icon.startsWith('data:'));
+    const fotoHtml = iconIsImg
+      ? `<div class="hero-svc-foto"><img src="${s.icon}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}" onerror="this.parentElement.innerHTML='';this.parentElement.style.background='linear-gradient(135deg,#1a1a1a,#333)'"></div>`
+      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'};display:flex;align-items:center;justify-content:center;font-size:1.2rem">${!iconIsImg && s.icon ? s.icon : ''}</div>`;
     return `<div class="hero-svc-card">
       <div class="hero-svc-icon">${svgIcons[i] || svgIcons[0]}</div>
       <div>
