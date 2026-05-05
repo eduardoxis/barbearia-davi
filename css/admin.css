@@ -168,7 +168,15 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
 /* ── Grade horário do barbeiro (início / fim / intervalo) ── */
 .barb-horario-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:0.7rem}
 .barb-horario-grid .form-group{margin-bottom:0}
-.barb-horario-grid .form-input{height:42px;box-sizing:border-box}
+.barb-horario-grid .form-input{
+  height:48px;
+  box-sizing:border-box;
+  font-size:1rem;
+  text-align:center;
+  padding:0.5rem 0.5rem;
+  -webkit-appearance:none;
+  appearance:none;
+}
 /* Modal: nunca vaza pra fora da tela */
 .adm-modal-overlay{box-sizing:border-box}
 .modal-barb{box-sizing:border-box}
@@ -409,8 +417,9 @@ input:checked + .toggle-slider:before{transform:translateX(32px)}
   .modal-barb-title-wrap{padding:0.8rem 1rem 0}
   .adm-modal-overlay{padding:0.5rem}
   /* Barbeiro: intervalo em 2 colunas no mobile */
-  .barb-horario-grid{grid-template-columns:1fr 1fr}
-  .barb-horario-grid .form-group:last-child{grid-column:1 / -1}
+  .barb-horario-grid{grid-template-columns:1fr 1fr 1fr}
+  .barb-horario-grid .form-group:last-child{grid-column:unset}
+  .barb-horario-grid .form-input{height:52px;font-size:0.95rem}
   /* Atend steps: pills menores */
   .atend-step-pill{padding:0.25rem 0.55rem}
   .atend-pill-txt{font-size:0.6rem}
