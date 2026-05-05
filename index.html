@@ -664,8 +664,11 @@
     <div id="adminDash" style="display:none">
       <div class="adm-topbar">
         <div>
-          <div class="adm-topbar-title">PAINEL <span>DO DAVI</span></div>
-          <div class="adm-topbar-sub">Barbearia do Davi · Vila Guará, Luziânia – GO</div>
+          <div class="adm-topbar-title">PAINEL <span>ADMIN</span></div>
+          <div class="adm-topbar-sub">
+            Barbearia do Davi · Vila Guará, Luziânia – GO
+            <span id="adminLogadoNome" style="margin-left:0.6rem;padding:0.15rem 0.5rem;background:var(--red);color:#fff;border-radius:3px;font-size:0.65rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase"></span>
+          </div>
         </div>
         <div style="display:flex;gap:0.8rem;align-items:center">
           <button class="adm-save-btn" id="globalSaveBtn" onclick="saveAdminSettings()">💾 Salvar tudo</button>
@@ -694,6 +697,7 @@
         <button class="adm-tab"        onclick="switchAdmTab('instagram')">📸 Instagram</button>
         <button class="adm-tab"        onclick="switchAdmTab('log')">📜 Log</button>
         <button class="adm-tab"        onclick="switchAdmTab('cupons')">🎟 Cupons</button>
+        <button class="adm-tab"        onclick="switchAdmTab('admins')">👤 Admins</button>
       </div>
       <!-- painéis renderizados via JS — mantidos intactos -->
       <div class="adm-panel" id="admTab-dashboard">
@@ -1015,6 +1019,57 @@
       </div>
 
     </div>
+
+      <!-- ── Tab: Admins ── -->
+      <div class="adm-panel" id="admTab-admins">
+        <div class="log-header">
+          <div class="log-header-left">
+            <div class="log-titulo">👤 Administradores</div>
+            <div class="log-subtitulo">Gerencie quem tem acesso ao painel admin</div>
+          </div>
+          <button class="btn-red" style="padding:0.55rem 1.2rem;font-size:0.78rem" onclick="abrirFormNovoAdmin()">+ Novo Admin</button>
+        </div>
+
+        <!-- Admin padrão (Davi) — readonly -->
+        <div style="margin-bottom:1.2rem;padding:0.9rem 1rem;background:var(--card2);border-radius:4px;border-left:3px solid var(--red)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:var(--white)">Davi (dono)</div>
+              <div style="font-size:0.72rem;color:var(--gray);margin-top:0.2rem">davibarber@gmail.com · Acesso total</div>
+            </div>
+            <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;background:var(--red);color:#fff;padding:0.2rem 0.5rem;border-radius:3px">MASTER</span>
+          </div>
+        </div>
+
+        <!-- Lista de admins adicionais do Firestore -->
+        <div id="adminsLista"></div>
+
+        <!-- Form novo/editar admin -->
+        <div id="adminsForm" style="display:none;margin-top:1.2rem;padding:1rem;background:var(--card2);border-radius:4px;border:1px solid var(--border)">
+          <div style="font-family:'Oswald',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.9rem" id="adminsFormTitulo">Novo Administrador</div>
+          <input type="hidden" id="adminsFormIdx" value="-1">
+          <div style="display:grid;gap:0.7rem">
+            <div>
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray);margin-bottom:0.3rem">Nome completo *</div>
+              <input class="form-input" id="adminsFormNome" placeholder="Ex: Carlos Eduardo">
+            </div>
+            <div>
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray);margin-bottom:0.3rem">E-mail *</div>
+              <input class="form-input" id="adminsFormEmail" type="email" placeholder="carlos@email.com">
+            </div>
+            <div>
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray);margin-bottom:0.3rem">Senha *</div>
+              <input class="form-input" id="adminsFormSenha" type="password" placeholder="Mínimo 6 caracteres">
+            </div>
+          </div>
+          <div id="adminsFormErr" style="font-size:0.75rem;color:var(--red);margin-top:0.6rem;display:none"></div>
+          <div style="display:flex;gap:0.6rem;margin-top:0.9rem">
+            <button class="btn-ghost" style="flex:1;justify-content:center;text-align:center" onclick="fecharFormAdmin()">Cancelar</button>
+            <button class="btn-red"   style="flex:1;justify-content:center" onclick="salvarAdmin()">✓ Salvar</button>
+          </div>
+        </div>
+      </div>
+
   </div>
 </div>
 
