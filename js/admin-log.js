@@ -207,13 +207,12 @@ function _getQuem() {
       const b = settings.barbeiros.find(x => x.id === barbId);
       if (b?.nome) return b.nome;
     }
-    /* 2. Admin com nome resolvido (via Firestore admins[] ou barbeiros[]) */
-    if (window._adminLogadoNome) return window._adminLogadoNome;
-    /* 3. Fallback: email prefix */
-    if (window._adminLogadoEmail) {
-      const prefix = window._adminLogadoEmail.split('@')[0];
-      return 'Admin (' + prefix + ')';
-    }
+    /* 2. Usuário logado na conta (mesmo que aparece na navbar) */
+    if (window.fbUser?.name)  return window.fbUser.name;
+    if (window.fbUser?.email) return window.fbUser.email;
+    /* 3. Admin com nome resolvido via Firestore */
+    if (window._adminLogadoNome)  return window._adminLogadoNome;
+    if (window._adminLogadoEmail) return window._adminLogadoEmail.split('@')[0];
   } catch (_) {}
   return 'Admin';
 }
