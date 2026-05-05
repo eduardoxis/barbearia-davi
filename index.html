@@ -818,14 +818,32 @@
         <!-- Foto Hero -->
         <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)">
           <div style="font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem">🖼 Foto do Hero</div>
-          <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.7rem">Cole a URL de uma foto do barbeiro. Ela aparece no lado direito da página inicial.</div>
-          <div style="display:flex;gap:0.6rem;align-items:center">
-            <input class="form-input" id="heroFotoUrlInput" type="url" placeholder="https://..." style="flex:1"
-                   value="">
-            <button class="btn-red" style="padding:0.6rem 1.1rem;font-size:0.78rem;white-space:nowrap" onclick="salvarHeroFoto()">✓ Aplicar</button>
+          <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.9rem">Foto do barbeiro que aparece no lado direito da página inicial.</div>
+
+          <input type="file" id="heroFotoFileInput" accept="image/*" style="display:none" onchange="onHeroFotoChange(this)">
+
+          <div id="heroFotoPreviewWrap" style="display:none;margin-bottom:0.8rem;position:relative">
+            <img id="heroFotoPreviewImg" src="" alt="Foto do hero"
+                 style="width:100%;max-height:200px;object-fit:cover;object-position:top center;border-radius:4px;border:1px solid var(--border)">
+            <button onclick="removerHeroFoto()"
+                    style="position:absolute;top:0.4rem;right:0.4rem;background:rgba(0,0,0,0.75);border:none;color:#fff;border-radius:50%;width:28px;height:28px;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
           </div>
-          <div id="heroFotoPreviewWrap" style="margin-top:0.8rem;display:none">
-            <img id="heroFotoPreviewImg" src="" alt="Preview" style="width:100%;max-height:180px;object-fit:cover;object-position:top;border-radius:4px;border:1px solid var(--border)">
+
+          <div id="heroFotoUploadArea" style="border:2px dashed var(--border);border-radius:4px;padding:1.5rem;text-align:center;cursor:pointer;transition:border-color 0.2s"
+               onclick="document.getElementById('heroFotoFileInput').click()"
+               ondragover="event.preventDefault();this.style.borderColor='var(--red)'"
+               ondragleave="this.style.borderColor='var(--border)'"
+               ondrop="onHeroFotoDrop(event)">
+            <div style="font-size:2rem;margin-bottom:0.4rem">📷</div>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--white);margin-bottom:0.2rem">Clique ou arraste uma foto aqui</div>
+            <div style="font-size:0.68rem;color:var(--gray)">JPG, PNG, WEBP · Recomendado: formato retrato</div>
+          </div>
+
+          <div id="heroFotoProgress" style="display:none;margin-top:0.7rem">
+            <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.3rem" id="heroFotoProgressTxt">Enviando...</div>
+            <div style="background:var(--card2);border-radius:2px;height:4px;overflow:hidden">
+              <div id="heroFotoProgressBar" style="height:100%;background:var(--red);width:0%;transition:width 0.3s"></div>
+            </div>
           </div>
         </div>
       </div>
