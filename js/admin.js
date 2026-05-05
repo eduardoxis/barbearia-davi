@@ -59,20 +59,76 @@ export function closeAdmin() {
 }
 
 export async function doAdminLogin() {
-  const email = document.getElementById('adminEmail').value.trim();
+  const email = document.getElementById('adminEmail').value.trim().toLowerCase();
   const pass  = document.getElementById('adminPass').value;
+
+  let autorizado = false;
+
+  /* ── 1. Credencial hardcoded legacy ── */
   if (email === 'davibarber@gmail.com' && pass === 'davi4452') {
-    document.getElementById('adminLogin').style.display = 'none';
-    document.getElementById('adminDash').style.display  = 'block';
-    await loadAdminSettings();
-    registrarLog('Login no painel admin', 'Acesso autenticado com sucesso', 'config');
-  } else {
+    autorizado = true;
+    window._adminLogadoEmail = email;
+    window._adminLogadoNome  = null; // será resolvido após loadAdminSettings
+  }
+
+  /* ── 2. Admins cadastrados no Firestore (settings/admin.admins[]) ── */
+  if (!autorizado && window._fb) {
+    try {
+      const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
+      if (snap.exists()) {
+        const admins = snap.data().admins || [];
+        const match  = admins.find(a =>
+          a.email && a.senha &&
+          a.email.toLowerCase() === email &&
+          a.senha === pass &&
+          a.ativo !== false
+        );
+        if (match) {
+          autorizado = true;
+          window._adminLogadoEmail = email;
+          window._adminLogadoNome  = match.nome || null;
+        }
+      }
+    } catch (e) {
+      console.warn('[admin] Erro ao verificar admins no Firestore:', e.message);
+    }
+  }
+
+  if (!autorizado) {
     document.getElementById('adminErr').classList.add('show');
     document.getElementById('adminPass').value = '';
+    return;
   }
+
+  document.getElementById('adminLogin').style.display = 'none';
+  document.getElementById('adminDash').style.display  = 'block';
+  await loadAdminSettings();
+
+  /* ── Resolve nome do admin (busca na lista de barbeiros pelo email) ── */
+  if (!window._adminLogadoNome) {
+    const barbs = adminSettings.barbeiros || [];
+    const match = barbs.find(b => b.email && b.email.toLowerCase() === email);
+    window._adminLogadoNome = match?.nome || null;
+  }
+
+  /* ── Exibe nome do admin logado na UI ── */
+  _atualizarNomeAdminUI();
+
+  registrarLog('Login no painel admin', `Acesso autenticado — ${window._adminLogadoNome || email}`, 'config');
+}
+
+function _atualizarNomeAdminUI() {
+  const el = document.getElementById('adminLogadoNome');
+  if (!el) return;
+  const nome = window._adminLogadoNome || window._adminLogadoEmail || 'Admin';
+  el.textContent = nome;
 }
 
 export function adminLogout() {
+  window._adminLogadoNome  = null;
+  window._adminLogadoEmail = null;
+  const el = document.getElementById('adminLogadoNome');
+  if (el) el.textContent = '';
   closeAdmin();
 }
 
@@ -143,7 +199,7 @@ function renderAdminDash() {
 
 /* ── Tabs ── */
 export function switchAdmTab(tab) {
-  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram','log','cupons'];
+  const tabs = ['dashboard','barbeiros','status','funcionamento','dias','horarios','servicos','atendimentos','historico','backup','solicitacoes','clientes','instagram','log','cupons','admins'];
   document.querySelectorAll('.adm-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
   document.querySelectorAll('.adm-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('admTab-' + tab)?.classList.add('active');
@@ -159,6 +215,7 @@ export function switchAdmTab(tab) {
   if (tab === 'instagram')     renderInstagramTab();
   if (tab === 'log')           carregarLogs();
   if (tab === 'cupons')        carregarCuponsAdmin();
+  if (tab === 'admins')        renderAdminsPanel();
 }
 
 /* ── Stats ── */
@@ -2620,3 +2677,171 @@ window.confirmarBloqueioBarb    = confirmarBloqueioBarb;
 window.removerBloqueioBarb      = removerBloqueioBarb;
 window.imprimirAgendaDoDia     = imprimirAgendaDoDia;
 window.exportarAgendaImagem    = exportarAgendaImagem;
+
+/* ══════════════════════════════════════════
+   GESTÃO DE ADMINISTRADORES
+   Salva em settings/admin.admins[]
+══════════════════════════════════════════ */
+
+let _adminsCache = [];
+
+async function _carregarAdminsFirestore() {
+  try {
+    if (!window._fb) return;
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
+    if (snap.exists()) _adminsCache = snap.data().admins || [];
+  } catch (e) {
+    console.warn('[admins] Erro ao carregar:', e.message);
+  }
+}
+
+async function _salvarAdminsFirestore() {
+  if (!window._fb) return;
+  const { setDoc, doc, db } = window._fb;
+  const snap = await window._fb.getDoc(doc(db, 'settings', 'admin'));
+  const atual = snap.exists() ? snap.data() : {};
+  await setDoc(doc(db, 'settings', 'admin'), { ...atual, admins: _adminsCache }, { merge: true });
+}
+
+export async function renderAdminsPanel() {
+  await _carregarAdminsFirestore();
+  _renderAdminsList();
+}
+
+function _renderAdminsList() {
+  const lista = document.getElementById('adminsLista');
+  if (!lista) return;
+
+  if (!_adminsCache.length) {
+    lista.innerHTML = '<div style="font-size:0.8rem;color:var(--gray);padding:0.6rem 0">Nenhum admin adicional cadastrado.</div>';
+    return;
+  }
+
+  lista.innerHTML = _adminsCache.map((a, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.85rem 1rem;background:var(--card2);border-radius:4px;margin-bottom:0.5rem;border-left:3px solid var(--border)">
+      <div>
+        <div style="font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:700;color:var(--white)">${_esc(a.nome)}</div>
+        <div style="font-size:0.72rem;color:var(--gray);margin-top:0.15rem">${_esc(a.email)}</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <span style="font-size:0.62rem;font-weight:700;letter-spacing:0.07em;padding:0.18rem 0.45rem;border-radius:3px;background:${a.ativo!==false?'#1a3a1a':'#3a1a1a'};color:${a.ativo!==false?'#27ae60':'var(--red)'}">
+          ${a.ativo!==false?'ATIVO':'INATIVO'}
+        </span>
+        <button onclick="editarAdmin(${i})"  style="background:var(--card);border:1px solid var(--border);color:var(--white);padding:0.3rem 0.7rem;border-radius:3px;font-size:0.72rem;cursor:pointer">✏ Editar</button>
+        <button onclick="toggleAdmin(${i})"  style="background:var(--card);border:1px solid var(--border);color:var(--gray);padding:0.3rem 0.7rem;border-radius:3px;font-size:0.72rem;cursor:pointer">${a.ativo!==false?'Desativar':'Ativar'}</button>
+        <button onclick="removerAdmin(${i})" style="background:transparent;border:none;color:var(--red);font-size:1rem;cursor:pointer;padding:0.2rem 0.4rem">✕</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function _esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+export function abrirFormNovoAdmin() {
+  document.getElementById('adminsFormTitulo').textContent = 'Novo Administrador';
+  document.getElementById('adminsFormIdx').value   = '-1';
+  document.getElementById('adminsFormNome').value  = '';
+  document.getElementById('adminsFormEmail').value = '';
+  document.getElementById('adminsFormSenha').value = '';
+  document.getElementById('adminsFormSenha').placeholder = 'Mínimo 6 caracteres';
+  _adminsFormErr('');
+  document.getElementById('adminsForm').style.display = 'block';
+  document.getElementById('adminsFormNome').focus();
+}
+
+export function fecharFormAdmin() {
+  document.getElementById('adminsForm').style.display = 'none';
+}
+
+export function editarAdmin(idx) {
+  const a = _adminsCache[idx];
+  if (!a) return;
+  document.getElementById('adminsFormTitulo').textContent = 'Editar Administrador';
+  document.getElementById('adminsFormIdx').value   = idx;
+  document.getElementById('adminsFormNome').value  = a.nome  || '';
+  document.getElementById('adminsFormEmail').value = a.email || '';
+  document.getElementById('adminsFormSenha').value = '';
+  document.getElementById('adminsFormSenha').placeholder = 'Deixe em branco para manter';
+  _adminsFormErr('');
+  document.getElementById('adminsForm').style.display = 'block';
+  document.getElementById('adminsFormNome').focus();
+}
+
+export async function salvarAdmin() {
+  const idx   = parseInt(document.getElementById('adminsFormIdx').value);
+  const nome  = document.getElementById('adminsFormNome').value.trim();
+  const email = document.getElementById('adminsFormEmail').value.trim().toLowerCase();
+  const senha = document.getElementById('adminsFormSenha').value;
+
+  if (!nome)  { _adminsFormErr('Informe o nome.'); return; }
+  if (!email) { _adminsFormErr('Informe o e-mail.'); return; }
+  if (idx === -1 && senha.length < 6) { _adminsFormErr('A senha precisa ter ao menos 6 caracteres.'); return; }
+  if (senha && senha.length < 6)      { _adminsFormErr('A senha precisa ter ao menos 6 caracteres.'); return; }
+
+  // Verifica duplicidade de e-mail
+  const duplicado = _adminsCache.findIndex((a, i) => a.email.toLowerCase() === email && i !== idx);
+  if (duplicado >= 0) { _adminsFormErr('Este e-mail já está cadastrado.'); return; }
+
+  if (idx === -1) {
+    _adminsCache.push({ nome, email, senha, ativo: true });
+    registrarLog('Admin adicionado', nome + ' — ' + email, 'config');
+  } else {
+    _adminsCache[idx] = {
+      ..._adminsCache[idx],
+      nome,
+      email,
+      ...(senha ? { senha } : {}),
+    };
+    registrarLog('Admin editado', nome + ' — ' + email, 'config');
+  }
+
+  try {
+    await _salvarAdminsFirestore();
+    fecharFormAdmin();
+    _renderAdminsList();
+    // Atualiza nome na UI se for o admin logado
+    if (window._adminLogadoEmail === email) {
+      window._adminLogadoNome = nome;
+      _atualizarNomeAdminUI();
+    }
+    const { showToast } = await import('./global.js');
+    showToast('✅ Admin salvo com sucesso!');
+  } catch (e) {
+    _adminsFormErr('Erro ao salvar: ' + e.message);
+  }
+}
+
+export async function removerAdmin(idx) {
+  const a = _adminsCache[idx];
+  if (!a || !confirm(`Remover acesso de "${a.nome}"?`)) return;
+  _adminsCache.splice(idx, 1);
+  await _salvarAdminsFirestore();
+  registrarLog('Admin removido', a.nome + ' — ' + a.email, 'config');
+  _renderAdminsList();
+}
+
+export async function toggleAdmin(idx) {
+  const a = _adminsCache[idx];
+  if (!a) return;
+  a.ativo = a.ativo === false ? true : false;
+  await _salvarAdminsFirestore();
+  registrarLog(a.ativo ? 'Admin ativado' : 'Admin desativado', a.nome, 'config');
+  _renderAdminsList();
+}
+
+function _adminsFormErr(msg) {
+  const el = document.getElementById('adminsFormErr');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+window.renderAdminsPanel  = renderAdminsPanel;
+window.abrirFormNovoAdmin = abrirFormNovoAdmin;
+window.fecharFormAdmin    = fecharFormAdmin;
+window.editarAdmin        = editarAdmin;
+window.salvarAdmin        = salvarAdmin;
+window.removerAdmin       = removerAdmin;
+window.toggleAdmin        = toggleAdmin;
