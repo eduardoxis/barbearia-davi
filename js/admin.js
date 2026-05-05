@@ -165,12 +165,25 @@ export async function saveAdminSettings() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
   try {
     markJustSaved(); // evita que o próprio admin receba o banner de "atualizado"
+
+    // ── Sanitização: remove base64 do payload antes de salvar no Firestore ──
+    // base64 pode ter centenas de KB cada, estourando o limite de 1MB do documento.
+    // Apenas URLs do Firebase Storage (http) são mantidas.
+    const servicesSanitizadas = (adminSettings.services || []).map(s => {
+      const icon = (s.icon && s.icon.startsWith('data:')) ? '✂️' : (s.icon || '✂️');
+      return { ...s, icon };
+    });
+    const barbeirosSanitizados = (adminSettings.barbeiros || []).map(b => {
+      const foto = (b.foto && b.foto.startsWith('data:')) ? '' : (b.foto || '');
+      return { ...b, foto };
+    });
+
     await window._fb.setDoc(window._fb.doc(window._fb.db, 'settings', 'admin'), {
       shopOpen: adminSettings.shopOpen, workDays: adminSettings.workDays,
       workHours: adminSettings.workHours, slots: adminSettings.slots,
       takenSlots: adminSettings.takenSlots, blockedDates: adminSettings.blockedDates,
-      services: adminSettings.services, duracaoPadrao: adminSettings.duracaoPadrao,
-      politicaReembolso: adminSettings.politicaReembolso, barbeiros: adminSettings.barbeiros,
+      services: servicesSanitizadas, duracaoPadrao: adminSettings.duracaoPadrao,
+      politicaReembolso: adminSettings.politicaReembolso, barbeiros: barbeirosSanitizados,
     });
     if (btn) { btn.textContent = '✓ Salvo!'; btn.classList.add('saved'); }
     showToast('💾 Configurações salvas!');
@@ -658,7 +671,7 @@ export async function confirmSaveService() {
       const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '800') || 800;
       const arquivo = await resizeImage(_svcFotoFile, maxPx);
 
-      // Tentar Firebase Storage primeiro
+      // Upload obrigatório para Firebase Storage — base64 não é permitido (estoura limite Firestore)
       let uploadOk = false;
       const fb = window._fb;
       if (fb?.storage) {
@@ -669,25 +682,18 @@ export async function confirmSaveService() {
           const ref    = fb.storageRef(fb.storage, path);
           const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 15000)
+            setTimeout(() => reject(new Error('Tempo limite excedido (15s)')), 15000)
           );
           await Promise.race([uploadPromise, timeoutPromise]);
           icon      = await fb.getDownloadURL(ref);
           uploadOk  = true;
         } catch(storageErr) {
-          console.warn('Firebase Storage falhou, usando base64:', storageErr.code || storageErr.message);
+          throw new Error('Falha no Firebase Storage: ' + (storageErr.message || storageErr.code || 'erro desconhecido') + '. Verifique as regras de segurança do Storage no console Firebase.');
         }
+      } else {
+        throw new Error('Firebase Storage não disponível. A foto não pode ser salva sem o Storage configurado.');
       }
-
-      // Fallback: salvar como base64 direto no Firestore
-      if (!uploadOk) {
-        icon = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload  = e => resolve(e.target.result);
-          reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
-          reader.readAsDataURL(arquivo);
-        });
-      }
+      if (!uploadOk) throw new Error('Upload não concluído.');
 
       _svcFotoUrl  = icon;
       _svcFotoFile = null;
@@ -810,30 +816,25 @@ export async function onBarbFotoChange(input) {
       reader.readAsDataURL(file);
     });
 
-    // Tenta upload para Firebase Storage com timeout de 15s
+    // Upload obrigatório para Firebase Storage — base64 não é permitido (estoura limite Firestore)
     const fb     = window._fb;
     const barbId = document.getElementById('barbIdEditando')?.value || ('barb_' + Date.now());
-    let url = base64; // fallback base64
-    let uploadOk = false;
+    let url = '';
 
-    if (fb?.storage) {
-      try {
-        const path   = `barbeiros/${barbId}/foto.jpg`;
-        const blob   = await (await fetch(base64)).blob();
-        const ref    = fb.storageRef(fb.storage, path);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 15000)
-        );
-        await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeoutPromise]);
-        url      = await fb.getDownloadURL(ref);
-        uploadOk = true;
-      } catch (storageErr) {
-        console.warn('Firebase Storage falhou, usando base64:', storageErr.code || storageErr.message);
-      }
+    if (!fb?.storage) {
+      throw new Error('Firebase Storage não disponível.');
     }
-
-    if (!uploadOk) {
-      console.info('Foto salva como base64 no Firestore.');
+    try {
+      const path   = `barbeiros/${barbId}/foto.jpg`;
+      const blob   = await (await fetch(base64)).blob();
+      const ref    = fb.storageRef(fb.storage, path);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo limite excedido (15s)')), 15000)
+      );
+      await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeoutPromise]);
+      url = await fb.getDownloadURL(ref);
+    } catch (storageErr) {
+      throw new Error('Falha no Firebase Storage: ' + (storageErr.message || storageErr.code || 'erro desconhecido') + '. Verifique as regras de segurança do Storage.');
     }
 
     const urlInput = document.getElementById('barbFotoUrl');
