@@ -199,16 +199,23 @@ export function setLogBusca(valor) {
    HELPERS INTERNOS
 ────────────────────────────────────────── */
 function _getQuem() {
-  /* Tenta pegar o nome do barbeiro logado, senão usa "Admin" */
   try {
+    /* 1. Barbeiro logado no painel de barbeiro */
     const barbId   = window._barbLogadoId;
     const settings = window._adminSettings;
     if (barbId && settings?.barbeiros) {
       const b = settings.barbeiros.find(x => x.id === barbId);
       if (b?.nome) return b.nome;
     }
+    /* 2. Admin com nome resolvido (via Firestore admins[] ou barbeiros[]) */
+    if (window._adminLogadoNome) return window._adminLogadoNome;
+    /* 3. Fallback: email prefix */
+    if (window._adminLogadoEmail) {
+      const prefix = window._adminLogadoEmail.split('@')[0];
+      return 'Admin (' + prefix + ')';
+    }
   } catch (_) {}
-  return 'Admin (Davi)';
+  return 'Admin';
 }
 
 function _esc(str) {
