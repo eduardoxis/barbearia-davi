@@ -2848,55 +2848,129 @@ window.removerAdmin       = removerAdmin;
 window.toggleAdmin        = toggleAdmin;
 
 /* ══════════════════════════════════════════
-   FOTO DO HERO
+   FOTO DO HERO — upload direto
 ══════════════════════════════════════════ */
 function _carregarHeroFotoInput() {
-  const input = document.getElementById('heroFotoUrlInput');
-  if (!input) return;
   const url = adminSettings.heroFotoUrl || '';
-  input.value = url;
   _mostrarPreviewHeroFoto(url);
 }
 
 function _mostrarPreviewHeroFoto(url) {
-  const wrap = document.getElementById('heroFotoPreviewWrap');
-  const img  = document.getElementById('heroFotoPreviewImg');
+  const wrap   = document.getElementById('heroFotoPreviewWrap');
+  const img    = document.getElementById('heroFotoPreviewImg');
+  const area   = document.getElementById('heroFotoUploadArea');
   if (!wrap || !img) return;
-  if (url && url.startsWith('http')) {
+  if (url) {
     img.src = url;
     wrap.style.display = 'block';
+    if (area) area.style.display = 'none';
   } else {
     wrap.style.display = 'none';
+    if (area) area.style.display = 'block';
   }
 }
 
-export async function salvarHeroFoto() {
-  const input = document.getElementById('heroFotoUrlInput');
-  const url   = (input?.value || '').trim();
+export function onHeroFotoChange(input) {
+  const file = input.files?.[0];
+  if (file) _processarHeroFoto(file);
+}
 
-  adminSettings.heroFotoUrl = url;
+export function onHeroFotoDrop(event) {
+  event.preventDefault();
+  const area = document.getElementById('heroFotoUploadArea');
+  if (area) area.style.borderColor = 'var(--border)';
+  const file = event.dataTransfer.files?.[0];
+  if (file && file.type.startsWith('image/')) _processarHeroFoto(file);
+}
 
-  // Persiste no Firestore junto ao restante das settings
+async function _processarHeroFoto(file) {
+  const progress    = document.getElementById('heroFotoProgress');
+  const progressTxt = document.getElementById('heroFotoProgressTxt');
+  const progressBar = document.getElementById('heroFotoProgressBar');
+  const area        = document.getElementById('heroFotoUploadArea');
+
+  if (area)     area.style.display = 'none';
+  if (progress) progress.style.display = 'block';
+  if (progressTxt) progressTxt.textContent = 'Redimensionando...';
+  if (progressBar) progressBar.style.width = '20%';
+
   try {
-    if (window._fb) {
-      await window._fb.setDoc(
-        window._fb.doc(window._fb.db, 'settings', 'admin'),
-        { heroFotoUrl: url },
-        { merge: true }
-      );
+    // Redimensiona para max 1200px
+    const blob = await resizeImage(file, 1200);
+
+    if (progressTxt) progressTxt.textContent = 'Enviando para o servidor...';
+    if (progressBar) progressBar.style.width = '50%';
+
+    let url = '';
+    const fb = window._fb;
+
+    // Tenta Firebase Storage
+    if (fb?.storage) {
+      try {
+        const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
+        const path = `hero/foto_hero.${ext}`;
+        const ref  = fb.storageRef(fb.storage, path);
+        await Promise.race([
+          fb.uploadBytes(ref, blob, { contentType: blob.type }),
+          new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 20000))
+        ]);
+        url = await fb.getDownloadURL(ref);
+        if (progressBar) progressBar.style.width = '85%';
+      } catch (e) {
+        console.warn('[hero foto] Storage falhou, usando base64:', e.message);
+      }
     }
+
+    // Fallback: base64
+    if (!url) {
+      url = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload  = e => res(e.target.result);
+        r.onerror = () => rej(new Error('Leitura falhou'));
+        r.readAsDataURL(blob);
+      });
+    }
+
+    if (progressBar) progressBar.style.width = '100%';
+    if (progressTxt) progressTxt.textContent = 'Salvando...';
+
+    await _salvarHeroFotoUrl(url);
+
+    if (progress) progress.style.display = 'none';
+    _mostrarPreviewHeroFoto(url);
+    import('./global.js').then(m => m.updateHeroStatus());
+    const { showToast } = await import('./global.js');
+    showToast('🖼 Foto do hero atualizada!');
+    registrarLog('Foto do hero atualizada', 'Upload direto', 'config');
+
   } catch (e) {
-    console.warn('[hero foto] Erro ao salvar:', e.message);
+    if (progress)  progress.style.display = 'none';
+    if (area)      area.style.display = 'block';
+    const { showToast } = await import('./global.js');
+    showToast('❌ Erro ao enviar foto: ' + e.message);
   }
-
-  _mostrarPreviewHeroFoto(url);
-
-  // Atualiza o hero na página imediatamente
-  import('./global.js').then(m => m.updateHeroStatus());
-
-  const { showToast } = await import('./global.js');
-  showToast(url ? '🖼 Foto do hero atualizada!' : '🖼 Foto do hero removida.');
-  registrarLog('Foto do hero atualizada', url ? url.slice(0, 60) : 'Removida', 'config');
 }
 
-window.salvarHeroFoto = salvarHeroFoto;
+export async function removerHeroFoto() {
+  await _salvarHeroFotoUrl('');
+  _mostrarPreviewHeroFoto('');
+  import('./global.js').then(m => m.updateHeroStatus());
+  const { showToast } = await import('./global.js');
+  showToast('🖼 Foto do hero removida.');
+  registrarLog('Foto do hero removida', '', 'config');
+}
+
+async function _salvarHeroFotoUrl(url) {
+  adminSettings.heroFotoUrl = url;
+  if (window._fb) {
+    await window._fb.setDoc(
+      window._fb.doc(window._fb.db, 'settings', 'admin'),
+      { heroFotoUrl: url },
+      { merge: true }
+    );
+  }
+}
+
+window.onHeroFotoChange = onHeroFotoChange;
+window.onHeroFotoDrop  = onHeroFotoDrop;
+window.removerHeroFoto = removerHeroFoto;
