@@ -228,3 +228,24 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:2.5rem
 /* ══════════════════════════════════════════
    MODO CLARO — overrides globais
 ══════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   ANTI-ZOOM iOS — inputs com font-size < 16px
+   causam zoom automático no Safari/iOS.
+   Forçar 16px em todos os campos no mobile.
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  input, select, textarea,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="time"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
