@@ -211,10 +211,11 @@ export function updateHeroStatus() {
 }
 
 function _updateHeroPhoto() {
-  const img = document.getElementById('heroPhotoPrincipal');
+  const img   = document.getElementById('heroPhotoPrincipal');
+  const right = img?.closest('.hero-right');
   if (!img) return;
+
   const barbs = adminSettings.barbeiros || [];
-  // Procura barbeiro ativo com foto no portfolio ou foto de perfil
   for (const b of barbs) {
     if (b.ativo === false) continue;
     const url = (b.portfolio || []).find(f => f.destaque)?.url
@@ -223,12 +224,13 @@ function _updateHeroPhoto() {
     if (url && url.startsWith('http')) {
       img.src = url;
       img.style.display = 'block';
+      if (right) right.classList.add('tem-foto');
       return;
     }
   }
+  // Sem foto: esconde o lado direito
   img.style.display = 'none';
-  const ph = img.nextElementSibling;
-  if (ph) ph.style.display = 'flex';
+  if (right) right.classList.remove('tem-foto');
 }
 
 function _updateHeroSvcCards() {
