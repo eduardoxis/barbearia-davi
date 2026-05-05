@@ -126,6 +126,7 @@ export async function initSite() {
         if (d.services      !== undefined) adminSettings.services      = d.services;
         if (d.barbeiros     !== undefined) adminSettings.barbeiros     = d.barbeiros;
         if (d.politicaReembolso !== undefined) adminSettings.politicaReembolso = d.politicaReembolso;
+        if (d.heroFotoUrl   !== undefined) adminSettings.heroFotoUrl   = d.heroFotoUrl;
 
         // Migração automática de slots antigos (45min)
         if (d.slots !== undefined) {
