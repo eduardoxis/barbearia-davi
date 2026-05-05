@@ -138,20 +138,90 @@
   <canvas id="heroParticles"></canvas>
   <div class="hero-grid-lines"></div>
   <div class="hero-redline"></div>
+
+  <!-- LADO ESQUERDO — texto -->
   <div class="hero-content">
     <div class="hero-tag open" id="heroStatusTag">🔴 Aberto agora · Luziânia, GO</div>
+
+    <div class="hero-eyebrow">BARBEARIA DO DAVI</div>
     <h1>BARBEARIA<br><span class="red">DO DAVI</span></h1>
-    <p class="hero-sub">Vila Guará · <span>Luziânia – GO</span></p>
+
+    <p class="hero-local">📍 <span>VILA GUARÁ · LUZIÂNIA – GO</span></p>
+    <p class="hero-desc">Estilo, atitude e confiança.<br>Seu visual no padrão que você merece.</p>
+
     <div class="hero-btns">
       <a href="#servicos" class="btn-red btn-primary">✂ Ver Serviços</a>
-      <a href="#agendar"  class="btn-ghost">Agendar Horário</a>
+      <a href="#agendar"  class="btn-ghost">📅 Agendar Horário</a>
     </div>
+
     <div class="hero-stats">
-      <div><span class="stat-n">300+</span><span class="stat-l">Clientes</span></div>
-      <div><span class="stat-n">5★</span><span class="stat-l">Avaliação</span></div>
-      <div><span class="stat-n">7 Anos</span><span class="stat-l">Experiência</span></div>
+      <div class="hero-stat-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <div><span class="stat-n">300+</span><span class="stat-l">Clientes Atendidos</span></div>
+      </div>
+      <div class="hero-stat-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <div><span class="stat-n">5★</span><span class="stat-l">Avaliação no Google</span></div>
+      </div>
+      <div class="hero-stat-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div><span class="stat-n">7 Anos</span><span class="stat-l">De Experiência e Confiança</span></div>
+      </div>
     </div>
   </div>
+
+  <!-- LADO DIREITO — foto + cards + badge -->
+  <div class="hero-right">
+    <!-- Orb vermelho atrás da foto -->
+    <div class="hero-orb"></div>
+
+    <!-- Foto do barbeiro (configurável pelo admin) -->
+    <div class="hero-photo-wrap">
+      <img class="hero-photo" id="heroPhotoPrincipal"
+           src="" alt="Barbeiro"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="hero-photo-placeholder">💈</div>
+    </div>
+
+    <!-- Cards de serviços flutuantes -->
+    <div class="hero-svc-cards" id="heroSvcCards">
+      <div class="hero-svc-card">
+        <div class="hero-svc-icon">✂️</div>
+        <div>
+          <div class="hero-svc-nome">Corte</div>
+          <div class="hero-svc-desc">Do clássico ao moderno, seu estilo, sua escolha.</div>
+        </div>
+        <div class="hero-svc-foto" style="background:linear-gradient(135deg,#0d1117,#21262d)"></div>
+      </div>
+      <div class="hero-svc-card">
+        <div class="hero-svc-icon">🪒</div>
+        <div>
+          <div class="hero-svc-nome">Barba</div>
+          <div class="hero-svc-desc">Acabamento impecável para realçar seu visual.</div>
+        </div>
+        <div class="hero-svc-foto" style="background:linear-gradient(135deg,#1a0000,#8b0000)"></div>
+      </div>
+      <div class="hero-svc-card">
+        <div class="hero-svc-icon">✨</div>
+        <div>
+          <div class="hero-svc-nome">Sobrancelha</div>
+          <div class="hero-svc-desc">Detalhes que fazem toda a diferença.</div>
+        </div>
+        <div class="hero-svc-foto" style="background:linear-gradient(135deg,#0a0a1a,#2d2d8b)"></div>
+      </div>
+    </div>
+
+    <!-- Badge ABERTO HOJE -->
+    <div class="hero-badge" id="heroBadge">
+      <div class="hero-badge-inner">
+        <div class="hero-badge-top">ATENDIMENTO</div>
+        <div class="hero-badge-main">ABERTO<br><span>HOJE</span></div>
+        <div class="hero-badge-bot">COM QUALIDADE</div>
+        <div class="hero-badge-star">✦</div>
+      </div>
+    </div>
+  </div>
+
   <div class="hero-scroll"><div class="scroll-line"></div><span class="scroll-label">Scroll</span></div>
 </section>
 
