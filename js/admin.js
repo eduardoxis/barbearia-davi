@@ -141,7 +141,7 @@ export async function loadAdminSettings() {
     const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'settings', 'admin'));
     if (snap.exists()) {
       const d = snap.data();
-      const keys = ['shopOpen','workDays','workHours','takenSlots','blockedDates','duracaoPadrao','politicaReembolso','barbeiros','services'];
+      const keys = ['shopOpen','workDays','workHours','takenSlots','blockedDates','duracaoPadrao','politicaReembolso','barbeiros','services','heroFotoUrl'];
       keys.forEach(k => { if (d[k] !== undefined) adminSettings[k] = d[k]; });
       if (d.slots !== undefined) {
         const antigos45 = ['08:45','09:30','10:15','13:45'];
@@ -195,6 +195,7 @@ function renderAdminDash() {
   renderFuncionamento();
   renderBlockedDates();
   import('./global.js').then(m => m.updateHeroStatus());
+  _carregarHeroFotoInput();
 }
 
 /* ── Tabs ── */
@@ -2845,3 +2846,57 @@ window.editarAdmin        = editarAdmin;
 window.salvarAdmin        = salvarAdmin;
 window.removerAdmin       = removerAdmin;
 window.toggleAdmin        = toggleAdmin;
+
+/* ══════════════════════════════════════════
+   FOTO DO HERO
+══════════════════════════════════════════ */
+function _carregarHeroFotoInput() {
+  const input = document.getElementById('heroFotoUrlInput');
+  if (!input) return;
+  const url = adminSettings.heroFotoUrl || '';
+  input.value = url;
+  _mostrarPreviewHeroFoto(url);
+}
+
+function _mostrarPreviewHeroFoto(url) {
+  const wrap = document.getElementById('heroFotoPreviewWrap');
+  const img  = document.getElementById('heroFotoPreviewImg');
+  if (!wrap || !img) return;
+  if (url && url.startsWith('http')) {
+    img.src = url;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+export async function salvarHeroFoto() {
+  const input = document.getElementById('heroFotoUrlInput');
+  const url   = (input?.value || '').trim();
+
+  adminSettings.heroFotoUrl = url;
+
+  // Persiste no Firestore junto ao restante das settings
+  try {
+    if (window._fb) {
+      await window._fb.setDoc(
+        window._fb.doc(window._fb.db, 'settings', 'admin'),
+        { heroFotoUrl: url },
+        { merge: true }
+      );
+    }
+  } catch (e) {
+    console.warn('[hero foto] Erro ao salvar:', e.message);
+  }
+
+  _mostrarPreviewHeroFoto(url);
+
+  // Atualiza o hero na página imediatamente
+  import('./global.js').then(m => m.updateHeroStatus());
+
+  const { showToast } = await import('./global.js');
+  showToast(url ? '🖼 Foto do hero atualizada!' : '🖼 Foto do hero removida.');
+  registrarLog('Foto do hero atualizada', url ? url.slice(0, 60) : 'Removida', 'config');
+}
+
+window.salvarHeroFoto = salvarHeroFoto;
