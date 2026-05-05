@@ -708,7 +708,9 @@ export async function confirmSaveService() {
     adminSettings.services.push({ id:'svc_'+Date.now(), name, desc, price, time, icon, bg:'gi-corte', hidden:false });
     registrarLog('Serviço adicionado', `"${name}" — R$ ${price} · ${time}`, 'servico');
   }
-  closeAddSvcModal(); renderAdminServices(); import('./index.js').then(m => m.renderGallery());
+  closeAddSvcModal(); renderAdminServices();
+  import('./index.js').then(m => m.renderGallery());
+  import('./global.js').then(m => m.updateHeroStatus());
   await saveAdminSettings();
 }
 
