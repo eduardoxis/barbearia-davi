@@ -2895,41 +2895,34 @@ async function _processarHeroFoto(file) {
   if (progressBar) progressBar.style.width = '20%';
 
   try {
-    // Redimensiona para max 1200px
-    const blob = await resizeImage(file, 1200);
+    // Redimensiona para max 800px para garantir que caiba no Storage
+    const blob = await resizeImage(file, 800);
 
-    if (progressTxt) progressTxt.textContent = 'Enviando para o servidor...';
-    if (progressBar) progressBar.style.width = '50%';
+    if (progressTxt) progressTxt.textContent = 'Enviando para o Storage...';
+    if (progressBar) progressBar.style.width = '40%';
 
-    let url = '';
     const fb = window._fb;
 
-    // Tenta Firebase Storage
-    if (fb?.storage) {
-      try {
-        const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
-        const path = `hero/foto_hero.${ext}`;
-        const ref  = fb.storageRef(fb.storage, path);
-        await Promise.race([
-          fb.uploadBytes(ref, blob, { contentType: blob.type }),
-          new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 20000))
-        ]);
-        url = await fb.getDownloadURL(ref);
-        if (progressBar) progressBar.style.width = '85%';
-      } catch (e) {
-        console.warn('[hero foto] Storage falhou, usando base64:', e.message);
-      }
+    if (!fb?.storage) {
+      throw new Error('Firebase Storage não está disponível. Verifique as configurações do Firebase.');
     }
 
-    // Fallback: base64
-    if (!url) {
-      url = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload  = e => res(e.target.result);
-        r.onerror = () => rej(new Error('Leitura falhou'));
-        r.readAsDataURL(blob);
-      });
-    }
+    const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
+    const path = `hero/foto_hero_${Date.now()}.${ext}`;
+    const ref  = fb.storageRef(fb.storage, path);
+
+    if (progressTxt) progressTxt.textContent = 'Fazendo upload...';
+    if (progressBar) progressBar.style.width = '60%';
+
+    await Promise.race([
+      fb.uploadBytes(ref, blob, { contentType: blob.type }),
+      new Promise((_, r) => setTimeout(() => r(new Error('Tempo limite atingido. Tente com uma foto menor.')), 30000))
+    ]);
+
+    if (progressBar) progressBar.style.width = '85%';
+    if (progressTxt) progressTxt.textContent = 'Obtendo URL...';
+
+    const url = await fb.getDownloadURL(ref);
 
     if (progressBar) progressBar.style.width = '100%';
     if (progressTxt) progressTxt.textContent = 'Salvando...';
@@ -2941,7 +2934,7 @@ async function _processarHeroFoto(file) {
     import('./global.js').then(m => m.updateHeroStatus());
     const { showToast } = await import('./global.js');
     showToast('🖼 Foto do hero atualizada!');
-    registrarLog('Foto do hero atualizada', 'Upload direto', 'config');
+    registrarLog('Foto do hero atualizada', 'Upload Storage', 'config');
 
   } catch (e) {
     if (progress)  progress.style.display = 'none';
