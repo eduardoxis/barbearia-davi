@@ -215,6 +215,16 @@ function _updateHeroPhoto() {
   const right = img?.closest('.hero-right');
   if (!img) return;
 
+  // 1. URL direta salva no admin (prioridade máxima)
+  const urlDireta = adminSettings.heroFotoUrl || '';
+  if (urlDireta && urlDireta.startsWith('http')) {
+    img.src = urlDireta;
+    img.style.display = 'block';
+    if (right) right.classList.add('tem-foto');
+    return;
+  }
+
+  // 2. Primeira foto do portfolio de algum barbeiro ativo
   const barbs = adminSettings.barbeiros || [];
   for (const b of barbs) {
     if (b.ativo === false) continue;
@@ -228,6 +238,7 @@ function _updateHeroPhoto() {
       return;
     }
   }
+
   // Sem foto: esconde o lado direito
   img.style.display = 'none';
   if (right) right.classList.remove('tem-foto');
