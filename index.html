@@ -814,6 +814,20 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        <!-- Foto Hero -->
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+          <div style="font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem">🖼 Foto do Hero</div>
+          <div style="font-size:0.72rem;color:var(--gray);margin-bottom:0.7rem">Cole a URL de uma foto do barbeiro. Ela aparece no lado direito da página inicial.</div>
+          <div style="display:flex;gap:0.6rem;align-items:center">
+            <input class="form-input" id="heroFotoUrlInput" type="url" placeholder="https://..." style="flex:1"
+                   value="">
+            <button class="btn-red" style="padding:0.6rem 1.1rem;font-size:0.78rem;white-space:nowrap" onclick="salvarHeroFoto()">✓ Aplicar</button>
+          </div>
+          <div id="heroFotoPreviewWrap" style="margin-top:0.8rem;display:none">
+            <img id="heroFotoPreviewImg" src="" alt="Preview" style="width:100%;max-height:180px;object-fit:cover;object-position:top;border-radius:4px;border:1px solid var(--border)">
+          </div>
+        </div>
       </div>
       <div class="adm-panel" id="admTab-funcionamento"><div id="funcionamentoGrid"></div></div>
       <div class="adm-panel" id="admTab-dias">
