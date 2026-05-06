@@ -16,15 +16,18 @@ export function renderGallery() {
   if (!grid) return;
   grid.innerHTML = '';
   adminSettings.services.filter(s => !s.hidden).forEach(svc => {
-    const inCart = cart.find(c => c.id === svc.id);
+    const inCart    = cart.find(c => c.id === svc.id);
+    const iconIsImg = svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'));
     const card = document.createElement('div');
     card.className = 'gallery-card' + (inCart ? ' in-cart' : '');
     card.innerHTML = `
       ${inCart ? '<div class="in-cart-badge">✓ Adicionado</div>' : ''}
-      <div class="gallery-img ${svc.bg}">
-        ${svc.icon && (svc.icon.startsWith('http') || svc.icon.startsWith('data:'))
+      <div class="gallery-img ${svc.bg}" data-svc-id="${svc.id}">
+        ${iconIsImg
           ? `<img src="${svc.icon}" class="gallery-img-foto" alt="${svc.name}" loading="lazy">`
-          : (svc.icon || '✂️')}
+          : (svc.temFoto
+              ? `<span class="gallery-img-loading" style="font-size:1.6rem;opacity:.4">⏳</span>`
+              : (svc.icon || '✂️'))}
       </div>
       <div class="gallery-body">
         <div class="gallery-name">${svc.name}</div>
@@ -38,6 +41,32 @@ export function renderGallery() {
       </div>`;
     grid.appendChild(card);
   });
+
+  // Carrega fotos que ainda não estão na memória (temFoto=true mas icon não é URL/base64)
+  _carregarFotosGaleria();
+}
+
+async function _carregarFotosGaleria() {
+  const fb = window._fb;
+  if (!fb) return;
+  const pendentes = adminSettings.services.filter(s =>
+    !s.hidden && s.temFoto && !(s.icon && (s.icon.startsWith('http') || s.icon.startsWith('data:')))
+  );
+  if (!pendentes.length) return;
+
+  await Promise.all(pendentes.map(async svc => {
+    try {
+      const snap = await fb.getDoc(fb.doc(fb.db, 'fotos_servicos', svc.id));
+      if (!snap.exists()) return;
+      const url = snap.data().url;
+      svc.icon = url; // atualiza na memória para próximos renders
+      // Atualiza o card já renderizado sem re-renderizar a galeria toda
+      const imgWrap = document.querySelector(`.gallery-img[data-svc-id="${svc.id}"]`);
+      if (imgWrap) {
+        imgWrap.innerHTML = `<img src="${url}" class="gallery-img-foto" alt="${svc.name}" loading="lazy">`;
+      }
+    } catch(e) { /* ignora erros individuais */ }
+  }));
 }
 
 /* ── Adiciona ao carrinho ── */
