@@ -266,8 +266,8 @@ function _updateHeroSvcCards() {
   wrap.innerHTML = svcs.map((s, i) => {
     const iconIsImg = s.icon && (s.icon.startsWith('http') || s.icon.startsWith('data:'));
     const fotoHtml = iconIsImg
-      ? `<div class="hero-svc-foto"><img src="${s.icon}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}" onerror="this.parentElement.innerHTML='';this.parentElement.style.background='linear-gradient(135deg,#1a1a1a,#333)'"></div>`
-      : `<div class="hero-svc-foto" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'};display:flex;align-items:center;justify-content:center;font-size:1.2rem">${!iconIsImg && s.icon ? s.icon : ''}</div>`;
+      ? `<div class="hero-svc-foto" data-hero-svc="${s.id}"><img src="${s.icon}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}" onerror="this.parentElement.innerHTML='';this.parentElement.style.background='linear-gradient(135deg,#1a1a1a,#333)'"></div>`
+      : `<div class="hero-svc-foto" data-hero-svc="${s.id}" style="background:${s.bg||'linear-gradient(135deg,#1a1a1a,#333)'};display:flex;align-items:center;justify-content:center;font-size:1.2rem">${s.temFoto ? '' : (s.icon || '')}</div>`;
     return `<div class="hero-svc-card">
       <div class="hero-svc-icon">${svgIcons[i] || svgIcons[0]}</div>
       <div>
@@ -277,6 +277,22 @@ function _updateHeroSvcCards() {
       ${fotoHtml}
     </div>`;
   }).join('');
+
+  // Lazy-load fotos que ainda não estão na memória
+  const fb = window._fb;
+  if (!fb) return;
+  svcs.forEach(s => {
+    const iconIsImg = s.icon && (s.icon.startsWith('http') || s.icon.startsWith('data:'));
+    if (s.temFoto && !iconIsImg) {
+      fb.getDoc(fb.doc(fb.db, 'fotos_servicos', s.id)).then(snap => {
+        if (!snap.exists()) return;
+        const url = snap.data().url;
+        s.icon = url;
+        const el = document.querySelector(`.hero-svc-foto[data-hero-svc="${s.id}"]`);
+        if (el) el.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="${s.name}">`;
+      }).catch(() => {});
+    }
+  });
 }
 
 /* ── Inicia a atualização automática a cada 60 s ── */
