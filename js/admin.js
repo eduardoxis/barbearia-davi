@@ -2935,55 +2935,31 @@ async function _processarHeroFoto(file) {
   if (area)     area.style.display = 'none';
   if (progress) progress.style.display = 'block';
   if (progressTxt) progressTxt.textContent = 'Redimensionando...';
-  if (progressBar) progressBar.style.width = '20%';
+  if (progressBar) progressBar.style.width = '30%';
 
   try {
-    // Redimensiona para max 800px para garantir que caiba no Storage
-    const blob = await resizeImage(file, 800);
+    // Redimensiona para max 800px e converte para base64 (sem Firebase Storage)
+    const base64 = await _resizeToBase64(file, 800, 0.82);
 
-    if (progressTxt) progressTxt.textContent = 'Enviando para o Storage...';
-    if (progressBar) progressBar.style.width = '40%';
+    if (progressTxt) progressTxt.textContent = 'Salvando...';
+    if (progressBar) progressBar.style.width = '70%';
 
-    const fb = window._fb;
-
-    if (!fb?.storage) {
-      throw new Error('Firebase Storage não está disponível. Verifique as configurações do Firebase.');
-    }
-
-    const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
-    const path = `hero/foto_hero_${Date.now()}.${ext}`;
-    const ref  = fb.storageRef(fb.storage, path);
-
-    if (progressTxt) progressTxt.textContent = 'Fazendo upload...';
-    if (progressBar) progressBar.style.width = '60%';
-
-    await Promise.race([
-      fb.uploadBytes(ref, blob, { contentType: blob.type }),
-      new Promise((_, r) => setTimeout(() => r(new Error('Tempo limite atingido. Tente com uma foto menor.')), 30000))
-    ]);
-
-    if (progressBar) progressBar.style.width = '85%';
-    if (progressTxt) progressTxt.textContent = 'Obtendo URL...';
-
-    const url = await fb.getDownloadURL(ref);
+    // Salva diretamente no Firestore (campo heroFotoUrl em settings/admin)
+    await _salvarHeroFotoUrl(base64);
 
     if (progressBar) progressBar.style.width = '100%';
-    if (progressTxt) progressTxt.textContent = 'Salvando...';
-
-    await _salvarHeroFotoUrl(url);
-
     if (progress) progress.style.display = 'none';
-    _mostrarPreviewHeroFoto(url);
+    _mostrarPreviewHeroFoto(base64);
     import('./global.js').then(m => m.updateHeroStatus());
     const { showToast } = await import('./global.js');
     showToast('🖼 Foto do hero atualizada!');
-    registrarLog('Foto do hero atualizada', 'Upload Storage', 'config');
+    registrarLog('Foto do hero atualizada', 'Firestore', 'config');
 
   } catch (e) {
     if (progress)  progress.style.display = 'none';
     if (area)      area.style.display = 'block';
     const { showToast } = await import('./global.js');
-    showToast('❌ Erro ao enviar foto: ' + e.message);
+    showToast('❌ Erro ao salvar foto: ' + e.message);
   }
 }
 
