@@ -153,6 +153,7 @@ export async function loadAdminSettings() {
   } catch (e) { console.error('Erro ao carregar config:', e); }
   if (!adminSettings.duracaoPadrao) adminSettings.duracaoPadrao = 60;
   adminSettings.services = adminSettings.services.map(s => ({ ...s, time: '1h' }));
+  await _carregarFotos(); // carrega base64 das coleções fotos_servicos / fotos_barbeiros
   renderAdminDash();
   carregarBloqueiosBarb();
   import('./index.js').then(m => { m.renderGallery(); m.updateCartUI(); });
@@ -518,78 +519,106 @@ export function deleteSvc(id) {
   const svc = adminSettings.services.find(s => s.id === id);
   if (!svc || !confirm('Remover "' + svc.name + '"?')) return;
   adminSettings.services = adminSettings.services.filter(s => s.id !== id);
+  if (svc.temFoto) _deletarFotoServico(id); // remove foto do Firestore assincronamente
   renderAdminServices(); import('./index.js').then(m => m.renderGallery()); showToast('🗑 Removido.');
   registrarLog('Serviço excluído', `"${svc.name}" — R$ ${svc.price}`, 'servico');
 }
 
-let editingSvcId   = null;
-let _svcFotoFile   = null;   // File selecionado (ainda não enviado)
-let _svcFotoObjUrl = null;   // URL.createObjectURL para preview
-let _svcFotoUrl    = null;   // URL final (Firebase Storage ou existente)
+let editingSvcId        = null;
+let _svcFotoFile        = null;   // File selecionado (ainda não enviado)
+let _svcFotoParaDeletar = null;   // svcId cuja foto Firestore deve ser deletada ao salvar
+let _svcFotoUrl         = null;   // URL/base64 final (já salvo ou existente)
+let _svcFotoObjUrl      = null;   // URL.createObjectURL para preview
 
 /* ─── Redimensionamento de imagem via Canvas ─── */
-/* ─── Garante autenticação Firebase antes de usar o Storage ─── */
-async function _ensureAuth() {
+/* ══════════════════════════════════════════
+   FOTOS — armazenadas em coleções Firestore separadas
+   fotos_servicos/{svcId}  → { url: 'data:image/jpeg;base64,...' }
+   fotos_barbeiros/{barbId} → { url: 'data:image/jpeg;base64,...' }
+   O documento settings/admin NÃO guarda base64 (evita limite de 1MB).
+══════════════════════════════════════════ */
+
+async function _salvarFotoServico(svcId, base64Url) {
   const fb = window._fb;
-  if (!fb?.auth) return;
-  if (!fb.auth.currentUser) {
-    try { await fb.signInAnonymously(fb.auth); } catch (e) { /* ignora */ }
-  }
+  await fb.setDoc(fb.doc(fb.db, 'fotos_servicos', svcId), { url: base64Url });
 }
 
-/* ─── Mensagem de erro amigável para Firebase Storage ─── */
-function _storageErrMsg(err) {
-  const code = err?.code || '';
-  if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
-    return '🔒 Sem permissão no Firebase Storage.\n\n' +
-      'Acesse: console.firebase.google.com → Storage → Rules\n' +
-      'Cole as regras abaixo e clique em "Publish":\n\n' +
-      'rules_version = \'2\';\n' +
-      'service firebase.storage {\n' +
-      '  match /b/{bucket}/o {\n' +
-      '    match /{allPaths=**} {\n' +
-      '      allow read: if true;\n' +
-      '      allow write: if request.auth != null;\n' +
-      '    }\n' +
-      '  }\n' +
-      '}';
-  }
-  if (code === 'storage/timeout' || (err?.message || '').includes('Tempo limite')) {
-    return '⏱ Tempo limite excedido ao enviar a foto.\n\n' +
-      'Possíveis causas:\n' +
-      '1. Regras do Storage bloqueando o upload — acesse console.firebase.google.com → Storage → Rules e verifique.\n' +
-      '2. Conexão lenta — tente uma imagem menor.\n' +
-      '3. storageBucket incorreto no firebaseConfig.';
-  }
-  if (code === 'storage/quota-exceeded') {
-    return '📦 Cota do Firebase Storage esgotada. Verifique seu plano no console Firebase.';
-  }
-  return 'Erro no Firebase Storage (' + (code || err?.message || 'desconhecido') + ').\nVerifique as regras de segurança em: console.firebase.google.com → Storage → Rules';
+async function _carregarFotoServico(svcId) {
+  try {
+    const fb   = window._fb;
+    const snap = await fb.getDoc(fb.doc(fb.db, 'fotos_servicos', svcId));
+    return snap.exists() ? snap.data().url : null;
+  } catch(e) { return null; }
 }
 
-async function resizeImage(file, maxPx) {
-  return new Promise((resolve) => {
-    if (!maxPx || maxPx === 0) { resolve(file); return; }
-    const img = new Image();
-    const objUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(objUrl);
-      const { naturalWidth: w, naturalHeight: h } = img;
-      if (w <= maxPx && h <= maxPx) { resolve(file); return; }
-      const scale  = Math.min(maxPx / w, maxPx / h);
-      const canvas = document.createElement('canvas');
-      canvas.width  = Math.round(w * scale);
-      canvas.height = Math.round(h * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-      canvas.toBlob(blob => {
-        const resized = new File([blob], file.name, { type: mimeType });
-        resolve(resized);
-      }, mimeType, 0.88);
+async function _deletarFotoServico(svcId) {
+  try {
+    const fb = window._fb;
+    await fb.deleteDoc(fb.doc(fb.db, 'fotos_servicos', svcId));
+  } catch(e) { /* ignora */ }
+}
+
+async function _salvarFotoBarbeiro(barbId, base64Url) {
+  const fb = window._fb;
+  await fb.setDoc(fb.doc(fb.db, 'fotos_barbeiros', barbId), { url: base64Url });
+}
+
+async function _deletarFotoBarbeiro(barbId) {
+  try {
+    const fb = window._fb;
+    await fb.deleteDoc(fb.doc(fb.db, 'fotos_barbeiros', barbId));
+  } catch(e) { /* ignora */ }
+}
+
+/* Carrega todas as fotos do Firestore para a memória (chamado após loadAdminSettings) */
+async function _carregarFotos() {
+  const fb = window._fb;
+  if (!fb) return;
+  const proms = [];
+  for (const svc of (adminSettings.services || [])) {
+    if (svc.temFoto) {
+      proms.push(
+        fb.getDoc(fb.doc(fb.db, 'fotos_servicos', svc.id))
+          .then(snap => { if (snap.exists()) svc.icon = snap.data().url; })
+          .catch(() => {})
+      );
+    }
+  }
+  for (const b of (adminSettings.barbeiros || [])) {
+    if (b.temFoto) {
+      proms.push(
+        fb.getDoc(fb.doc(fb.db, 'fotos_barbeiros', b.id))
+          .then(snap => { if (snap.exists()) b.foto = snap.data().url; })
+          .catch(() => {})
+      );
+    }
+  }
+  await Promise.all(proms);
+}
+
+/* Redimensiona File para base64 (canvas) */
+async function _resizeToBase64(file, maxPx = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Imagem inválida.'));
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (maxPx && (w > maxPx || h > maxPx)) {
+          const scale = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
     };
-    img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
-    img.src = objUrl;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -616,6 +645,11 @@ export function svcFotoSelecionada(input) {
 
 export function removerFotoSvc() {
   if (_svcFotoObjUrl) URL.revokeObjectURL(_svcFotoObjUrl);
+  // Se estamos editando um serviço que já tem foto salva no Firestore, marcar para deletar
+  if (editingSvcId) {
+    const svc = adminSettings.services.find(s => s.id === editingSvcId);
+    if (svc?.temFoto) _svcFotoParaDeletar = editingSvcId;
+  }
   _svcFotoFile   = null;
   _svcFotoObjUrl = null;
   _svcFotoUrl    = null;
@@ -638,9 +672,10 @@ function _svcMostrarPreview(src) {
 
 function _svcResetFoto() {
   if (_svcFotoObjUrl) URL.revokeObjectURL(_svcFotoObjUrl);
-  _svcFotoFile   = null;
-  _svcFotoObjUrl = null;
-  _svcFotoUrl    = null;
+  _svcFotoFile        = null;
+  _svcFotoObjUrl      = null;
+  _svcFotoUrl         = null;
+  _svcFotoParaDeletar = null;
   const inp = document.getElementById('svcFotoInput');
   if (inp) inp.value = '';
   const img = document.getElementById('svcFotoPreview');
@@ -696,8 +731,12 @@ export async function confirmSaveService() {
   const desc = document.getElementById('svcDesc').value.trim();
   const time = document.getElementById('svcTime').value.trim() || '30min';
 
-  // ── Upload de foto se houver arquivo novo ──
-  let icon = _svcFotoUrl || document.getElementById('svcIcon').value || '✂️';
+  // ID definitivo (gerado agora para garantir consistência foto ↔ serviço)
+  const svcId  = editingSvcId || ('svc_' + Date.now());
+  let icon     = _svcFotoUrl || document.getElementById('svcIcon').value || '✂️';
+  let temFoto  = !!(icon && (icon.startsWith('data:') || icon.startsWith('http')));
+
+  // ── Foto nova: redimensiona e salva em fotos_servicos/{svcId} ──
   if (_svcFotoFile) {
     const loading   = document.getElementById('svcFotoLoading');
     const btn       = document.getElementById('svcSalvarBtn');
@@ -706,52 +745,39 @@ export async function confirmSaveService() {
     if (loading) loading.style.display = 'flex';
     if (btn)     btn.disabled = true;
     try {
-      // Redimensionar antes do upload (800px para garantir tamanho menor)
-      const maxPx   = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '800') || 800;
-      const arquivo = await resizeImage(_svcFotoFile, maxPx);
-
-      // Upload obrigatório para Firebase Storage — base64 não é permitido (estoura limite Firestore)
-      let uploadOk = false;
-      const fb = window._fb;
-      if (fb?.storage) {
-        try {
-          await _ensureAuth(); // garante que auth.currentUser não é null
-          const svcId  = editingSvcId || ('svc_' + Date.now());
-          const ext    = arquivo.type === 'image/png' ? 'png' : 'jpg';
-          const path   = `servicos/${svcId}.${ext}`;
-          const ref    = fb.storageRef(fb.storage, path);
-          const uploadPromise  = fb.uploadBytes(ref, arquivo, { contentType: arquivo.type });
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject({ code: 'storage/timeout' }), 30000)
-          );
-          await Promise.race([uploadPromise, timeoutPromise]);
-          icon      = await fb.getDownloadURL(ref);
-          uploadOk  = true;
-        } catch(storageErr) {
-          throw new Error(_storageErrMsg(storageErr));
-        }
-      } else {
-        throw new Error('Firebase Storage não disponível. A foto não pode ser salva sem o Storage configurado.');
-      }
-      if (!uploadOk) throw new Error('Upload não concluído.');
-
-      _svcFotoUrl  = icon;
+      const maxPx  = parseInt(document.getElementById('svcFotoResizeOpt')?.value || '1200') || 1200;
+      const base64 = await _resizeToBase64(_svcFotoFile, maxPx, 0.82);
+      await _salvarFotoServico(svcId, base64);
+      icon    = base64;
+      temFoto = true;
+      _svcFotoUrl  = base64;
       _svcFotoFile = null;
     } catch(err) {
-      console.error('Erro ao processar foto:', err);
-      if (uploadErr) { uploadErr.textContent = '⚠ ' + (err.message || 'Erro ao processar foto.'); uploadErr.classList.add('show'); }
+      console.error('Erro ao salvar foto:', err);
+      if (uploadErr) { uploadErr.textContent = '⚠ ' + (err.message || 'Erro ao salvar foto.'); uploadErr.classList.add('show'); }
+      if (loading) loading.style.display = 'none';
+      if (btn)     btn.disabled = false;
+      return;
     } finally {
       if (loading) loading.style.display = 'none';
       if (btn)     btn.disabled = false;
     }
   }
 
+  // ── Foto removida: deleta documento fotos_servicos/{svcId} ──
+  if (_svcFotoParaDeletar) {
+    await _deletarFotoServico(_svcFotoParaDeletar);
+    _svcFotoParaDeletar = null;
+    temFoto = false;
+    icon    = document.getElementById('svcIcon').value || '✂️';
+  }
+
   if (editingSvcId) {
     const svc = adminSettings.services.find(s => s.id === editingSvcId);
-    if (svc) Object.assign(svc, { icon, name, desc, price, time });
+    if (svc) Object.assign(svc, { icon, name, desc, price, time, temFoto });
     registrarLog('Serviço editado', `"${name}" — R$ ${price}`, 'servico');
   } else {
-    adminSettings.services.push({ id:'svc_'+Date.now(), name, desc, price, time, icon, bg:'gi-corte', hidden:false });
+    adminSettings.services.push({ id: svcId, name, desc, price, time, icon, temFoto, bg:'gi-corte', hidden:false });
     registrarLog('Serviço adicionado', `"${name}" — R$ ${price} · ${time}`, 'servico');
   }
   closeAddSvcModal(); renderAdminServices();
@@ -824,7 +850,6 @@ export async function onBarbFotoChange(input) {
   if (!file) return;
   input.value = '';
 
-  // Mostra loading
   const placeholder = document.getElementById('barbFotoPlaceholder');
   const loading     = document.getElementById('barbFotoLoading');
   const preview     = document.getElementById('barb-foto-preview');
@@ -834,66 +859,23 @@ export async function onBarbFotoChange(input) {
   if (preview)     preview.style.display      = 'none';
 
   try {
-    // Redimensiona para max 400px (foto de perfil)
-    const base64 = await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 400;
-          let { width: w, height: h } = img;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else        { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Upload obrigatório para Firebase Storage — base64 não é permitido (estoura limite Firestore)
-    const fb     = window._fb;
-    const barbId = document.getElementById('barbIdEditando')?.value || ('barb_' + Date.now());
-    let url = '';
-
-    if (!fb?.storage) {
-      throw new Error('Firebase Storage não disponível.');
-    }
-    try {
-      await _ensureAuth(); // garante que auth.currentUser não é null
-      const path   = `barbeiros/${barbId}/foto.jpg`;
-      const blob   = await (await fetch(base64)).blob();
-      const ref    = fb.storageRef(fb.storage, path);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject({ code: 'storage/timeout' }), 30000)
-      );
-      await Promise.race([fb.uploadBytes(ref, blob, { contentType: 'image/jpeg' }), timeoutPromise]);
-      url = await fb.getDownloadURL(ref);
-    } catch (storageErr) {
-      throw new Error(_storageErrMsg(storageErr));
-    }
-
+    // Redimensiona para max 400px (foto de perfil circular)
+    const base64 = await _resizeToBase64(file, 400, 0.85);
     const urlInput = document.getElementById('barbFotoUrl');
-    if (urlInput) urlInput.value = url;
-
-    // Mostra preview
-    if (loading)     loading.style.display  = 'none';
-    if (preview)   { preview.src = url; preview.style.display = 'block'; }
-    if (acoes)       acoes.style.display    = 'flex';
-    showToast('✅ Foto enviada com sucesso!');
+    if (urlInput) urlInput.value = base64;
+    if (loading)  loading.style.display  = 'none';
+    if (preview) { preview.src = base64; preview.style.display = 'block'; }
+    if (acoes)    acoes.style.display    = 'flex';
+    showToast('✅ Foto carregada! Clique em Salvar para confirmar.');
   } catch (err) {
     if (loading)     loading.style.display     = 'none';
     if (placeholder) placeholder.style.display = 'flex';
-    showToast('❌ Erro ao enviar foto: ' + err.message);
+    showToast('❌ Erro ao processar foto: ' + err.message);
   }
 }
 
 export function removerFotoBarbeiro() {
+  const barbId     = document.getElementById('barbIdEditando')?.value;
   const urlInput   = document.getElementById('barbFotoUrl');
   const preview    = document.getElementById('barb-foto-preview');
   const placeholder = document.getElementById('barbFotoPlaceholder');
@@ -902,9 +884,12 @@ export function removerFotoBarbeiro() {
   if (preview)   { preview.src = ''; preview.style.display = 'none'; }
   if (placeholder) placeholder.style.display = 'flex';
   if (acoes)       acoes.style.display    = 'none';
-  // Volta o emoji selecionado no preview circular (emojis abaixo)
-  const prev = document.getElementById('barb-foto-preview');
-  if (prev) prev.textContent = _barbEmojiSelecionado;
+  // Marca temFoto=false no barbeiro em memória
+  if (barbId) {
+    const b = (adminSettings.barbeiros||[]).find(x => x.id === barbId);
+    if (b) { b.foto = ''; b.temFoto = false; }
+    _deletarFotoBarbeiro(barbId); // assíncrono — remove do Firestore
+  }
 }
 
 export function atualizarPreviewFoto(url) {
@@ -938,9 +923,22 @@ export async function confirmarSalvarBarbeiro() {
   document.getElementById('erroBarbeiro').classList.remove('show');
   const id = document.getElementById('barbIdEditando').value || 'barb_' + Date.now();
   const existente = (adminSettings.barbeiros||[]).find(b=>b.id===id);
+
+  const fotoVal = document.getElementById('barbFotoUrl')?.value.trim() || '';
+  const fotoEhBase64 = fotoVal.startsWith('data:');
+  const fotoEhUrl    = fotoVal.startsWith('http');
+
+  // Se a foto é base64 nova, salva em fotos_barbeiros/{id}
+  if (fotoEhBase64) {
+    try { await _salvarFotoBarbeiro(id, fotoVal); } catch(e) { showToast('⚠ Erro ao salvar foto: ' + e.message); return; }
+  }
+
+  const temFoto = fotoEhBase64 || fotoEhUrl || (existente?.temFoto && fotoVal !== '');
+
   const barbeiro = {
     id, nome,
-    foto:            document.getElementById('barbFotoUrl')?.value.trim() || '',
+    foto:            fotoVal, // in-memory: URL completa; Firestore: sanitizado pelo saveAdminSettings
+    temFoto,
     emoji:           _barbEmojiSelecionado,
     especialidade:   document.getElementById('barbEsp')?.value.trim() || '',
     bio:             document.getElementById('barbBio')?.value.trim() || '',
@@ -974,6 +972,7 @@ export function excluirBarbeiro(id) {
   const b = (adminSettings.barbeiros||[]).find(x=>x.id===id);
   if (!b || !confirm('Excluir "' + b.nome + '"?')) return;
   adminSettings.barbeiros = adminSettings.barbeiros.filter(x=>x.id!==id);
+  if (b.temFoto) _deletarFotoBarbeiro(id); // remove foto do Firestore
   renderBarbeirosAdmin(); showToast('🗑 Barbeiro excluído.');
   registrarLog('Barbeiro excluído', b.nome, 'barbeiro');
 }
