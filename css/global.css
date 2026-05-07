@@ -12,6 +12,7 @@
   --gray:#888;--gray2:#555;--gray3:#333;--light:#F0F0F0;--white:#FFFFFF;
   --border:rgba(255,255,255,0.07);--border-red:rgba(224,32,32,0.3);
   --nav-h:64px;
+  --status-bar-h: 34px;
 }
 
 html{scroll-behavior:smooth}
