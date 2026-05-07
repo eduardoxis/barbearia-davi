@@ -159,25 +159,31 @@ export function isWithinWorkHours() {
 /* ── Hero status (combina toggle manual + horário automático) ── */
 export function updateHeroStatus() {
   const tag = document.getElementById('heroStatusTag');
-  if (!tag) return;
+
+  // Barra de status no topo
+  const pageBar  = document.getElementById('pageStatusBar');
+  const psbText  = document.getElementById('psbText');
 
   const autoOpen   = adminSettings.shopOpen && isWithinWorkHours();
   const forcedOpen = adminSettings.shopOpen;
 
   if (autoOpen) {
-    tag.className   = 'hero-tag open';
-    tag.textContent = '🔴 Aberto agora · Luziânia, GO';
+    if (tag) { tag.className = 'hero-tag open'; tag.textContent = '🔴 Aberto agora · Luziânia, GO'; }
+    if (pageBar) pageBar.className = 'page-status-bar open';
+    if (psbText) psbText.textContent = 'Aberto agora · Luziânia, GO';
   } else if (forcedOpen) {
     const dow = new Date().getDay();
     const h   = adminSettings.workHours[dow];
     const msg = adminSettings.workDays.includes(dow) && h
-      ? `⚫ Fechado · Abre às ${h.open}`
-      : '⚫ Fechado hoje';
-    tag.className   = 'hero-tag closed';
-    tag.textContent = msg;
+      ? `Fechado · Abre às ${h.open}`
+      : 'Fechado hoje';
+    if (tag) { tag.className = 'hero-tag closed'; tag.textContent = '⚫ ' + msg; }
+    if (pageBar) pageBar.className = 'page-status-bar closed';
+    if (psbText) psbText.textContent = msg;
   } else {
-    tag.className   = 'hero-tag closed';
-    tag.textContent = '⚫ Fechado no momento';
+    if (tag) { tag.className = 'hero-tag closed'; tag.textContent = '⚫ Fechado no momento'; }
+    if (pageBar) pageBar.className = 'page-status-bar closed';
+    if (psbText) psbText.textContent = 'Fechado no momento';
   }
 
   // Badge ABERTO HOJE
