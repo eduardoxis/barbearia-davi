@@ -132,6 +132,12 @@
   </div>
 </div>
 
+<!-- ═══ BARRA DE STATUS (topo) ═══ -->
+<div class="page-status-bar" id="pageStatusBar">
+  <span class="psb-dot" id="psbDot"></span>
+  <span class="psb-text" id="psbText">Carregando...</span>
+</div>
+
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="hero-bg"></div>
@@ -154,7 +160,7 @@
       <a href="#agendar"  class="btn-ghost">📅 Agendar Horário</a>
     </div>
 
-    <div class="hero-stats">
+    <div class="hero-stats hero-stats-desktop">
       <div class="hero-stat-item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <div><span class="stat-n">300+</span><span class="stat-l">Clientes Atendidos</span></div>
@@ -234,10 +240,15 @@
 <!-- ═══ SERVIÇOS ═══ -->
 <section id="servicos">
   <div class="max-w">
-    <div class="gallery-intro">
+    <!-- Título estilo referência -->
+    <div class="nossos-servicos-header">
+      <div class="nsv-line"></div>
+      <span class="nsv-title">NOSSOS SERVIÇOS</span>
+      <div class="nsv-line"></div>
+    </div>
+
+    <div class="gallery-intro gallery-intro-sub">
       <div>
-        <div class="sec-label">Serviços</div>
-        <div class="sec-title">Monte seu <span>Pedido</span></div>
         <div class="sec-sub">Escolha um ou mais serviços, adicione ao carrinho e agende.</div>
       </div>
       <div class="cart-summary">
@@ -246,6 +257,25 @@
       </div>
     </div>
     <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <!-- Stats — aparece abaixo dos serviços no mobile -->
+  <div class="stats-below-services">
+    <div class="sbs-item">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="sbs-n">300+</span>
+      <span class="sbs-l">CLIENTES<br>ATENDIDOS</span>
+    </div>
+    <div class="sbs-item">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span class="sbs-n">5★</span>
+      <span class="sbs-l">AVALIAÇÃO<br>NO GOOGLE</span>
+    </div>
+    <div class="sbs-item">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="sbs-n">7 ANOS</span>
+      <span class="sbs-l">DE EXPERIÊNCIA<br>E CONFIANÇA</span>
+    </div>
   </div>
 </section>
 
