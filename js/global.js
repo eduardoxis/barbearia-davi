@@ -222,8 +222,9 @@ function _updateHeroPhoto() {
   if (!img) return;
 
   // 1. URL direta salva no admin (prioridade máxima)
+  // Aceita tanto URLs http/https quanto base64 (data:image/...)
   const urlDireta = adminSettings.heroFotoUrl || '';
-  if (urlDireta && urlDireta.startsWith('http')) {
+  if (urlDireta && (urlDireta.startsWith('http') || urlDireta.startsWith('data:'))) {
     img.src = urlDireta;
     img.style.display = 'block';
     const ph = document.getElementById('heroPhotoPlaceholder');
@@ -239,7 +240,7 @@ function _updateHeroPhoto() {
     const url = (b.portfolio || []).find(f => f.destaque)?.url
              || b.portfolio?.[0]?.url
              || b.foto || '';
-    if (url && url.startsWith('http')) {
+    if (url && (url.startsWith('http') || url.startsWith('data:'))) {
       img.src = url;
       img.style.display = 'block';
       const ph = document.getElementById('heroPhotoPlaceholder');
